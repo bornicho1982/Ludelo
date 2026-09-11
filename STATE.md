@@ -5,7 +5,10 @@
 
 ## Estado global
 - Proyecto: **Ludelo** (renombrado completado en código, CMake, build.bat, tools y tests).
-- FASE ACTIVA: **Etapa B finalizada — Preparado para publicación (Etapa C)**
+- FASE ACTIVA: **Fase 0 CERRADA — Publicación completada con éxito** (Siguiente: Fase 1)
+- Repo público: https://github.com/bornicho1982/Ludelo.git
+- Fecha publicación: 11/09/2026
+- Commit hash inicial: `9f076ea1ecbe530fe1714b47539d08c1a12ff0ab` (`9f076ea`)
 - Build actual: **VERDE** (`bin\Ludelo.exe` y `bin\Ludelo_LiveDiagnostic.exe` compilados con éxito)
 - Tests: **6/6 PASADOS (VERDE)** (`test_fec`, `test_discovery`, `test_dualsense`, `test_takion`, `test_auth`, `test_crypto`)
 - Rama de seguridad / backup: `c:\proyectos antigravity\backup_play_portal_pre_b`
@@ -28,11 +31,13 @@
 - [x] Rutas OpenSSL centralizadas a nivel global en build.bat.
 - [x] Suite de pruebas 100% verde (6/6 ejecutables compilados y validados).
 - [x] Documentación legal generada: LICENSE (AGPL-3.0), NOTICE, THIRD-PARTY-LICENSES.md, README.md.
+- [x] Historial limpio y 0 secretos en el repositorio público.
 
-## Pendiente inmediato (Etapa C)
-- [ ] git init, higiene y primer commit limpio ("Initial commit: Ludelo")
-- [ ] Generar PUBLISH-REPORT.md
-- [ ] Configurar origin remoto y esperar confirmación explícita del usuario ("PUBLICA")
+## Hitos completados (Fase 0)
+- [x] git init, higiene y primer commit limpio ("Initial commit: Ludelo")
+- [x] Generar PUBLISH-REPORT.md
+- [x] Configurar origin remoto y push a main en GitHub (público)
+- [x] Verificación de acceso HTTP 200 al repositorio y commit remoto
 
 ## Decisiones cerradas (no reabrir)
 - Licencia: AGPL-3.0-or-later, repo público GitHub

@@ -2481,8 +2481,16 @@ void App::draw_home_screen() {
     if (ImGui::Button("##scan_btn", ImVec2(action_btn_w, action_btn_h))) {
         show_toast("Escaneando red local (DDP Broadcast 9295)...", 3.0f);
         auto result = portal::discovery::DDPDiscovery::search(1200);
-        if (result) {
-            show_toast(std::format("Escaneo finalizado: {} consolas detectadas", result->size()), 3.5f);
+        if (result && !result->empty()) {
+            show_toast(std::format("Escaneo finalizado: {} consola(s) detectada(s)", result->size()), 4.0f);
+            if (register_ip_[0] == '\0') {
+                strncpy_s(register_ip_, result->front().address.c_str(), sizeof(register_ip_) - 1);
+            }
+            if (register_name_[0] == '\0' && !result->front().host_name.empty()) {
+                strncpy_s(register_name_, result->front().host_name.c_str(), sizeof(register_name_) - 1);
+            }
+        } else {
+            show_toast("Escaneo finalizado: 0 consolas detectadas", 3.5f);
         }
     }
     ImGui::PopStyleColor(2);
@@ -2963,13 +2971,14 @@ void App::draw_pin_modal() {
             register_thread_ = std::jthread([this, ip, name, pin_num](std::stop_token) {
                 auto res = portal::crypto::PS5Protocol::register_with_pin(ip, 9295, pin_num);
                 if (res.has_value()) {
-                    if (res->host_id.empty()) {
+                    std::string host_id = !res->host_id.empty() ? res->host_id : res->mac;
+                    if (host_id.empty()) {
                         show_toast("Error al vincular: ID de consola vacio recibido", 6.0f);
                         return;
                     }
                     portal::discovery::DiscoveredConsole dc {
                         name.empty() ? res->host_name : name,
-                        res->host_id,
+                        host_id,
                         "PS5",
                         ip,
                         9295,

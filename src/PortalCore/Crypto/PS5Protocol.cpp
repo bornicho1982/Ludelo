@@ -277,6 +277,11 @@ Result<PS5RegistrationResult> PS5Protocol::register_with_pin(
             result.host_name = val;
         } else if (key == "PS5-Mac") {
             result.mac = val;
+            if (result.host_id.empty()) {
+                result.host_id = val;
+            }
+        } else if (key == "host-id" || key == "Host-Id" || key == "PS5-HostId" || key == "RP-HostId") {
+            result.host_id = val;
         }
     }
 
