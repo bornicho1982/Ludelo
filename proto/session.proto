@@ -1,0 +1,41 @@
+// Archivo: proto/session.proto
+syntax = "proto3";
+
+package portal.proto;
+
+enum SessionType {
+    SESSION_LOCAL_PS4 = 0;
+    SESSION_LOCAL_PS5 = 1;
+    SESSION_INTERNET_PS4 = 2;
+    SESSION_INTERNET_PS5 = 3;
+    SESSION_CLOUD_STREAMING = 4;
+}
+
+message SessionRequest {
+    SessionType session_type = 1;
+    string client_name = 2;
+    string client_id = 3;
+    uint32 protocol_version = 4;
+    bytes client_ecdh_pubkey = 5;
+    string resolution = 6;       // "1080p", "1440p", "2160p"
+    uint32 framerate = 7;        // 30, 60, 120
+    string codec = 8;            // "H264", "H265"
+    bool hdr_requested = 9;
+}
+
+message SessionResponse {
+    uint32 status_code = 1;
+    string status_message = 2;
+    string session_id = 3;
+    bytes server_ecdh_pubkey = 4;
+    bytes server_nonce = 5;
+    uint32 udp_data_port = 6;
+    uint32 udp_ctrl_port = 7;
+    uint32 negotiated_mtu = 8;
+}
+
+message HeartbeatMessage {
+    uint32 sequence = 1;
+    uint64 client_timestamp_us = 2;
+    uint32 last_rtt_us = 3;
+}

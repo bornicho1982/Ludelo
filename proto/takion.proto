@@ -1,0 +1,46 @@
+// Archivo: proto/takion.proto
+syntax = "proto3";
+
+package portal.proto;
+
+enum TakionPacketType {
+    TAKION_INIT = 0;
+    TAKION_INIT_ACK = 1;
+    TAKION_COOKIE = 2;
+    TAKION_COOKIE_ACK = 3;
+    TAKION_BANG = 4;
+    TAKION_DATA = 5;
+    TAKION_CONTROL = 6;
+    TAKION_HEARTBEAT = 7;
+    TAKION_HEARTBEAT_ACK = 8;
+    TAKION_STREAMINFO = 9;
+    TAKION_STREAMINFO_ACK = 10;
+}
+
+message TakionHeader {
+    uint32 magic = 1;
+    TakionPacketType packet_type = 2;
+    uint32 sequence = 3;
+    uint32 timestamp = 4;
+    uint32 flags = 5;
+    uint32 payload_size = 6;
+}
+
+message TakionHandshake {
+    uint32 client_version = 1;
+    string platform_id = 2;       // e.g. "pc:psnow" or "PlayStation Portal"
+    bytes client_nonce = 3;
+    bytes public_key = 4;
+}
+
+message TakionStreamInfo {
+    uint32 stream_id = 1;
+    string codec = 2;             // "H264" or "H265"
+    uint32 width = 3;
+    uint32 height = 4;
+    uint32 framerate = 5;
+    uint32 bitrate_kbps = 6;
+    bool hdr_enabled = 7;
+    uint32 audio_sample_rate = 8;
+    uint32 audio_channels = 9;
+}

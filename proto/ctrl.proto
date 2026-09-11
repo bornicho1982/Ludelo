@@ -1,0 +1,52 @@
+// Archivo: proto/ctrl.proto
+syntax = "proto3";
+
+package portal.proto;
+
+message TouchPointProto {
+    uint32 id = 1;
+    uint32 x = 2;
+    uint32 y = 3;
+    bool active = 4;
+}
+
+message ControllerReportProto {
+    uint32 buttons = 1;
+    uint32 left_stick_x = 2;
+    uint32 left_stick_y = 3;
+    uint32 right_stick_x = 4;
+    uint32 right_stick_y = 5;
+    uint32 l2_trigger = 6;
+    uint32 r2_trigger = 7;
+    repeated TouchPointProto touch_points = 8;
+    float gyro_x = 9;
+    float gyro_y = 10;
+    float gyro_z = 11;
+    float accel_x = 12;
+    float accel_y = 13;
+    float accel_z = 14;
+    uint32 sequence = 15;
+    uint32 battery_level = 16;
+}
+
+message HapticFeedbackProto {
+    uint32 motor_left = 1;
+    uint32 motor_right = 2;
+    uint32 duration_ms = 3;
+}
+
+message AdaptiveTriggerEffectProto {
+    enum TriggerSide {
+        TRIGGER_LEFT = 0;
+        TRIGGER_RIGHT = 1;
+    }
+    enum EffectMode {
+        EFFECT_OFF = 0;
+        EFFECT_FEEDBACK = 1;
+        EFFECT_WEAPON = 2;
+        EFFECT_VIBRATION = 3;
+    }
+    TriggerSide side = 1;
+    EffectMode mode = 2;
+    bytes parameters = 3;
+}

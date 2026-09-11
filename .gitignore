@@ -1,0 +1,62 @@
+# ─── Build Artifacts ──────────────────────────────────────
+build/
+bin/
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.iobj
+*.ipdb
+
+# ─── Compiled Shaders (sources in shaders/src/) ───────────
+# NOTE: the .spv files in assets/shaders/ ARE committed (prebuilt for distribution)
+# Only ignore intermediary .spv outputs from the build process
+shaders/*.spv.bak
+
+# ─── Binaries / DLLs (deployed by build.bat, not versioned) ──
+*.dll
+*.exe
+*.lib
+*.pdb
+*.msix
+*.msixbundle
+*.msixupload
+*.appx
+*.appxbundle
+
+# ─── Protobuf generated files ─────────────────────────────
+build/proto_gen/
+
+# ─── MSIX packaging staging ───────────────────────────────
+packaging/staging/
+
+# ─── User / IDE Files ─────────────────────────────────────
+.vs/
+*.user
+*.suo
+*.sdf
+*.VC.db
+.vscode/settings.json
+
+# ─── Sensitive data (NEVER commit credentials) ────────────
+*.npsso
+*.token
+portalpc.log
+ludelo.log
+*.log
+AUDIT.md
+backup*/
+
+# ─── OS Files ─────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# ─── Test binaries ────────────────────────────────────────
+bin/tests/
+
+# ─── Temporary files ──────────────────────────────────────
+*.tmp
+*.bak
+~$*

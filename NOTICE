@@ -1,0 +1,18 @@
+Ludelo
+Copyright (c) 2026 Ludelo Contributors
+
+This product includes software developed by the Chiaki and chiaki-ng projects:
+
+- Chiaki (Free and Open Source PlayStation Remote Play Client)
+  Copyright (c) 2019-2023 Florian Märkl and Chiaki contributors.
+  Available at: https://github.com/thestr4ng3r/chiaki
+  Licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later).
+
+- chiaki-ng (Next Generation PlayStation Remote Play Client)
+  Copyright (c) 2023-2025 Streetwalrus and chiaki-ng contributors.
+  Available at: https://github.com/streetwalrus/chiaki-ng
+  Licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later).
+
+The core protocol handling, congestion control, FEC reconstruction, and session
+negotiation logic incorporated in this software are derived from and inspired by
+these upstream projects.

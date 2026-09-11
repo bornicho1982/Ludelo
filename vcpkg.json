@@ -1,0 +1,44 @@
+{
+  "name": "portalpc",
+  "version-string": "0.1.0",
+  "description": "PortalPC — Unified PS Remote Play + Cloud Streaming Client for PC",
+  "homepage": "https://github.com/portalpc/portalpc",
+  "dependencies": [
+    "vulkan",
+    "vulkan-memory-allocator",
+    {
+      "name": "sdl3",
+      "version>=": "3.2.0"
+    },
+    "opus",
+    {
+      "name": "openssl",
+      "version>=": "3.3.0"
+    },
+    {
+      "name": "protobuf",
+      "version>=": "28.0"
+    },
+    "abseil",
+    "spdlog",
+    "fmt",
+    {
+      "name": "imgui",
+      "features": ["vulkan-binding", "sdl3-binding", "docking-experimental"]
+    },
+    "nlohmann-json",
+    {
+      "name": "ffmpeg",
+      "default-features": false,
+      "features": ["avcodec", "avformat", "avutil", "swscale", "swresample"]
+    },
+    "stb",
+    "curl",
+    "cpr",
+    "glm",
+    "glslang",
+    "spirv-tools"
+  ],
+  "builtin-baseline": "2024.09.30",
+  "overrides": []
+}
