@@ -9,74 +9,79 @@
 
 ---
 
-## Características / Features
+## ¿Por qué elegir Ludelo?
 
-- **Pipeline Gráfico Moderno (Vulkan 1.3):** Renderizado acelerado por hardware con shaders GLSL compilados a SPIR-V para conversión y presentación NV12 y YCbCr.
-- **Soporte Nativo DualSense HID:** Acceso directo a actuadores hápticos, resistencia mecánica en gatillos adaptativos (Adaptive Triggers) y barra de luz LED RGB via USB y Bluetooth.
-- **Descubrimiento Local (DDP):** Detección automática en red local de consolas PlayStation 4 y PlayStation 5 mediante PlayStation Device Discovery Protocol.
-- **Seguridad en Reposo (Windows DPAPI):** Credenciales de consola (`rp_key`, `rp_auth`) y tokens de sesión cifrados localmente en Windows Credential Storage / DPAPI.
-- **Baja Latencia y Resiliencia de Red:** Decodificación acelerada con FFmpeg, buffer dinámico y reconstrucción de paquetes mediante Forward Error Correction (FEC).
-
----
-
-## Requisitos del Sistema / System Requirements
-
-- **Sistema Operativo:** Windows 11 / Windows 10 (x64)
-- **Compilador / SDK:** Visual Studio 2022 (MSVC v143+ con soporte C++23) y Windows 10/11 SDK
-- **Dependencias:**
-  - Vulkan SDK o Vulkan Runtime compatible con Vulkan 1.3
-  - OpenSSL 3.0+ (Win64)
-  - Bibliotecas vendored / incluidas en `third_party/` (SDL3, FFmpeg, ImGui, spdlog, nlohmann_json)
+- 🎮 **Experiencia 10-Foot Console First:** Interfaz moderna e inmersiva navegable tanto con mando como con ratón, diseñada para pantallas de TV, monitores gaming y portátiles.
+- ⚡ **Latencia Ultra Baja (Glass-to-Glass):** Decodificación acelerada por hardware (Vulkan 1.3 + FFmpeg) con soporte para H.265 (HEVC 10-bit HDR) y H.264 hasta 1080p a 60 FPS y 120 FPS.
+- 🎯 **Soporte Nativo DualSense:** Acceso directo por USB a los motores hápticos de alta definición, resistencia dinámica en los gatillos adaptativos (L2/R2), sensor de movimiento (giroscopio de 6 ejes) y barra de luz LED personalizable.
+- 🕹️ **Filtro Anti-Drift Configurable:** Zona muerta radial personalizable en sticks analógicos para eliminar cualquier deriva mecánica por desgaste.
+- 📡 **Despertar en 1 Clic (Wake-on-LAN):** Enciende tu consola directamente desde el modo de reposo a través de la red local sin tocar físicamente el botón de encendido.
+- 🔒 **Login Seguro y Transparente:** Inicio de sesión web oficial de PlayStation Network con WebView2 seguro (sin necesidad de buscar cookies `npsso` manualmente en las herramientas de desarrollador). Tus credenciales se cifran de forma estricta en tu equipo mediante Windows DPAPI.
 
 ---
 
-## Compilación / Building
+## Guía de Inicio Rápido
 
-Ludelo incluye un sistema de compilación maestro automatizado mediante `build.bat`:
+### 1. Prepara tu consola
+1. Ve a **Ajustes > Sistema > Uso a distancia** y activa **Activar Uso a distancia**.
+2. Ve a **Ajustes > Sistema > Ahorro de energía > Funciones disponibles en modo de reposo** y activa:
+   - *Permanecer conectado a Internet*
+   - *Activar encendido de la PS5/PS4 desde la red*
 
-### 1. Compilar la aplicación principal
+### 2. Ejecuta Ludelo
+- Descarga la versión oficial o ejecuta `bin\Ludelo.exe`.
+- Conecta tu PC a la misma red local (cable Ethernet o WiFi de 5 GHz recomendado) que tu consola.
+
+### 3. Inicia sesión
+- Al abrir la aplicación por primera vez, pulsa **Iniciar sesión con PlayStation Network**.
+- Se abrirá la ventana oficial y segura de Sony. Introduce tus datos y autoriza el acceso. Ludelo vinculará tu cuenta de forma automática y descargará tu avatar de perfil.
+
+### 4. Vincula tu consola
+- Ludelo detectará automáticamente las consolas de tu red local.
+- Si es la primera vez que te conectas, pulsa **Vincular Consola**, acude a tu consola en **Ajustes > Sistema > Uso a distancia > Vincular dispositivo**, e introduce en Ludelo el PIN de 8 casillas mostrado en la pantalla de la TV.
+
+### 5. ¡A jugar!
+- Conecta tu mando (DualSense recomendado mediante cable USB para funciones hápticas y gatillos) y haz clic en **CONECTAR AHORA**.
+
+---
+
+## Preguntas Frecuentes (FAQ)
+
+#### ¿Mis datos de cuenta y contraseñas están seguros?
+**Sí, al 100%.** Ludelo nunca tiene acceso a tu contraseña. La autenticación se realiza directamente a través de los servidores oficiales de Sony mediante WebView2. Los tokens de autorización y las claves de conexión con tu consola se almacenan localmente cifrados mediante el sistema **Windows Data Protection API (DPAPI)**. Nunca se sube ningún dato a servidores externos.
+
+#### ¿Qué mandos son compatibles?
+- **Sony DualSense (PS5):** Soporte total de vibración háptica, gatillos adaptativos y giroscopio (se recomienda conexión USB para efectos hápticos avanzados).
+- **Sony DualShock 4 (PS4):** Vibración y giroscopio compatibles.
+- **Mandos Xbox, Nintendo Switch Pro y genéricos:** Compatibles mediante la base de datos SDL3 GameControllerDB integrada.
+
+#### ¿Por qué mi consola no despierta del modo de reposo?
+Verifica que la opción *Activar encendido de la PS5/PS4 desde la red* esté activada en los ajustes de ahorro de energía de tu consola, y que tanto el PC como la consola estén conectados al mismo router sin subredes o aislamiento de clientes WiFi activado.
+
+#### ¿Puedo jugar fuera de casa a través de Internet?
+Ludelo está diseñado para ultra baja latencia en red local (LAN). Si dispones de una conexión VPN a tu hogar (por ejemplo WireGuard o Tailscale) o reenvío de puertos UDP configurado en tu router, podrás conectarte remotamente a tu consola desde cualquier lugar.
+
+---
+
+## Para Desarrolladores (Compilación desde fuentes)
+
+Ludelo está escrito en **C++23 moderno** y cuenta con un script maestro de compilación automatizado para Visual Studio 2022 (MSVC x64):
+
 ```bat
+# Compilar la aplicación completa y desplegar assets
 build.bat app
-```
-El ejecutable binario se generará en `bin\Ludelo.exe`, junto con las dependencias DLL y los recursos gráficos necesarios.
 
-### 2. Compilar y ejecutar la suite de pruebas unitarias
-```bat
+# Compilar y ejecutar la suite de 6 pruebas unitarias (100% verde)
 build.bat tests
-```
-Compila y valida los 6 componentes críticos:
-- `test_fec`: Reconstrucción de paquetes con paridad FEC XOR
-- `test_discovery`: Descubrimiento de consolas en red local (DDP)
-- `test_dualsense`: Reportes de entrada HID y gatillos adaptativos
-- `test_takion`: Estructuras y encabezados del protocolo de transporte Takion
-- `test_auth`: Decodificación JWT y almacenamiento DPAPI
-- `test_crypto`: Criptografía Diffie-Hellman y protocolo de cifrado PS5
 
-### 3. Compilar la herramienta de diagnóstico de hardware
-```bat
+# Compilar la herramienta de diagnóstico de hardware
 build.bat diag
 ```
-Genera `bin\Ludelo_LiveDiagnostic.exe` para verificar de forma interactiva la conectividad de red con la consola, las luces LED, vibración y resistencia de gatillos en mandos DualSense.
-
-### 4. Limpieza de artefactos
-```bat
-build.bat clean
-```
 
 ---
 
-## Uso / Usage
+## Licencia y Reconocimientos
 
-1. Asegúrate de tener activada la opción **Uso a distancia (Remote Play)** en los ajustes de tu consola PlayStation:
-   - *Ajustes > Sistema > Uso a distancia > Activar Uso a distancia*
-2. Ejecuta `bin\Ludelo.exe` o haz doble clic en `INICIAR_LUDELO.bat`.
-3. Inicia sesión con tu cuenta de PSN o vincula tu consola directamente usando el PIN de 8 dígitos proporcionado en la pantalla de la consola.
-4. Conecta tu mando DualSense mediante cable USB o Bluetooth para disfrutar de soporte nativo completo.
-
----
-
-## Reconocimientos y Licencias / Credits & Licensing
-
-- Código base del proyecto: **GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)**. Consulta [LICENSE](LICENSE).
-- Incorpora arquitectura de protocolo y código derivado de los proyectos de código abierto **Chiaki** y **chiaki-ng**. Consulta [NOTICE](NOTICE).
-- Bibliotecas de terceros: Consulta [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md) para detalles completos de SDL3, FFmpeg, Dear ImGui, OpenSSL, Vulkan Headers, spdlog y nlohmann_json.
+- **Licencia principal:** [GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)](LICENSE).
+- **Motor de protocolo:** Basado y derivado de las arquitecturas de ingeniería inversa de [Chiaki](https://github.com/thestr4ng3r/chiaki) y [chiaki-ng](https://github.com/streetpea/chiaki-ng). Consulta [NOTICE](NOTICE).
+- **Bibliotecas de terceros:** Agradecemos el trabajo de los proyectos [SDL3](https://libsdl.org/), [FFmpeg](https://ffmpeg.org/), [Dear ImGui](https://github.com/ocornut/imgui), [OpenSSL](https://www.openssl.org/), [Inter Font](https://rsms.me/inter/) y [Lucide Icons](https://lucide.dev/). Consulta [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md) para los textos íntegros de licencia.

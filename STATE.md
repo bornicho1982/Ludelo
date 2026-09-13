@@ -46,7 +46,15 @@
 - Store: pago único 9,99€, sin suscripción.
 - Stack: C++23 + CMake/vcpkg, FFmpeg, SDL3, Vulkan/ImGui, OpenSSL, nlohmann, cpr, Catch2.
 - Datos de app: `%APPDATA%\Roaming\Ludelo\` (logs, config, keychain, cache). Se eligió Roaming sobre LocalAppData para permitir sincronización de perfil entre equipos del mismo dominio.
-- Fuente UI: NotoSansCJK-Regular.ttc (libre). SFNS.ttf (Apple) eliminada.
+- Fuente UI: NotoSansCJK-Regular.ttc (libre) + Inter.ttf (OFL). SFNS.ttf (Apple) eliminada.
+
+## Decisión Comercial: Modelo de Distribución y Monetización (Store / DLC)
+- **Modelo Base (GitHub):** 100% código abierto bajo AGPL-3.0-or-later. Los usuarios pueden clonar, compilar y ejecutar libremente sin coste ni restricciones funcionales.
+- **Canal Microsoft Store:** Empaquetado MSIX a precio único de 9,99€ (sin modelo de suscripción periódica ni anuncios).
+- **Justificación comercial y legal:**
+  1. *Valor para el usuario de Store:* Instalación segura en un solo clic, actualizaciones automáticas en segundo plano gestionadas por Microsoft Store, binarios firmados digitalmente de confianza (cero alertas de Windows SmartScreen) y soporte directo para el desarrollo continuo.
+  2. *Cumplimiento AGPL-3.0:* Totalmente compatible. El código fuente completo permanece público en GitHub y se enlaza de forma transparente tanto en la ficha de la tienda como en los créditos de la aplicación.
+  3. *Alternativa Store DLC (Supporter Pack):* Si las directivas de Microsoft Store exigen listing base gratuito para la categoría, se publicará Ludelo como descarga gratuita con "Ludelo Supporter Pass" (DLC opcional de 9,99€) que habilita cosméticos de interfaz (temas de color adicionales y personalización estética) manteniendo todas las capacidades de streaming en la versión base sin barreras.
 
 ## Fase 1 — Progreso
 - [x] PSN Account-ID incluido en regist (campo Np-AccountId, obligatorio para PS5).
@@ -70,3 +78,8 @@
 - [x] B3: Iconografía outline vectorial limpia 2px (base 24px/48px retina) sin marcas ni glifos propietarios de PlayStation/Sony.
 - [x] B4: Branding propio Ludelo con monograma 'L', wordmark y app.ico multi-resolución (16-256px) asignado a ventana HWND y barra de tareas.
 - [x] B5: Rediseño de componentes clave: tarjetas de consola con elevación, píldoras Mint/Amber/Slate, métricas en tiempo real (ping, codec, bitrate), topbar con estado LAN/avatar y sliders con track primario, thumb menta y tooltips técnicos.
+- [x] C1: Decisión comercial documentada en STATE.md: modelo Store 9,99€ pago único para conveniencia/actualizaciones con base AGPL libre en GitHub y alternativa DLC Supporter Pack.
+- [x] C2: README.md reescrito con enfoque 100% usuario final (guía paso a paso, características clave, FAQ de seguridad/mandos y notas de compilación secundarias).
+- [x] C3: THIRD-PARTY-LICENSES.md actualizado con licencias de Inter Font (OFL-1.1), SDL GameControllerDB (zlib), Lucide Icons (ISC) y Noto Sans CJK (OFL-1.1).
+- [x] C4: Documento de diseño arquitectónico de desacoplamiento de streaming vía IPC (Named Pipes + Shared Memory zero-copy) registrado en docs/notes/design-streaming-service.md.
+
