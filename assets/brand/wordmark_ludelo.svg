@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+  <defs>
+    <linearGradient id="wGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6C5CE7"/>
+      <stop offset="100%" stop-color="#00F5D4"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(30, 25) scale(0.293)">
+    <rect x="24" y="24" width="464" height="464" rx="110" fill="#0E1117" stroke="#6C5CE7" stroke-width="6"/>
+    <polygon points="155,140 235,115 235,305 375,305 385,380 155,380" fill="url(#wGrad)"/>
+    <polygon points="265,200 320,150 355,185 300,235" fill="url(#wGrad)"/>
+  </g>
+  <text x="210" y="125" font-family="'Segoe UI Variable Display', 'Inter', sans-serif" font-size="82" font-weight="700" fill="#F8F9FA">LUDELO</text>
+  <text x="215" y="160" font-family="'Segoe UI Variable Text', 'Inter', sans-serif" font-size="20" font-weight="600" fill="#00F5D4" letter-spacing="2">REMOTE PLAY CLIENT</text>
+</svg>

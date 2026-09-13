@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="ludeloGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6C5CE7"/>
+      <stop offset="100%" stop-color="#00F5D4"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="110" fill="#0E1117" stroke="#6C5CE7" stroke-width="6" stroke-opacity="0.6"/>
+  <polygon points="155,140 235,115 235,305 375,305 385,380 155,380" fill="url(#ludeloGrad)" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.8"/>
+  <polygon points="265,200 320,150 355,185 300,235" fill="url(#ludeloGrad)" stroke="#00F5D4" stroke-width="2"/>
+</svg>

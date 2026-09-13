@@ -65,3 +65,8 @@
 - [x] A3: Paridad de streaming con fast_bilinear, cola de frames cero lag, prioridad MMCSS (THREAD_PRIORITY_HIGHEST / Games) y modo --glass-to-glass en diagnóstico.
 - [x] A4: Paridad de mando con carga de gamecontrollerdb.txt, soporte de giroscopio configurable, fallback de touchpad y modal de test interactivo de sticks/botones.
 - [x] A5: UX de errores WebView2 con detección DOM de 'Something went wrong', redirección automática a fallback y toast interactivo de cancelación [Reintentar]/[Usar navegador].
+- [x] B1: Tokens y paleta definitiva centralizados en src/UI/Theme.h y documentados en docs/DESIGN-SYSTEM.md (Base #0E1117, Panel #171B24, Indigo #6C5CE7, Mint #00F5D4, radios 12/16/20px, elevación 3 niveles).
+- [x] B2: Tipografía Segoe UI Variable e Inter (OFL) con CJK estrictamente en MergeMode fallback y escala 24/16/14/12/30px sin artefactos.
+- [x] B3: Iconografía outline vectorial limpia 2px (base 24px/48px retina) sin marcas ni glifos propietarios de PlayStation/Sony.
+- [x] B4: Branding propio Ludelo con monograma 'L', wordmark y app.ico multi-resolución (16-256px) asignado a ventana HWND y barra de tareas.
+- [x] B5: Rediseño de componentes clave: tarjetas de consola con elevación, píldoras Mint/Amber/Slate, métricas en tiempo real (ping, codec, bitrate), topbar con estado LAN/avatar y sliders con track primario, thumb menta y tooltips técnicos.

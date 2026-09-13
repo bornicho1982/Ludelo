@@ -23,6 +23,7 @@
 #include "PortalCore/Crypto/PS5Protocol.h"
 #include "Platform/WindowsWindow.h"
 #include "PortalCore/Config/AppSettings.h"
+#include "UI/Theme.h"
 
 #ifdef _WIN32
 #include <timeapi.h>
@@ -31,40 +32,10 @@
 
 namespace portal::ui {
 
-// ─── Stitch Design System: Midnight Portal Color Palette (#0b1021, #0070d1, #00f0ff) ──
-namespace colors {
-    // Midnight Portal Core (#0b1021, #0070d1, #00f0ff)
-    constexpr ImVec4 kBackground       = {0.043f, 0.063f, 0.129f, 1.00f};  // #0b1021 Deep Void Navy
-    constexpr ImVec4 kSurface          = {0.055f, 0.082f, 0.165f, 0.85f};  // #0e152a Glass Surface
-    constexpr ImVec4 kSurfaceHover     = {0.080f, 0.120f, 0.240f, 0.90f};  // Lighter Glass Hover
-    constexpr ImVec4 kSurfaceActive    = {0.100f, 0.150f, 0.300f, 0.98f};  // Glass Active/Focused
-    constexpr ImVec4 kGlassCard        = {0.065f, 0.095f, 0.190f, 0.75f};  // Translucent Card
-    constexpr ImVec4 kGlassBorder      = {0.180f, 0.250f, 0.450f, 0.40f};  // Subtle Glass Edge
-    
-    constexpr ImVec4 kPrimary          = {0.000f, 0.439f, 0.820f, 1.00f};  // #0070d1 PlayStation Blue
-    constexpr ImVec4 kPrimaryHover     = {0.080f, 0.520f, 0.920f, 1.00f};  // Vibrant PS Blue Hover
-    constexpr ImVec4 kAccent           = {0.000f, 0.941f, 1.000f, 1.00f};  // #00f0ff Electric Neon Cyan
-    constexpr ImVec4 kAccentHover      = {0.250f, 0.970f, 1.000f, 1.00f};  
-    constexpr ImVec4 kAccentGlow       = {0.000f, 0.941f, 1.000f, 0.35f};  // Cyan Glow
-    
-    constexpr ImVec4 kTextPrimary      = {0.960f, 0.970f, 1.000f, 1.00f};  // Crisp White/Ice
-    constexpr ImVec4 kTextSecondary    = {0.550f, 0.620f, 0.730f, 1.00f};  // Slate Grey
-    constexpr ImVec4 kTextMuted        = {0.350f, 0.400f, 0.500f, 1.00f};  // Deep Slate
-    
-    constexpr ImVec4 kSuccess          = {0.000f, 0.902f, 0.463f, 1.00f};  // #00e676 (Awake/Encendida)
-    constexpr ImVec4 kWarning          = {1.000f, 0.671f, 0.000f, 1.00f};  // #ffab00 (Standby/Reposo)
-    constexpr ImVec4 kError            = {1.000f, 0.200f, 0.400f, 1.00f};  // #ff3366
-    
-    constexpr ImVec4 kPS5Blue          = {0.000f, 0.439f, 0.820f, 1.00f};  // #0070d1
-    constexpr ImVec4 kCloudPurple      = {0.475f, 0.157f, 0.792f, 1.00f};  // #7928ca PS Plus Cloud
-    constexpr ImVec4 kCloudPurpleGlow  = {0.475f, 0.157f, 0.792f, 0.35f};
-
-    // PlayStation Controller Button Colors
-    constexpr ImVec4 kBtnCross         = {0.000f, 0.850f, 1.000f, 1.00f};  // Cyan
-    constexpr ImVec4 kBtnCircle        = {1.000f, 0.280f, 0.340f, 1.00f};  // Coral Red
-    constexpr ImVec4 kBtnTriangle      = {0.180f, 0.835f, 0.451f, 1.00f};  // Emerald Green
-    constexpr ImVec4 kBtnSquare        = {1.000f, 0.420f, 0.506f, 1.00f};  // Pink/Magenta
-}
+// ─── Ludelo Design System: Central Theme Tokens ───────────
+namespace colors = portal::ui::theme::colors;
+namespace metrics = portal::ui::theme::metrics;
+using portal::ui::theme::draw_elevation;
 
 // ─── Constructor / Destructor ─────────────────────────────
 
@@ -116,6 +87,23 @@ VoidResult App::init() {
     }
 
     spdlog::info("SDL window created: {}x{}", config_.window_width, config_.window_height);
+
+#ifdef _WIN32
+    HWND hwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(window_), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+    if (hwnd) {
+        std::filesystem::path ico_path = "assets/brand/app.ico";
+        if (!std::filesystem::exists(ico_path)) {
+            ico_path = "../assets/brand/app.ico";
+        }
+        if (std::filesystem::exists(ico_path)) {
+            HICON hIconBig = static_cast<HICON>(LoadImageW(nullptr, ico_path.c_str(), IMAGE_ICON, 64, 64, LR_LOADFROMFILE));
+            HICON hIconSmall = static_cast<HICON>(LoadImageW(nullptr, ico_path.c_str(), IMAGE_ICON, 32, 32, LR_LOADFROMFILE));
+            if (hIconBig) SendMessageW(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(hIconBig));
+            if (hIconSmall) SendMessageW(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(hIconSmall));
+            spdlog::info("Set window and taskbar icon from {}", ico_path.string());
+        }
+    }
+#endif
 
     // Initialize Vulkan
     auto vk_result = init_vulkan();
@@ -260,7 +248,7 @@ VoidResult App::init() {
     SDL_ShowWindow(window_);
     SDL_RaiseWindow(window_);
 #ifdef _WIN32
-    HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window_), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+    hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window_), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
     spdlog::debug("Win32 HWND: 0x{:X}", (uintptr_t)hwnd);
     if (hwnd) {
         ShowWindow(hwnd, SW_SHOWNORMAL);
@@ -1346,6 +1334,9 @@ void App::load_all_icons() {
     load_texture("person", "assets/icons/ic_person.png");
     load_texture("sliders", "assets/icons/ic_sliders.png");
     load_texture("info", "assets/icons/ic_info.png");
+    load_texture("console", "assets/icons/ic_console.png");
+    load_texture("brand_monogram", "assets/brand/monogram_l.png");
+    load_texture("brand_wordmark", "assets/brand/wordmark_ludelo.png");
 }
 
 void App::destroy_textures() {
@@ -1708,13 +1699,13 @@ ImTextureID App::get_texture(const std::string& name) {
 void App::setup_style() {
     ImGuiStyle& style = ImGui::GetStyle();
 
-    // ── Ultra-premium Midnight Portal console style ──
-    style.WindowRounding    = 16.0f;
-    style.ChildRounding     = 14.0f;
-    style.FrameRounding     = 10.0f;
-    style.PopupRounding     = 14.0f;
+    // ── Ludelo Console Design System Style ──
+    style.WindowRounding    = metrics::kRadiusCard;
+    style.ChildRounding     = metrics::kRadiusCard;
+    style.FrameRounding     = metrics::kRadiusComponent;
+    style.PopupRounding     = metrics::kRadiusModal;
     style.ScrollbarRounding = 8.0f;
-    style.GrabRounding      = 8.0f;
+    style.GrabRounding      = 6.0f;
     style.TabRounding       = 8.0f;
 
     style.WindowPadding     = ImVec2(24.0f, 24.0f);
@@ -1729,7 +1720,7 @@ void App::setup_style() {
     style.FrameBorderSize   = 1.0f;
     style.PopupBorderSize   = 1.0f;
 
-    // ── Midnight Portal Theme Palette Colors ──
+    // ── Ludelo Theme Palette Colors ──
     ImVec4* c = style.Colors;
     // When Mica is active, make the main window background transparent so the
     // DWM compositor Mica effect shows through. Panels use kSurface (semi-opaque glass).
@@ -1751,7 +1742,7 @@ void App::setup_style() {
 
     c[ImGuiCol_Button]               = colors::kPrimary;
     c[ImGuiCol_ButtonHovered]        = colors::kPrimaryHover;
-    c[ImGuiCol_ButtonActive]         = {0.00f, 0.35f, 0.70f, 1.00f};
+    c[ImGuiCol_ButtonActive]         = colors::kPrimaryActive;
 
     c[ImGuiCol_Header]               = colors::kSurface;
     c[ImGuiCol_HeaderHovered]        = colors::kSurfaceHover;
@@ -1781,18 +1772,31 @@ void App::load_fonts() {
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->Clear();
 
-    // Prioritize NotoSansCJK-Regular.ttc (Free font)
-    std::vector<std::string> candidates = {
-        "assets/fonts/NotoSansCJK-Regular.ttc",
-        "../assets/fonts/NotoSansCJK-Regular.ttc",
+    // Primary typeface: Segoe UI Variable (Win11) / Inter (OFL) / Segoe UI (Win10)
+    std::vector<std::string> primary_candidates = {
+        "C:/Windows/Fonts/SegUIVar.ttf",
+        "assets/fonts/Inter.ttf",
+        "../assets/fonts/Inter.ttf",
         "C:/Windows/Fonts/segoeui.ttf",
         "C:/Windows/Fonts/arial.ttf"
     };
 
     std::string font_path;
-    for (const auto& path : candidates) {
+    for (const auto& path : primary_candidates) {
         if (std::filesystem::exists(path)) {
             font_path = path;
+            break;
+        }
+    }
+
+    std::string cjk_path;
+    std::vector<std::string> cjk_candidates = {
+        "assets/fonts/NotoSansCJK-Regular.ttc",
+        "../assets/fonts/NotoSansCJK-Regular.ttc"
+    };
+    for (const auto& p : cjk_candidates) {
+        if (std::filesystem::exists(p)) {
+            cjk_path = p;
             break;
         }
     }
@@ -1801,12 +1805,24 @@ void App::load_fonts() {
         ImFontConfig cfg;
         cfg.OversampleH = 2;
         cfg.OversampleV = 2;
-        font_body_     = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 16.0f, &cfg);
-        font_title_    = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 28.0f, &cfg);
-        font_subtitle_ = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 20.0f, &cfg);
-        font_small_    = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 13.0f, &cfg);
-        font_pin_      = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 36.0f, &cfg);
-        spdlog::info("Loaded main font successfully from: {}", font_path);
+
+        // Typographic scale: Title 24px, Subtitle 16px, Body 14px, Caption 12px, PIN 30px
+        font_body_     = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 14.0f, &cfg);
+        font_title_    = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 24.0f, &cfg);
+        font_subtitle_ = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 16.0f, &cfg);
+        font_small_    = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 12.0f, &cfg);
+        font_pin_      = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 30.0f, &cfg);
+
+        // Fallback: merge CJK glyphs strictly for missing characters
+        if (!cjk_path.empty()) {
+            ImFontConfig cjk_cfg;
+            cjk_cfg.MergeMode = true;
+            cjk_cfg.OversampleH = 2;
+            cjk_cfg.OversampleV = 2;
+            io.Fonts->AddFontFromFileTTF(cjk_path.c_str(), 14.0f, &cjk_cfg, io.Fonts->GetGlyphRangesChineseFull());
+        }
+
+        spdlog::info("Loaded primary font from {} with CJK fallback {}", font_path, cjk_path.empty() ? "(none)" : cjk_path);
     } else {
         font_body_ = io.Fonts->AddFontDefault();
         font_title_ = font_body_;
@@ -2089,7 +2105,12 @@ static void DrawPSCross(ImDrawList* draw, ImVec2 center, float radius) {}
 static void DrawPSCircle(ImDrawList* draw, ImVec2 center, float radius) {}
 static void DrawPSTriangle(ImDrawList* draw, ImVec2 center, float radius) {}
 static void DrawPSSquare(ImDrawList* draw, ImVec2 center, float radius) {}
-static void DrawPSBumper(ImDrawList* draw, ImVec2 pos, const char* label) {}
+static void DrawPSBumper(ImDrawList* draw, ImVec2 pos, const char* label) {
+    if (!draw || !label) return;
+    draw->AddRectFilled(pos, ImVec2(pos.x + 30.0f, pos.y + 18.0f), IM_COL32(32, 37, 49, 200), 4.0f);
+    draw->AddRect(pos, ImVec2(pos.x + 30.0f, pos.y + 18.0f), IM_COL32(51, 60, 82, 160), 4.0f, 0, 1.0f);
+    draw->AddText(ImVec2(pos.x + 6.0f, pos.y + 2.0f), IM_COL32(148, 163, 184, 255), label);
+}
 
 // ─── Ambient Shaders & Atmosphere ─────────────────────────
 void App::draw_ambient_background() {
@@ -2097,32 +2118,32 @@ void App::draw_ambient_background() {
     ImVec2 ws = ImGui::GetIO().DisplaySize;
     float time = static_cast<float>(ImGui::GetTime());
 
-    // Deep Void Navy Background (#0b1021)
-    draw->AddRectFilled(ImVec2(0, 0), ws, IM_COL32(11, 16, 33, 255));
+    // Deep Void Base Background (#0E1117)
+    draw->AddRectFilled(ImVec2(0, 0), ws, IM_COL32(14, 17, 23, 255));
 
-    // Ambient Radial Light Spill (PlayStation Blue glow on top-left)
+    // Ambient Radial Light Spill (Electric Indigo glow on top-left)
     ImVec2 c1(ws.x * 0.20f, ws.y * 0.15f);
-    draw->AddCircleFilled(c1, ws.x * 0.45f, IM_COL32(0, 112, 209, 24), 64);
-    draw->AddCircleFilled(c1, ws.x * 0.25f, IM_COL32(0, 112, 209, 38), 64);
+    draw->AddCircleFilled(c1, ws.x * 0.45f, IM_COL32(108, 92, 231, 25), 64);
+    draw->AddCircleFilled(c1, ws.x * 0.25f, IM_COL32(108, 92, 231, 40), 64);
 
-    // Neon Cyan glow on bottom-right
+    // Cyber Mint glow on bottom-right
     ImVec2 c2(ws.x * 0.85f, ws.y * 0.80f);
-    draw->AddCircleFilled(c2, ws.x * 0.40f, IM_COL32(0, 240, 255, 18), 64);
-    draw->AddCircleFilled(c2, ws.x * 0.20f, IM_COL32(0, 240, 255, 30), 64);
+    draw->AddCircleFilled(c2, ws.x * 0.40f, IM_COL32(0, 245, 212, 18), 64);
+    draw->AddCircleFilled(c2, ws.x * 0.20f, IM_COL32(0, 245, 212, 30), 64);
 
-    // Subtle PS Plus Purple glow on top-right
+    // Subtle Indigo accent glow on top-right
     ImVec2 c3(ws.x * 0.80f, ws.y * 0.10f);
-    draw->AddCircleFilled(c3, ws.x * 0.35f, IM_COL32(121, 40, 202, 22), 64);
+    draw->AddCircleFilled(c3, ws.x * 0.35f, IM_COL32(125, 111, 240, 20), 64);
 
-    // Animated PlayStation Portal Wave ribbons
+    // Animated Ludelo Portal Wave ribbons
     for (int w = 0; w < 3; w++) {
         float speed = 0.35f + w * 0.15f;
         float amp = 24.0f + w * 14.0f;
         float y_offset = ws.y * 0.48f + w * 45.0f;
         float phase = time * speed + w * 1.8f;
-        ImU32 wave_col = (w == 0) ? IM_COL32(0, 240, 255, 30) :
-                         (w == 1) ? IM_COL32(0, 112, 209, 36) :
-                                    IM_COL32(121, 40, 202, 26);
+        ImU32 wave_col = (w == 0) ? IM_COL32(0, 245, 212, 35) :
+                         (w == 1) ? IM_COL32(108, 92, 231, 38) :
+                                    IM_COL32(125, 111, 240, 28);
 
         int steps = 40;
         float step_x = ws.x / static_cast<float>(steps);
@@ -2142,25 +2163,30 @@ void App::draw_top_navigation_bar() {
     ImVec2 ws = ImGui::GetIO().DisplaySize;
     float bar_height = 68.0f;
 
-    // Glass bar background
-    draw->AddRectFilled(ImVec2(0, 0), ImVec2(ws.x, bar_height), IM_COL32(8, 12, 26, 215));
-    draw->AddLine(ImVec2(0, bar_height), ImVec2(ws.x, bar_height), IM_COL32(255, 255, 255, 18), 1.0f);
+    // Glass bar background (#171B24 surface with subtle bottom border)
+    draw->AddRectFilled(ImVec2(0, 0), ImVec2(ws.x, bar_height), IM_COL32(23, 27, 36, 235));
+    draw->AddLine(ImVec2(0, bar_height), ImVec2(ws.x, bar_height), IM_COL32(51, 60, 82, 140), 1.0f);
 
-    // Left: Logo + Branding
+    // Left: Logo Monogram + Wordmark
     float cur_x = 28.0f;
+    ImTextureID logo_tex = get_texture("brand_monogram");
+    if (logo_tex) {
+        draw->AddImage(logo_tex, ImVec2(cur_x, 16.0f), ImVec2(cur_x + 36.0f, 52.0f));
+        cur_x += 44.0f;
+    }
+
     if (font_title_) ImGui::PushFont(font_title_);
-    draw->AddText(ImVec2(cur_x, 18.0f), IM_COL32(255, 255, 255, 255), "LUDELO");
-    cur_x += ImGui::CalcTextSize("LUDELO").x + 8.0f;
+    draw->AddText(ImVec2(cur_x, 21.0f), IM_COL32(248, 249, 250, 255), "LUDELO");
+    cur_x += ImGui::CalcTextSize("LUDELO").x + 16.0f;
     if (font_title_) ImGui::PopFont();
 
-    // Center: 10-Foot Console Tabs (Consolas, PS Plus Cloud, Ajustes)
-    // Center: 10-Foot Console Tabs (Consolas, PS Plus Cloud, Ajustes)
+    // Center: 10-Foot Console Tabs (Consolas, Cloud Experimental, Ajustes)
 #if defined(LUDELO_CLOUD_EXPERIMENTAL) && LUDELO_CLOUD_EXPERIMENTAL == 1
-    const char* tabs[] = {"CONSOLAS", "PS PLUS CLOUD", "AJUSTES"};
-    float tab_widths[] = {120.0f, 150.0f, 110.0f};
+    const char* tabs[] = {"CONSOLAS", "CLOUD", "AJUSTES"};
+    float tab_widths[] = {120.0f, 110.0f, 110.0f};
     int tab_logical_id[] = {0, 1, 2};
     int num_tabs = 3;
-    float total_tabs_w = 120.0f + 150.0f + 110.0f + 20.0f * 2.0f + 80.0f;
+    float total_tabs_w = 120.0f + 110.0f + 110.0f + 20.0f * 2.0f + 80.0f;
 #else
     const char* tabs[] = {"CONSOLAS", "AJUSTES"};
     float tab_widths[] = {120.0f, 110.0f};
@@ -2192,21 +2218,21 @@ void App::draw_top_navigation_bar() {
         bool hovered = ImGui::IsItemHovered();
 
         if (active) {
-            draw->AddRectFilled(t_min, t_max, IM_COL32(0, 112, 209, 50), 8.0f);
-            // Glowing cyan underline
+            draw->AddRectFilled(t_min, t_max, IM_COL32(108, 92, 231, 45), 8.0f);
+            // Glowing Cyber Mint underline
             draw->AddLine(ImVec2(t_min.x + 8.0f, bar_height - 2.0f),
                           ImVec2(t_max.x - 8.0f, bar_height - 2.0f),
-                          IM_COL32(0, 240, 255, 255), 3.0f);
+                          IM_COL32(0, 245, 212, 255), 3.0f);
         } else if (hovered) {
-            draw->AddRectFilled(t_min, t_max, IM_COL32(255, 255, 255, 15), 8.0f);
+            draw->AddRectFilled(t_min, t_max, IM_COL32(255, 255, 255, 12), 8.0f);
         }
 
         if (font_subtitle_) ImGui::PushFont(font_subtitle_);
         ImVec2 label_sz = ImGui::CalcTextSize(tabs[i]);
         ImVec2 label_pos(t_min.x + (tw - label_sz.x) * 0.5f, t_min.y + (38.0f - label_sz.y) * 0.5f);
-        ImU32 text_col = active ? IM_COL32(255, 255, 255, 255) :
+        ImU32 text_col = active ? IM_COL32(248, 249, 250, 255) :
                          hovered ? IM_COL32(220, 235, 255, 220) :
-                                   IM_COL32(140, 160, 185, 190);
+                                   IM_COL32(148, 163, 184, 200);
         draw->AddText(label_pos, text_col, tabs[i]);
         if (font_subtitle_) ImGui::PopFont();
 
@@ -2216,8 +2242,27 @@ void App::draw_top_navigation_bar() {
     // R1 Bumper hint
     DrawPSBumper(draw, ImVec2(tab_start_x, 24.0f), "R1");
 
-    // Right: Status Badges (LAN, PSN Profile, Clock)
-    float right_x = ws.x - 30.0f;
+    // Right: Status Badges (Settings, Clock, LAN, PSN Profile)
+    float right_x = ws.x - 24.0f;
+
+    // Settings Quick Button with gear outline icon
+    ImVec2 gear_pos(right_x - 36.0f, 18.0f);
+    ImGui::SetCursorScreenPos(gear_pos);
+    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(32, 37, 49, 180));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(108, 92, 231, 200));
+    if (ImGui::Button("##top_settings", ImVec2(34.0f, 34.0f))) {
+        current_tab_ = 2;
+        current_screen_ = Screen::Settings;
+    }
+    ImGui::PopStyleColor(2);
+
+    ImTextureID gear_icon = get_texture("gear");
+    if (gear_icon) {
+        draw->AddImage(gear_icon, ImVec2(gear_pos.x + 7.0f, gear_pos.y + 7.0f), ImVec2(gear_pos.x + 27.0f, gear_pos.y + 27.0f));
+    } else {
+        draw->AddCircle(ImVec2(gear_pos.x + 17.0f, gear_pos.y + 17.0f), 7.0f, IM_COL32(248, 249, 250, 220), 16, 1.5f);
+    }
+    right_x -= 50.0f;
 
     // Clock
     std::time_t now = std::time(nullptr);
@@ -2234,7 +2279,7 @@ void App::draw_top_navigation_bar() {
     // PSN Profile capsule
     std::string profile_name = "PSN User";
     std::string plus_status_str = "Conectado";
-    ImU32 plus_color = IM_COL32(140, 165, 200, 220);
+    ImU32 plus_color = IM_COL32(148, 163, 184, 220);
     const char* appdata_env = getenv("APPDATA");
     std::string avatar_file_path = (appdata_env ? (std::filesystem::path(appdata_env) / "Ludelo" / "avatar.png") : std::filesystem::path("Ludelo/avatar.png")).string();
 
@@ -2248,7 +2293,7 @@ void App::draw_top_navigation_bar() {
             }
             if (!act->profile.plus_status.empty() && act->profile.plus_status != "none") {
                 plus_status_str = "PlayStation Plus";
-                plus_color = IM_COL32(255, 205, 50, 240);
+                plus_color = IM_COL32(255, 183, 3, 240); // Amber gold
             }
         }
     }
@@ -2261,8 +2306,8 @@ void App::draw_top_navigation_bar() {
 
     ImVec2 psn_min(right_x, 16.0f);
     ImVec2 psn_max(right_x + psn_w, 52.0f);
-    draw->AddRectFilled(psn_min, psn_max, IM_COL32(20, 30, 54, 200), 18.0f);
-    draw->AddRect(psn_min, psn_max, IM_COL32(0, 112, 209, 120), 18.0f, 0, 1.0f);
+    draw->AddRectFilled(psn_min, psn_max, IM_COL32(23, 27, 36, 220), 18.0f);
+    draw->AddRect(psn_min, psn_max, IM_COL32(108, 92, 231, 100), 18.0f, 0, 1.0f);
 
     // Profile avatar circle/image (center Y = 34.0f)
     ImVec2 avatar_c(psn_min.x + 20.0f, 34.0f);
@@ -2299,30 +2344,37 @@ void App::draw_top_navigation_bar() {
     if (avatar_tex) {
         draw->AddImageRounded(avatar_tex, ImVec2(avatar_c.x - 12.0f, avatar_c.y - 12.0f), ImVec2(avatar_c.x + 12.0f, avatar_c.y + 12.0f), ImVec2(0,0), ImVec2(1,1), IM_COL32_WHITE, 12.0f);
     } else {
-        draw->AddCircleFilled(avatar_c, 12.0f, IM_COL32(0, 112, 209, 255));
-        DrawPSCross(draw, avatar_c, 8.0f);
+        // Initials avatar fallback with Electric Indigo fill
+        draw->AddCircleFilled(avatar_c, 13.0f, IM_COL32(108, 92, 231, 255));
+        char initial[2] = {profile_name.empty() ? 'L' : static_cast<char>(std::toupper(profile_name[0])), '\0'};
+        ImVec2 isz = ImGui::CalcTextSize(initial);
+        draw->AddText(ImVec2(avatar_c.x - isz.x * 0.5f, avatar_c.y - isz.y * 0.5f), IM_COL32(255, 255, 255, 255), initial);
     }
 
-    // Online green dot
-    draw->AddCircleFilled(ImVec2(avatar_c.x + 8.0f, avatar_c.y + 8.0f), 3.5f, IM_COL32(0, 230, 118, 255));
+    // Cyber Mint online indicator
+    draw->AddCircleFilled(ImVec2(avatar_c.x + 8.0f, avatar_c.y + 8.0f), 3.5f, IM_COL32(0, 245, 212, 255));
 
-    draw->AddText(ImVec2(psn_min.x + 38.0f, psn_min.y + 6.0f), IM_COL32(245, 250, 255, 255), profile_name.c_str());
+    draw->AddText(ImVec2(psn_min.x + 38.0f, psn_min.y + 6.0f), IM_COL32(248, 249, 250, 255), profile_name.c_str());
     draw->AddText(ImVec2(psn_min.x + 38.0f, psn_min.y + 20.0f), plus_color, plus_status_str.c_str());
     if (font_small_) ImGui::PopFont();
     right_x -= 16.0f;
 
     // LAN / WiFi Signal indicator
-    float net_w = 135.0f;
+    float net_w = 145.0f;
     right_x -= net_w;
     ImVec2 net_min(right_x, 18.0f);
     ImVec2 net_max(right_x + net_w, 50.0f);
-    draw->AddRectFilled(net_min, net_max, IM_COL32(16, 24, 44, 180), 16.0f);
-    draw->AddRect(net_min, net_max, IM_COL32(60, 85, 130, 100), 16.0f, 0, 1.0f);
+    draw->AddRectFilled(net_min, net_max, IM_COL32(23, 27, 36, 200), 16.0f);
+    draw->AddRect(net_min, net_max, IM_COL32(51, 60, 82, 140), 16.0f, 0, 1.0f);
 
-    // Signal green dot
-    draw->AddCircleFilled(ImVec2(net_min.x + 14.0f, net_min.y + 16.0f), 4.0f, IM_COL32(0, 230, 118, 255));
+    ImTextureID ant_icon = get_texture("antenna");
+    if (ant_icon) {
+        draw->AddImage(ant_icon, ImVec2(net_min.x + 8.0f, net_min.y + 7.0f), ImVec2(net_min.x + 26.0f, net_min.y + 25.0f));
+    } else {
+        draw->AddCircleFilled(ImVec2(net_min.x + 14.0f, net_min.y + 16.0f), 4.0f, IM_COL32(0, 245, 212, 255));
+    }
     if (font_small_) ImGui::PushFont(font_small_);
-    draw->AddText(ImVec2(net_min.x + 24.0f, net_min.y + 8.0f), IM_COL32(180, 205, 235, 230), "LAN 1 Gbps • 2ms");
+    draw->AddText(ImVec2(net_min.x + 30.0f, net_min.y + 8.0f), IM_COL32(180, 205, 235, 230), "LAN • <2 ms");
     if (font_small_) ImGui::PopFont();
 }
 
@@ -2498,7 +2550,7 @@ void App::draw_home_screen() {
     // Section Header
     ImGui::SetCursorPos(ImVec2(40.0f, start_y));
     if (font_title_) ImGui::PushFont(font_title_);
-    ImGui::TextColored(colors::kTextPrimary, "MIS CONSOLAS PLAYSTATION");
+    ImGui::TextColored(colors::kTextPrimary, "MIS CONSOLAS");
     if (font_title_) ImGui::PopFont();
 
     ImGui::SetCursorPos(ImVec2(40.0f, start_y + 36.0f));
@@ -2507,8 +2559,8 @@ void App::draw_home_screen() {
     if (font_small_) ImGui::PopFont();
 
     // ── Console Cards Row ──
-    float card_w = 340.0f;
-    float card_h = 250.0f;
+    float card_w = 350.0f;
+    float card_h = 265.0f;
     float card_spacing = 24.0f;
     float cards_y = start_y + 70.0f;
 
@@ -2546,13 +2598,13 @@ void App::draw_home_screen() {
         float angle = pulse_t * 6.0f;
         ImVec2 s_center(spinner_x + 10.0f, spinner_y + 10.0f);
         float s_r = 7.0f;
-        draw->AddCircle(s_center, s_r, IM_COL32(0, 112, 209, 80), 16, 2.5f);
+        draw->AddCircle(s_center, s_r, IM_COL32(108, 92, 231, 80), 16, 2.5f);
         draw->PathArcTo(s_center, s_r, angle, angle + 2.2f, 12);
-        draw->PathStroke(IM_COL32(0, 240, 255, 255), 0, 2.5f);
+        draw->PathStroke(colors::col32_accent(), 0, 2.5f);
 
         if (font_small_) ImGui::PushFont(font_small_);
         std::string sp_text = waking_status_text_.empty() ? "Despertando consola..." : waking_status_text_;
-        draw->AddText(ImVec2(spinner_x + 26.0f, spinner_y + 2.0f), IM_COL32(0, 240, 255, 255), sp_text.c_str());
+        draw->AddText(ImVec2(spinner_x + 26.0f, spinner_y + 2.0f), colors::col32_accent(), sp_text.c_str());
         if (font_small_) ImGui::PopFont();
     }
 
@@ -2567,81 +2619,80 @@ void App::draw_home_screen() {
         ImGui::SetCursorScreenPos(pos);
         bool is_hovered = ImGui::IsMouseHoveringRect(pos, pos_end);
 
-        // Card Glass Background
-        ImU32 bg_color = is_hovered ? IM_COL32(18, 28, 56, 240) : IM_COL32(12, 19, 38, 220);
-        draw->AddRectFilled(pos, pos_end, bg_color, 16.0f);
-
-        // Glowing border (Cyan neon on focus/hover)
-        if (is_hovered) {
-            draw->AddRect(ImVec2(pos.x - 2, pos.y - 2), ImVec2(pos_end.x + 2, pos_end.y + 2),
-                IM_COL32(0, 240, 255, 60), 18.0f, 0, 4.0f);
-            draw->AddRect(pos, pos_end, IM_COL32(0, 240, 255, 255), 16.0f, 0, 2.0f);
-        } else {
-            draw->AddRect(pos, pos_end, IM_COL32(0, 112, 209, 130), 16.0f, 0, 1.2f);
-        }
+        // Card Glass Background & Elevation
+        ImU32 bg_color = is_hovered ? colors::col32_panel_hover() : colors::col32_panel();
+        draw->AddRectFilled(pos, pos_end, bg_color, metrics::kRadiusCard);
+        draw_elevation(draw, pos, pos_end, is_hovered ? 3 : 1, metrics::kRadiusCard);
 
         // Top specular reflection line
         draw->AddLine(ImVec2(pos.x + 16.0f, pos.y + 1.0f), ImVec2(pos_end.x - 16.0f, pos.y + 1.0f),
-            IM_COL32(255, 255, 255, 45), 1.0f);
+            IM_COL32(255, 255, 255, 30), 1.0f);
 
-        // Header: Badge + Icon
+        // Header: Console Icon + Badge
         bool is_ps5 = (c.host_type == "PS5" || c.host_type.find("5") != std::string::npos);
-        ImTextureID c_icon = get_texture(is_ps5 ? "ps5" : "ps4");
+        ImTextureID c_icon = get_texture("console");
         if (c_icon) {
             draw->AddImage(c_icon, ImVec2(pos.x + 20.0f, pos.y + 18.0f), ImVec2(pos.x + 50.0f, pos.y + 48.0f));
-        } else {
-            draw->AddRectFilled(ImVec2(pos.x + 20.0f, pos.y + 18.0f), ImVec2(pos.x + 52.0f, pos.y + 44.0f),
-                is_ps5 ? IM_COL32(0, 112, 209, 255) : IM_COL32(60, 40, 110, 255), 6.0f);
-            draw->AddText(ImVec2(pos.x + 24.0f, pos.y + 22.0f), IM_COL32(255, 255, 255, 255), is_ps5 ? "PS5" : "PS4");
         }
+
+        ImVec2 badge_min(pos.x + (c_icon ? 56.0f : 20.0f), pos.y + 20.0f);
+        ImVec2 badge_max(pos.x + (c_icon ? 96.0f : 60.0f), pos.y + 44.0f);
+        draw->AddRectFilled(badge_min, badge_max, IM_COL32(108, 92, 231, 200), 6.0f);
+        if (font_small_) ImGui::PushFont(font_small_);
+        const char* btxt = is_ps5 ? "PS5" : "PS4";
+        ImVec2 btxt_sz = ImGui::CalcTextSize(btxt);
+        draw->AddText(ImVec2(badge_min.x + (40.0f - btxt_sz.x) * 0.5f, badge_min.y + (24.0f - btxt_sz.y) * 0.5f),
+            IM_COL32(255, 255, 255, 255), btxt);
+        if (font_small_) ImGui::PopFont();
 
         // Console Name
         if (font_subtitle_) ImGui::PushFont(font_subtitle_);
-        draw->AddText(ImVec2(pos.x + 60.0f, pos.y + 18.0f), IM_COL32(255, 255, 255, 255), c.host_name.c_str());
+        draw->AddText(ImVec2(badge_max.x + 12.0f, pos.y + 21.0f), IM_COL32(248, 249, 250, 255), c.host_name.c_str());
         if (font_subtitle_) ImGui::PopFont();
 
-        // Dynamic Status Pill: Online / Awake (Green) vs Standby (Amber) vs Unknown (Gray)
+        // Dynamic Status Pill: Online / Awake (Cyber Mint) vs Standby (Amber) vs Unknown (Slate)
         float pulse = 0.5f + 0.5f * sinf(static_cast<float>(ImGui::GetTime()) * 4.0f);
-        ImVec2 dot_pos(pos.x + 66.0f, pos.y + 48.0f);
+        ImVec2 dot_pos(pos.x + 26.0f, pos.y + 60.0f);
 
         bool is_awake = (c.state == portal::ConsoleState::Awake);
         bool is_standby = (c.state == portal::ConsoleState::Standby);
 
         if (is_awake) {
-            draw->AddCircleFilled(dot_pos, 7.0f + pulse * 2.0f, IM_COL32(0, 230, 118, static_cast<int>(60 * pulse)));
-            draw->AddCircleFilled(dot_pos, 5.0f, IM_COL32(0, 230, 118, 255));
+            draw->AddCircleFilled(dot_pos, 7.0f + pulse * 2.0f, IM_COL32(0, 245, 212, static_cast<int>(60 * pulse)));
+            draw->AddCircleFilled(dot_pos, 5.0f, colors::col32_accent());
             if (font_small_) ImGui::PushFont(font_small_);
-            draw->AddText(ImVec2(dot_pos.x + 12.0f, dot_pos.y - 7.0f), IM_COL32(0, 230, 118, 255), "Encendida • Lista para streaming");
+            draw->AddText(ImVec2(dot_pos.x + 12.0f, dot_pos.y - 7.0f), colors::col32_accent(), "En línea • Lista para streaming");
             if (font_small_) ImGui::PopFont();
         } else if (is_standby) {
-            draw->AddCircleFilled(dot_pos, 7.0f + pulse * 2.0f, IM_COL32(255, 171, 0, static_cast<int>(70 * pulse)));
-            draw->AddCircleFilled(dot_pos, 5.0f, IM_COL32(255, 171, 0, 255));
+            draw->AddCircleFilled(dot_pos, 7.0f + pulse * 2.0f, IM_COL32(255, 183, 3, static_cast<int>(70 * pulse)));
+            draw->AddCircleFilled(dot_pos, 5.0f, colors::col32_alert());
             if (font_small_) ImGui::PushFont(font_small_);
-            draw->AddText(ImVec2(dot_pos.x + 12.0f, dot_pos.y - 7.0f), IM_COL32(255, 171, 0, 255), "En Modo Reposo (Standby)");
+            draw->AddText(ImVec2(dot_pos.x + 12.0f, dot_pos.y - 7.0f), colors::col32_alert(), "En reposo (Standby)");
             if (font_small_) ImGui::PopFont();
         } else {
-            draw->AddCircleFilled(dot_pos, 5.0f, IM_COL32(140, 155, 180, 180));
+            draw->AddCircleFilled(dot_pos, 5.0f, IM_COL32(100, 116, 139, 220));
             if (font_small_) ImGui::PushFont(font_small_);
-            draw->AddText(ImVec2(dot_pos.x + 12.0f, dot_pos.y - 7.0f), IM_COL32(140, 155, 180, 220), "En Reposo / Fuera de Red");
+            draw->AddText(ImVec2(dot_pos.x + 12.0f, dot_pos.y - 7.0f), IM_COL32(148, 163, 184, 220), "Desconectada / Fuera de Red");
             if (font_small_) ImGui::PopFont();
         }
 
-        // Specs Grid
-        float spec_y = pos.y + 75.0f;
-        draw->AddLine(ImVec2(pos.x + 20.0f, spec_y), ImVec2(pos_end.x - 20.0f, spec_y), IM_COL32(255, 255, 255, 18), 1.0f);
+        // Specs & Real-Time Metrics Grid
+        float spec_y = pos.y + 82.0f;
+        draw->AddLine(ImVec2(pos.x + 20.0f, spec_y), ImVec2(pos_end.x - 20.0f, spec_y), IM_COL32(51, 60, 82, 120), 1.0f);
 
         if (font_small_) ImGui::PushFont(font_small_);
-        draw->AddText(ImVec2(pos.x + 20.0f, spec_y + 8.0f), IM_COL32(160, 175, 205, 240), "Direccion IP:");
-        std::string ip_str = c.address + " : " + std::to_string(c.port) + " (LAN)";
-        draw->AddText(ImVec2(pos.x + 140.0f, spec_y + 8.0f), IM_COL32(235, 245, 255, 255), ip_str.c_str());
+        draw->AddText(ImVec2(pos.x + 20.0f, spec_y + 8.0f), IM_COL32(148, 163, 184, 240), "Conexión:");
+        std::string ip_str = c.address + " • < 2 ms (LAN)";
+        draw->AddText(ImVec2(pos.x + 115.0f, spec_y + 8.0f), IM_COL32(248, 249, 250, 255), ip_str.c_str());
 
-        draw->AddText(ImVec2(pos.x + 20.0f, spec_y + 25.0f), IM_COL32(160, 175, 205, 240), "Resolucion/FPS:");
-        draw->AddText(ImVec2(pos.x + 140.0f, spec_y + 25.0f), IM_COL32(0, 240, 255, 255), is_ps5 ? "1080p @ 60 FPS HDR" : "1080p @ 60 FPS SDR");
+        draw->AddText(ImVec2(pos.x + 20.0f, spec_y + 25.0f), IM_COL32(148, 163, 184, 240), "Video / Codec:");
+        std::string stream_str = (is_ps5 ? "H.265 (HEVC)" : "H.264") + std::string(" • ") + std::to_string(settings_.bitrate_kbps / 1000) + " Mbps";
+        draw->AddText(ImVec2(pos.x + 115.0f, spec_y + 25.0f), colors::col32_accent(), stream_str.c_str());
 
-        draw->AddText(ImVec2(pos.x + 20.0f, spec_y + 42.0f), IM_COL32(160, 175, 205, 240), "PIN de Usuario:");
+        draw->AddText(ImVec2(pos.x + 20.0f, spec_y + 42.0f), IM_COL32(148, 163, 184, 240), "PIN de Usuario:");
         std::string pin_label = c.login_pin.empty() ? "Sin configurar (Configurar)" : "•••• (Guardado)";
-        ImU32 pin_color = c.login_pin.empty() ? IM_COL32(255, 171, 0, 230) : IM_COL32(0, 230, 118, 255);
-        draw->AddText(ImVec2(pos.x + 140.0f, spec_y + 42.0f), pin_color, pin_label.c_str());
+        ImU32 pin_color = c.login_pin.empty() ? colors::col32_alert() : colors::col32_accent();
+        draw->AddText(ImVec2(pos.x + 115.0f, spec_y + 42.0f), pin_color, pin_label.c_str());
         if (font_small_) ImGui::PopFont();
 
         // Invisible button over PIN row to edit/set PIN
@@ -2664,7 +2715,7 @@ void App::draw_home_screen() {
 
             ImGui::PushStyleColor(ImGuiCol_Button, colors::kPrimary);
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.00f, 0.35f, 0.70f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors::kPrimaryActive);
 
             std::string btn_id = "##connect_" + std::to_string(card_idx);
             if (ImGui::Button(btn_id.c_str(), btn_size)) {
@@ -2696,14 +2747,14 @@ void App::draw_home_screen() {
 
             const char* btn_text = "CONECTAR AHORA";
             if (font_subtitle_) ImGui::PushFont(font_subtitle_);
-            ImVec2 btxt_sz = ImGui::CalcTextSize(btn_text);
-            draw->AddText(ImVec2(btn_pos.x + (btn_size.x - btxt_sz.x) * 0.5f, btn_pos.y + (btn_size.y - btxt_sz.y) * 0.5f),
+            ImVec2 btxt_sz2 = ImGui::CalcTextSize(btn_text);
+            draw->AddText(ImVec2(btn_pos.x + (btn_size.x - btxt_sz2.x) * 0.5f, btn_pos.y + (btn_size.y - btxt_sz2.y) * 0.5f),
                 IM_COL32(255, 255, 255, 255), btn_text);
             if (font_subtitle_) ImGui::PopFont();
         } else {
             // Standby or Offline: Split action into [ Despertar ] and [ CONECTAR AHORA ]
             float gap = 8.0f;
-            float wake_w = 95.0f;
+            float wake_w = 100.0f;
             float conn_w = (card_w - 40.0f) - wake_w - gap;
             float btn_h_val = 38.0f;
 
@@ -2712,9 +2763,9 @@ void App::draw_home_screen() {
 
             // Button 1: Despertar
             ImGui::SetCursorScreenPos(wake_pos);
-            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(35, 48, 75, 220));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(50, 68, 105, 255));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(25, 36, 58, 255));
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(32, 37, 49, 220));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(45, 52, 68, 255));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(23, 27, 36, 255));
 
             std::string wake_id = "##wake_" + std::to_string(card_idx);
             bool waking_now = is_waking_.load();
@@ -2727,14 +2778,14 @@ void App::draw_home_screen() {
             const char* wake_lbl = waking_now ? "Enviando..." : "Despertar";
             ImVec2 w_sz = ImGui::CalcTextSize(wake_lbl);
             draw->AddText(ImVec2(wake_pos.x + (wake_w - w_sz.x) * 0.5f, wake_pos.y + (btn_h_val - w_sz.y) * 0.5f),
-                IM_COL32(200, 220, 255, 255), wake_lbl);
+                IM_COL32(220, 235, 255, 255), wake_lbl);
             if (font_small_) ImGui::PopFont();
 
             // Button 2: CONECTAR AHORA (Wake and connect)
             ImGui::SetCursorScreenPos(conn_pos);
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85f, 0.48f, 0.00f, 0.90f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.95f, 0.58f, 0.05f, 1.00f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.70f, 0.38f, 0.00f, 1.00f));
+            ImGui::PushStyleColor(ImGuiCol_Button, colors::kPrimary);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors::kPrimaryActive);
 
             std::string conn_id = "##conn_wake_" + std::to_string(card_idx);
             if (ImGui::Button(conn_id.c_str(), ImVec2(conn_w, btn_h_val)) && !waking_now) {
@@ -2762,20 +2813,22 @@ void App::draw_home_screen() {
         ImGui::SetCursorScreenPos(pos);
         bool is_hovered = ImGui::IsMouseHoveringRect(pos, pos_end);
         
-        draw->AddRectFilled(pos, pos_end, is_hovered ? IM_COL32(14, 24, 50, 220) : IM_COL32(9, 14, 28, 200), 16.0f);
-        draw->AddRect(pos, pos_end, is_hovered ? IM_COL32(255, 171, 0, 200) : IM_COL32(255, 171, 0, 100), 16.0f, 0, 1.5f);
+        ImU32 bg_color = is_hovered ? colors::col32_panel_hover() : colors::col32_panel();
+        draw->AddRectFilled(pos, pos_end, bg_color, metrics::kRadiusCard);
+        draw_elevation(draw, pos, pos_end, is_hovered ? 2 : 1, metrics::kRadiusCard);
+        draw->AddRect(pos, pos_end, is_hovered ? colors::col32_alert() : IM_COL32(255, 183, 3, 120), metrics::kRadiusCard, 0, 1.2f);
         
         if (font_subtitle_) ImGui::PushFont(font_subtitle_);
-        draw->AddText(ImVec2(pos.x + 24.0f, pos.y + 24.0f), IM_COL32(255, 171, 0, 255), "Nueva Consola");
+        draw->AddText(ImVec2(pos.x + 24.0f, pos.y + 24.0f), colors::col32_alert(), "Nueva Consola Detectada");
         if (font_subtitle_) ImGui::PopFont();
         
         if (font_title_) ImGui::PushFont(font_title_);
         std::string h_name = uc.host_name.empty() ? "PS5" : uc.host_name;
-        draw->AddText(ImVec2(pos.x + 24.0f, pos.y + 54.0f), IM_COL32(255, 255, 255, 255), h_name.c_str());
+        draw->AddText(ImVec2(pos.x + 24.0f, pos.y + 54.0f), IM_COL32(248, 249, 250, 255), h_name.c_str());
         if (font_title_) ImGui::PopFont();
         
         if (font_small_) ImGui::PushFont(font_small_);
-        draw->AddText(ImVec2(pos.x + 24.0f, pos.y + 90.0f), IM_COL32(150, 170, 190, 255), uc.address.c_str());
+        draw->AddText(ImVec2(pos.x + 24.0f, pos.y + 90.0f), IM_COL32(148, 163, 184, 255), uc.address.c_str());
         if (font_small_) ImGui::PopFont();
         
         ImVec2 btn_size(card_w - 48.0f, 44.0f);
@@ -2784,6 +2837,7 @@ void App::draw_home_screen() {
         ImGui::SetCursorScreenPos(btn_pos);
         ImGui::PushStyleColor(ImGuiCol_Button, colors::kPrimary);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors::kPrimaryActive);
         std::string btn_id = "##btn_vinc_" + (uc.host_id.empty() ? uc.address : uc.host_id);
         if (ImGui::Button(btn_id.c_str(), btn_size)) {
             strncpy_s(register_ip_, uc.address.c_str(), sizeof(register_ip_) - 1);
@@ -2792,7 +2846,7 @@ void App::draw_home_screen() {
             active_pin_digit_ = 0;
             for (int d = 0; d < 8; d++) pin_digits_[d] = '\0';
         }
-        ImGui::PopStyleColor(2);
+        ImGui::PopStyleColor(3);
         
         if (font_subtitle_) ImGui::PushFont(font_subtitle_);
         const char* btn_text = "VINCULAR AHORA";
@@ -2812,34 +2866,33 @@ void App::draw_home_screen() {
         ImGui::SetCursorScreenPos(pos);
         bool is_hovered = ImGui::IsMouseHoveringRect(pos, pos_end);
 
-        ImU32 bg_color = is_hovered ? IM_COL32(14, 24, 50, 180) : IM_COL32(9, 14, 28, 150);
-        draw->AddRectFilled(pos, pos_end, bg_color, 16.0f);
-
-        // Dashed glowing border
-        ImU32 border_col = is_hovered ? IM_COL32(0, 240, 255, 240) : IM_COL32(0, 112, 209, 140);
-        draw->AddRect(pos, pos_end, border_col, 16.0f, 0, is_hovered ? 2.0f : 1.5f);
+        ImU32 bg_color = is_hovered ? colors::col32_panel_hover() : colors::col32_panel();
+        draw->AddRectFilled(pos, pos_end, bg_color, metrics::kRadiusCard);
+        draw_elevation(draw, pos, pos_end, is_hovered ? 2 : 1, metrics::kRadiusCard);
 
         // Big '+' Icon in Center
         ImVec2 icon_c(pos.x + card_w * 0.5f, pos.y + card_h * 0.38f);
-        draw->AddCircleFilled(icon_c, 26.0f, is_hovered ? IM_COL32(0, 240, 255, 45) : IM_COL32(0, 112, 209, 35));
-        draw->AddCircle(icon_c, 26.0f, border_col, 32, 1.5f);
+        draw->AddCircleFilled(icon_c, 26.0f, is_hovered ? IM_COL32(108, 92, 231, 50) : IM_COL32(108, 92, 231, 30));
+        draw->AddCircle(icon_c, 26.0f, is_hovered ? colors::col32_accent() : colors::col32_primary(), 32, 1.5f);
 
         // '+' lines
-        draw->AddLine(ImVec2(icon_c.x - 12.0f, icon_c.y), ImVec2(icon_c.x + 12.0f, icon_c.y), IM_COL32(0, 240, 255, 255), 2.5f);
-        draw->AddLine(ImVec2(icon_c.x, icon_c.y - 12.0f), ImVec2(icon_c.x, icon_c.y + 12.0f), IM_COL32(0, 240, 255, 255), 2.5f);
+        draw->AddLine(ImVec2(icon_c.x - 12.0f, icon_c.y), ImVec2(icon_c.x + 12.0f, icon_c.y),
+            is_hovered ? colors::col32_accent() : IM_COL32(248, 249, 250, 255), 2.5f);
+        draw->AddLine(ImVec2(icon_c.x, icon_c.y - 12.0f), ImVec2(icon_c.x, icon_c.y + 12.0f),
+            is_hovered ? colors::col32_accent() : IM_COL32(248, 249, 250, 255), 2.5f);
 
         if (font_subtitle_) ImGui::PushFont(font_subtitle_);
         const char* title = "Vincular Consola";
         ImVec2 tsz = ImGui::CalcTextSize(title);
         draw->AddText(ImVec2(pos.x + (card_w - tsz.x) * 0.5f, pos.y + card_h * 0.62f),
-            IM_COL32(245, 250, 255, 255), title);
+            IM_COL32(248, 249, 250, 255), title);
         if (font_subtitle_) ImGui::PopFont();
 
         if (font_small_) ImGui::PushFont(font_small_);
-        const char* sub = "PIN de 8 casillas o DDP Broadcast";
+        const char* sub = "PIN de registro o DDP Broadcast";
         ImVec2 ssz = ImGui::CalcTextSize(sub);
         draw->AddText(ImVec2(pos.x + (card_w - ssz.x) * 0.5f, pos.y + card_h * 0.76f),
-            IM_COL32(140, 165, 195, 220), sub);
+            IM_COL32(148, 163, 184, 220), sub);
         if (font_small_) ImGui::PopFont();
 
         // Invisible button over whole card
@@ -3976,8 +4029,8 @@ void App::draw_settings() {
     {
         ImDrawList* draw = ImGui::GetWindowDrawList();
         ImVec2 pos = ImGui::GetCursorScreenPos();
-        draw->AddRectFilled(pos, ImVec2(pos.x + panel_w, pos.y + panel_h), IM_COL32(12, 18, 36, 210), 16.0f);
-        draw->AddRect(pos, ImVec2(pos.x + panel_w, pos.y + panel_h), IM_COL32(0, 112, 209, 100), 16.0f, 0, 1.0f);
+        draw->AddRectFilled(pos, ImVec2(pos.x + panel_w, pos.y + panel_h), colors::col32_panel(), metrics::kRadiusCard);
+        draw_elevation(draw, pos, ImVec2(pos.x + panel_w, pos.y + panel_h), 1, metrics::kRadiusCard);
 
         ImGui::SetCursorPos(ImVec2(20.0f, 20.0f));
         if (font_subtitle_) ImGui::PushFont(font_subtitle_);
@@ -3985,18 +4038,20 @@ void App::draw_settings() {
         if (font_subtitle_) ImGui::PopFont();
 
         ImGui::Dummy(ImVec2(0, 10));
-        static int res_idx = 2;
-        const char* resolutions[] = {"720p HD", "1080p Full HD", "1440p 2K", "2160p 4K UHD"};
+        static int res_idx = 1;
+        const char* resolutions[] = {"720p HD", "1080p Full HD (Recomendado)", "1440p 2K", "2160p 4K UHD"};
         ImGui::TextColored(colors::kTextSecondary, "Resolucion de Transmision:");
         ImGui::SetNextItemWidth(panel_w - 40.0f);
         ImGui::Combo("##res", &res_idx, resolutions, 4);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Resolucion de captura y decodificacion de video.");
 
         ImGui::Dummy(ImVec2(0, 10));
         static int fps_idx = 1;
-        const char* f_rates[] = {"30 FPS", "60 FPS (Recomendado)", "120 FPS (Baja Latencia)"};
+        const char* f_rates[] = {"30 FPS", "60 FPS (Recomendado)", "120 FPS (Ultra Baja Latencia)"};
         ImGui::TextColored(colors::kTextSecondary, "Tasa de Cuadros:");
         ImGui::SetNextItemWidth(panel_w - 40.0f);
         ImGui::Combo("##fps", &fps_idx, f_rates, 3);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("60 FPS es el estandar optimo. 120 FPS reduce el input lag a la mitad en monitores de alta frecuencia.");
 
         ImGui::Dummy(ImVec2(0, 10));
         static int codec_idx = 1;
@@ -4004,10 +4059,12 @@ void App::draw_settings() {
         ImGui::TextColored(colors::kTextSecondary, "Codec de Descompresion:");
         ImGui::SetNextItemWidth(panel_w - 40.0f);
         ImGui::Combo("##codec", &codec_idx, codecs, 3);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("H.265 (HEVC) ofrece mayor compresion y fidelidad visual a igual tasa de bits.");
 
         ImGui::Dummy(ImVec2(0, 15));
         static bool enable_hdr = true;
         ImGui::Checkbox("Activar HDR10 (Colores 10-bit)", &enable_hdr);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Habilita alto rango dinamico si la pantalla y la consola lo admiten.");
     }
     ImGui::EndChild();
 
@@ -4017,8 +4074,8 @@ void App::draw_settings() {
     {
         ImDrawList* draw = ImGui::GetWindowDrawList();
         ImVec2 pos = ImGui::GetCursorScreenPos();
-        draw->AddRectFilled(pos, ImVec2(pos.x + panel_w, pos.y + panel_h), IM_COL32(12, 18, 36, 210), 16.0f);
-        draw->AddRect(pos, ImVec2(pos.x + panel_w, pos.y + panel_h), IM_COL32(0, 112, 209, 100), 16.0f, 0, 1.0f);
+        draw->AddRectFilled(pos, ImVec2(pos.x + panel_w, pos.y + panel_h), colors::col32_panel(), metrics::kRadiusCard);
+        draw_elevation(draw, pos, ImVec2(pos.x + panel_w, pos.y + panel_h), 1, metrics::kRadiusCard);
 
         ImGui::SetCursorPos(ImVec2(20.0f, 20.0f));
         if (font_subtitle_) ImGui::PushFont(font_subtitle_);
@@ -4026,25 +4083,29 @@ void App::draw_settings() {
         if (font_subtitle_) ImGui::PopFont();
 
         int cur_bitrate = static_cast<int>(settings_.bitrate_kbps);
-        ImGui::TextColored(colors::kTextSecondary, "Bitrate Objetivo:");
+        ImGui::TextColored(colors::kTextSecondary, "Bitrate Objetivo (%d kbps / %.1f Mbps):", cur_bitrate, cur_bitrate / 1000.0f);
         ImGui::SetNextItemWidth(panel_w - 40.0f);
         if (ImGui::SliderInt("##bitrate", &cur_bitrate, 5000, 50000, "%d kbps")) {
             settings_.bitrate_kbps = static_cast<uint32_t>(cur_bitrate);
             // Persist immediately so setting survives restart
             (void)settings_.save(settings_path_);
         }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Controla el ancho de banda del stream de video. Valores altos (30-50 Mbps) proporcionan maxima nitidez en Ethernet; 15-20 Mbps recomendado para WiFi.");
 
         ImGui::Dummy(ImVec2(0, 10));
         static bool fec_enabled = true;
         ImGui::Checkbox("Recuperacion de Paquetes FEC", &fec_enabled);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Forward Error Correction: Reconstruye tramas perdidas sin solicitar retransmision UDP, eliminando micro-congelaciones.");
 
         ImGui::Dummy(ImVec2(0, 10));
         static bool takion_mode = true;
         ImGui::Checkbox("Gaikai Takion Ultra-Low Latency", &takion_mode);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Protocolo Takion optimizado: transporte UDP con rtt ultra bajo y decodificacion sin colas intermedias.");
 
         ImGui::Dummy(ImVec2(0, 10));
         static bool udp_pacing = true;
         ImGui::Checkbox("Optimizacion UDP Pacing (Sin micro-stutter)", &udp_pacing);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Espacia temporalmente la salida de paquetes en el intervalo de frame para evitar saturar el router.");
 
         ImGui::Dummy(ImVec2(0, 14));
         ImGui::Separator();
@@ -4088,41 +4149,42 @@ void App::draw_settings() {
     {
         ImDrawList* draw = ImGui::GetWindowDrawList();
         ImVec2 pos = ImGui::GetCursorScreenPos();
-        draw->AddRectFilled(pos, ImVec2(pos.x + panel_w, pos.y + panel_h), IM_COL32(12, 18, 36, 210), 16.0f);
-        draw->AddRect(pos, ImVec2(pos.x + panel_w, pos.y + panel_h), IM_COL32(0, 112, 209, 100), 16.0f, 0, 1.0f);
+        draw->AddRectFilled(pos, ImVec2(pos.x + panel_w, pos.y + panel_h), colors::col32_panel(), metrics::kRadiusCard);
+        draw_elevation(draw, pos, ImVec2(pos.x + panel_w, pos.y + panel_h), 1, metrics::kRadiusCard);
 
         ImGui::SetCursorPos(ImVec2(20.0f, 20.0f));
         if (font_subtitle_) ImGui::PushFont(font_subtitle_);
-        ImGui::TextColored(colors::kAccent, "AUDIO & DUALSENSE");
+        ImGui::TextColored(colors::kAccent, "AUDIO & CONTROLES");
         if (font_subtitle_) ImGui::PopFont();
 
         ImGui::Dummy(ImVec2(0, 10));
         static int audio_buf = 20;
-        ImGui::TextColored(colors::kTextSecondary, "Buffer de Audio:");
+        ImGui::TextColored(colors::kTextSecondary, "Buffer de Audio (%d ms):", audio_buf);
         ImGui::SetNextItemWidth(panel_w - 40.0f);
         ImGui::SliderInt("##audio_buf", &audio_buf, 5, 100, "%d ms");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Tamano del buffer de reproduccion WASAPI en ms. 10-20 ms ofrece minima latencia.");
 
         ImGui::Dummy(ImVec2(0, 10));
         static bool tempest_3d = true;
-        ImGui::Checkbox("Emulacion Audio 3D Tempest", &tempest_3d);
+        ImGui::Checkbox("Emulacion Audio Espacial Tempest", &tempest_3d);
 
         ImGui::Dummy(ImVec2(0, 10));
         static bool haptics = true;
-        ImGui::Checkbox("Vibracion Haptica DualSense (USB)", &haptics);
+        ImGui::Checkbox("Vibracion Haptica Avanzada (USB)", &haptics);
 
         ImGui::Dummy(ImVec2(0, 10));
         static bool triggers = true;
-        ImGui::Checkbox("Gatillos Adaptativos (L2 / R2)", &triggers);
+        ImGui::Checkbox("Gatillos Resistivos Adaptativos (L2 / R2)", &triggers);
 
         ImGui::Dummy(ImVec2(0, 10));
         static int led_color = 0;
-        const char* leds[] = {"Cyan Neon (#00f0ff)", "PlayStation Blue (#0070d1)", "Violeta Cloud (#7928ca)", "Desactivado"};
-        ImGui::TextColored(colors::kTextSecondary, "Color LED DualSense:");
+        const char* leds[] = {"Cyber Mint (#00f5d4)", "Electric Indigo (#6c5ce7)", "Amber Glow (#ffb703)", "Desactivado"};
+        ImGui::TextColored(colors::kTextSecondary, "Color LED Mando:");
         ImGui::SetNextItemWidth(panel_w - 40.0f);
         ImGui::Combo("##led_col", &led_color, leds, 4);
 
         ImGui::Dummy(ImVec2(0, 10));
-        ImGui::TextColored(colors::kTextSecondary, "Zona Muerta Radial de Sticks (Anti-Drift):");
+        ImGui::TextColored(colors::kTextSecondary, "Zona Muerta Sticks (Anti-Drift: %.2f):", settings_.stick_deadzone);
         ImGui::SetNextItemWidth(panel_w - 40.0f);
         if (ImGui::SliderFloat("##stick_deadzone", &settings_.stick_deadzone, 0.00f, 0.40f, "%.2f")) {
             if (controller_manager_) {
@@ -4130,14 +4192,16 @@ void App::draw_settings() {
             }
             (void)settings_.save(settings_path_);
         }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Ignora desviaciones mecanicas leves de los joysticks para eliminar drift indeseado.");
 
         ImGui::Dummy(ImVec2(0, 10));
-        if (ImGui::Checkbox("Sensor de Movimiento / Giroscopio", &settings_.enable_gyro)) {
+        if (ImGui::Checkbox("Sensor de Movimiento / Giroscopio (6 ejes)", &settings_.enable_gyro)) {
             if (controller_manager_) {
                 controller_manager_->set_enable_gyro(settings_.enable_gyro);
             }
             (void)settings_.save(settings_path_);
         }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Transmite inclinacion y rotacion del mando compatible para apuntado de precision.");
 
         ImGui::Dummy(ImVec2(0, 12));
         if (ImGui::Button("Probar Mando y Sticks##btn_test_ctrl", ImVec2(panel_w - 40.0f, 34.0f))) {
@@ -4149,16 +4213,25 @@ void App::draw_settings() {
     // Bottom Action Buttons
     float b_y = ws.y - 78.0f;
     ImGui::SetCursorPos(ImVec2(40.0f, b_y));
+    ImGui::PushStyleColor(ImGuiCol_Button, colors::kPrimary);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors::kPrimaryActive);
     if (ImGui::Button("Guardar Configuracion", ImVec2(220.0f, 40.0f))) {
         show_toast("Ajustes guardados correctamente", 3.0f);
         current_screen_ = Screen::Home;
         current_tab_ = 0;
     }
+    ImGui::PopStyleColor(3);
+
     ImGui::SameLine(0, 20.0f);
+    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(32, 37, 49, 220));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(45, 52, 68, 255));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(23, 27, 36, 255));
     if (ImGui::Button("Volver al Inicio", ImVec2(180.0f, 40.0f))) {
         current_screen_ = Screen::Home;
         current_tab_ = 0;
     }
+    ImGui::PopStyleColor(3);
 }
 
 // ─── Streaming HUD Overlay ────────────────────────────────
