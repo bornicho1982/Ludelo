@@ -64,8 +64,11 @@ ludelo.log
 *.log
 AUDIT.md
 backup*/
+PUBLISH-REPORT.md
 [FAIL]
+[OK]
 docs/notes/
+scratch/
 
 # ─── OS Files ─────────────────────────────────────────────
 Thumbs.db
