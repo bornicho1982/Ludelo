@@ -24,6 +24,11 @@
 #include "Platform/WindowsWindow.h"
 #include "PortalCore/Config/AppSettings.h"
 
+#ifdef _WIN32
+#include <timeapi.h>
+#pragma comment(lib, "winmm.lib")
+#endif
+
 namespace portal::ui {
 
 // ─── Stitch Design System: Midnight Portal Color Palette (#0b1021, #0070d1, #00f0ff) ──
@@ -145,6 +150,7 @@ VoidResult App::init() {
     (void)account_manager_->load_from_disk();
     (void)console_registry_->load_from_disk();
     (void)controller_manager_->init();
+    controller_manager_->set_stick_deadzone(settings_.stick_deadzone);
 
     // Onboarding: if no PSN account is linked, show welcome screen first
     if (!account_manager_->get_active_account().has_value()) {
@@ -305,8 +311,14 @@ void App::run() {
     spdlog::info("Entering run() loop...");
     if (spdlog::default_logger()) spdlog::default_logger()->flush();
 
+#ifdef _WIN32
+    timeBeginPeriod(1);
+#endif
+
     int frame_num = 0;
     while (running_) {
+        auto frame_start = std::chrono::steady_clock::now();
+
         // Process SDL events
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -317,6 +329,14 @@ void App::run() {
 
             if (event.type >= SDL_EVENT_MOUSE_MOTION && event.type <= SDL_EVENT_MOUSE_WHEEL) {
                 last_mouse_activity_time_ = static_cast<float>(ImGui::GetTime());
+                last_user_activity_ = std::chrono::steady_clock::now();
+            } else if ((event.type >= SDL_EVENT_KEY_DOWN && event.type <= SDL_EVENT_KEY_UP) ||
+                       (event.type >= SDL_EVENT_GAMEPAD_BUTTON_DOWN && event.type <= SDL_EVENT_GAMEPAD_BUTTON_UP)) {
+                last_user_activity_ = std::chrono::steady_clock::now();
+            } else if (event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION) {
+                if (std::abs(event.gaxis.value) > 4000) {
+                    last_user_activity_ = std::chrono::steady_clock::now();
+                }
             }
 
             // During active streaming, do NOT feed gamepad/keyboard input to ImGui
@@ -564,7 +584,49 @@ void App::run() {
             }
         }
         frame_num++;
+
+        // Determine target frame rate
+        double target_fps = 60.0;
+        if (current_screen_ == Screen::Streaming) {
+            // Streaming: cap to stream frame rate (30, 60, or 120 FPS)
+            if (settings_.fps == portal::FrameRate::FPS30) {
+                target_fps = 30.0;
+            } else if (settings_.fps == portal::FrameRate::FPS120) {
+                target_fps = 120.0;
+            } else {
+                target_fps = 60.0;
+            }
+        } else {
+            // Menus: 60 FPS when active, ~15-20 FPS when idle or minimized
+            bool is_minimized = (SDL_GetWindowFlags(window_) & SDL_WINDOW_MINIMIZED) != 0;
+            auto idle_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - last_user_activity_).count();
+            if (is_minimized || idle_ms > 2000) {
+                target_fps = 20.0; // Idle mode without user input (~15-20 FPS)
+            } else {
+                target_fps = 60.0; // Active menu interaction (60 FPS cap)
+            }
+        }
+
+        // Frame pacing limiter
+        auto target_duration = std::chrono::duration<double>(1.0 / target_fps);
+        auto frame_end = std::chrono::steady_clock::now();
+        auto elapsed = frame_end - frame_start;
+        if (elapsed < target_duration) {
+            auto remaining = target_duration - elapsed;
+            auto sleep_ms = std::chrono::duration_cast<std::chrono::milliseconds>(remaining);
+            if (sleep_ms.count() > 1) {
+                std::this_thread::sleep_for(sleep_ms - std::chrono::milliseconds(1));
+            }
+            while (std::chrono::steady_clock::now() - frame_start < target_duration) {
+                std::this_thread::yield();
+            }
+        }
     }
+
+#ifdef _WIN32
+    timeEndPeriod(1);
+#endif
 
     vkDeviceWaitIdle(device_);
 }
@@ -806,19 +868,23 @@ VoidResult App::create_swapchain() {
             capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
     }
 
-    // Choose present mode (prefer mailbox for low latency)
+    // Choose present mode (prefer FIFO for VSync, MAILBOX only when VSync is disabled)
     uint32_t present_count;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device_, surface_, &present_count, nullptr);
     std::vector<VkPresentModeKHR> present_modes(present_count);
     vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device_, surface_, &present_count, present_modes.data());
 
     VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
-    for (auto mode : present_modes) {
-        if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-            present_mode = mode;
-            break;
+    if (!config_.vsync) {
+        for (auto mode : present_modes) {
+            if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+                present_mode = mode;
+                break;
+            }
         }
     }
+    spdlog::info("[Vulkan] Selected present mode: {}",
+        present_mode == VK_PRESENT_MODE_FIFO_KHR ? "VK_PRESENT_MODE_FIFO_KHR (VSync enabled)" : "VK_PRESENT_MODE_MAILBOX_KHR (VSync disabled)");
 
     uint32_t image_count = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && image_count > capabilities.maxImageCount) {
@@ -1301,6 +1367,31 @@ void App::destroy_textures() {
         }
     }
     textures_.clear();
+}
+
+void App::destroy_texture(const std::string& name) {
+    auto it = textures_.find(name);
+    if (it != textures_.end()) {
+        if (device_ != VK_NULL_HANDLE) {
+            vkDeviceWaitIdle(device_);
+            if (it->second.descriptor_set) {
+                ImGui_ImplVulkan_RemoveTexture(it->second.descriptor_set);
+            }
+            if (it->second.sampler) {
+                vkDestroySampler(device_, it->second.sampler, nullptr);
+            }
+            if (it->second.view) {
+                vkDestroyImageView(device_, it->second.view, nullptr);
+            }
+            if (it->second.image) {
+                vkDestroyImage(device_, it->second.image, nullptr);
+            }
+            if (it->second.memory) {
+                vkFreeMemory(device_, it->second.memory, nullptr);
+            }
+        }
+        textures_.erase(it);
+    }
 }
 
 bool App::init_stream_texture(int width, int height) {
@@ -1817,6 +1908,14 @@ void App::render_ui() {
         }
     }
 
+    if (show_controller_test_modal_) {
+        draw_controller_test_modal();
+    }
+
+    if (show_browser_fallback_modal_) {
+        draw_browser_fallback_modal();
+    }
+
     draw_toast_notification();
 
     ImGui::End();
@@ -1929,6 +2028,60 @@ void App::draw_toast_notification() {
     ImVec2 tpos(pos.x + 36.0f, pos.y + (toast_h - tsz.y) * 0.5f);
     draw->AddText(tpos, IM_COL32(245, 250, 255, static_cast<int>(255 * alpha)), toast_message_.c_str());
     if (font_small_) ImGui::PopFont();
+
+    if (login_cancelled_prompt_visible_) {
+        float bar_w = 480.0f;
+        float bar_h = 44.0f;
+        ImVec2 bar_pos((ws.x - bar_w) * 0.5f, ws.y - 70.0f);
+
+        draw->AddRectFilled(bar_pos, ImVec2(bar_pos.x + bar_w, bar_pos.y + bar_h), IM_COL32(14, 22, 44, 250), 10.0f);
+        draw->AddRect(bar_pos, ImVec2(bar_pos.x + bar_w, bar_pos.y + bar_h), IM_COL32(0, 240, 255, 180), 10.0f, 0, 1.2f);
+
+        if (font_small_) ImGui::PushFont(font_small_);
+        draw->AddText(ImVec2(bar_pos.x + 16.0f, bar_pos.y + 13.0f), IM_COL32(235, 245, 255, 255), "Inicio de sesion cancelado");
+        if (font_small_) ImGui::PopFont();
+
+        ImGui::SetCursorScreenPos(ImVec2(bar_pos.x + 190.0f, bar_pos.y + 7.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, colors::kPrimary);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
+        if (ImGui::Button("Reintentar##retry_login", ImVec2(90.0f, 30.0f))) {
+            login_cancelled_prompt_visible_ = false;
+            login_thread_ = std::jthread([this](std::stop_token) {
+                auto res = portal::auth::WebView2Auth::login();
+                if (res.status == portal::auth::WebView2LoginStatus::Success) {
+                    auto result = account_manager_->add_account_from_code(res.code);
+                    if (result.has_value()) {
+                        auto acc = account_manager_->get_active_account();
+                        if (acc.has_value()) {
+                            show_toast("Cuenta vinculada, bienvenido " + acc->profile.online_id, 4.0f);
+                        }
+                        destroy_texture("avatar");
+                        current_screen_ = Screen::Home;
+                    }
+                } else if (res.status == portal::auth::WebView2LoginStatus::UserCancelled) {
+                    login_cancelled_prompt_visible_ = true;
+                }
+            });
+        }
+        ImGui::PopStyleColor(2);
+
+        ImGui::SameLine(0, 8.0f);
+        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(35, 48, 75, 220));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(50, 68, 105, 255));
+        if (ImGui::Button("Usar navegador##browser_login", ImVec2(130.0f, 30.0f))) {
+            login_cancelled_prompt_visible_ = false;
+            std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
+            ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+            memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
+            show_browser_fallback_modal_ = true;
+        }
+        ImGui::PopStyleColor(2);
+
+        ImGui::SameLine(0, 8.0f);
+        if (ImGui::Button("X##dismiss_cancel", ImVec2(30.0f, 30.0f))) {
+            login_cancelled_prompt_visible_ = false;
+        }
+    }
 }
 
 // ─── Vector PlayStation Controller Button Glyphs ──────────
@@ -2079,61 +2232,82 @@ void App::draw_top_navigation_bar() {
     right_x -= 24.0f;
 
     // PSN Profile capsule
-    float psn_w = 175.0f;
+    std::string profile_name = "PSN User";
+    std::string plus_status_str = "Conectado";
+    ImU32 plus_color = IM_COL32(140, 165, 200, 220);
+    const char* appdata_env = getenv("APPDATA");
+    std::string avatar_file_path = (appdata_env ? (std::filesystem::path(appdata_env) / "Ludelo" / "avatar.png") : std::filesystem::path("Ludelo/avatar.png")).string();
+
+    if (account_manager_) {
+        auto act = account_manager_->get_active_account();
+        if (act) {
+            if (!act->profile.online_id.empty() && act->profile.online_id != "PSN User") {
+                profile_name = act->profile.online_id;
+            } else if (act->account_id != 0) {
+                profile_name = std::to_string(act->account_id);
+            }
+            if (!act->profile.plus_status.empty() && act->profile.plus_status != "none") {
+                plus_status_str = "PlayStation Plus";
+                plus_color = IM_COL32(255, 205, 50, 240);
+            }
+        }
+    }
+
+    if (font_small_) ImGui::PushFont(font_small_);
+    float name_w = ImGui::CalcTextSize(profile_name.c_str()).x;
+    float sub_w = ImGui::CalcTextSize(plus_status_str.c_str()).x;
+    float psn_w = std::max(175.0f, std::max(name_w, sub_w) + 52.0f);
     right_x -= psn_w;
+
     ImVec2 psn_min(right_x, 16.0f);
     ImVec2 psn_max(right_x + psn_w, 52.0f);
     draw->AddRectFilled(psn_min, psn_max, IM_COL32(20, 30, 54, 200), 18.0f);
     draw->AddRect(psn_min, psn_max, IM_COL32(0, 112, 209, 120), 18.0f, 0, 1.0f);
 
-    // Profile avatar circle/image
-    ImVec2 avatar_c(psn_min.x + 18.0f, psn_min.y + 18.0f);
-    
-    if (font_small_) ImGui::PushFont(font_small_);
-    std::string profile_name = "PSN User";
-    ImTextureID avatar_tex = (ImTextureID)0;
-    
-    if (account_manager_) {
+    // Profile avatar circle/image (center Y = 34.0f)
+    ImVec2 avatar_c(psn_min.x + 20.0f, 34.0f);
+
+    ImTextureID avatar_tex = get_texture("avatar");
+    if (!avatar_tex && std::filesystem::exists(avatar_file_path)) {
+        load_texture("avatar", avatar_file_path);
+        avatar_tex = get_texture("avatar");
+    }
+
+    if (!avatar_tex && account_manager_) {
         auto act = account_manager_->get_active_account();
-        if (act && !act->profile.online_id.empty()) {
-            profile_name = act->profile.online_id;
-            
-            if (avatar_downloaded_) {
-                load_texture("avatar", avatar_path_);
-                avatar_downloaded_ = false;
-            }
-            
-            avatar_tex = get_texture("avatar");
-            
-            if (!avatar_tex && !act->profile.avatar_url.empty() && !avatar_thread_.joinable()) {
-                avatar_path_ = (std::filesystem::path(getenv("APPDATA")) / "Ludelo" / "avatar.png").string();
-                std::string url = act->profile.avatar_url;
-                avatar_thread_ = std::jthread([this, url](std::stop_token) {
-                    portal::net::HttpClient client;
-                    auto res = client.get(url);
-                    if (res) {
-                        std::ofstream file(avatar_path_, std::ios::binary);
-                        file.write(res.value().body.data(), res.value().body.size());
-                        avatar_downloaded_ = true;
-                    }
-                });
-            }
+        if (act && !act->profile.avatar_url.empty() && !avatar_thread_.joinable()) {
+            std::string url = act->profile.avatar_url;
+            avatar_thread_ = std::jthread([this, url, avatar_file_path](std::stop_token) {
+                portal::net::HttpClient client;
+                auto res = client.get(url);
+                if (res && !res.value().body.empty()) {
+                    std::ofstream file(avatar_file_path, std::ios::binary);
+                    file.write(res.value().body.data(), res.value().body.size());
+                    avatar_downloaded_ = true;
+                }
+            });
         }
     }
-    
+
+    if (avatar_downloaded_) {
+        destroy_texture("avatar");
+        load_texture("avatar", avatar_file_path);
+        avatar_tex = get_texture("avatar");
+        avatar_downloaded_ = false;
+    }
+
     if (avatar_tex) {
         draw->AddImageRounded(avatar_tex, ImVec2(avatar_c.x - 12.0f, avatar_c.y - 12.0f), ImVec2(avatar_c.x + 12.0f, avatar_c.y + 12.0f), ImVec2(0,0), ImVec2(1,1), IM_COL32_WHITE, 12.0f);
     } else {
         draw->AddCircleFilled(avatar_c, 12.0f, IM_COL32(0, 112, 209, 255));
         DrawPSCross(draw, avatar_c, 8.0f);
     }
-    
+
     // Online green dot
     draw->AddCircleFilled(ImVec2(avatar_c.x + 8.0f, avatar_c.y + 8.0f), 3.5f, IM_COL32(0, 230, 118, 255));
 
-    draw->AddText(ImVec2(psn_min.x + 36.0f, psn_min.y + 6.0f), IM_COL32(245, 250, 255, 255), profile_name.c_str());
-    // "PS Plus" gold tag
-    draw->AddText(ImVec2(psn_min.x + 36.0f, psn_min.y + 20.0f), IM_COL32(255, 205, 50, 220), "PS+ Premium");
+    draw->AddText(ImVec2(psn_min.x + 38.0f, psn_min.y + 6.0f), IM_COL32(245, 250, 255, 255), profile_name.c_str());
+    draw->AddText(ImVec2(psn_min.x + 38.0f, psn_min.y + 20.0f), plus_color, plus_status_str.c_str());
     if (font_small_) ImGui::PopFont();
     right_x -= 16.0f;
 
@@ -2172,11 +2346,71 @@ void App::probe_consoles_background() {
     });
 }
 
+void App::wake_console_only(const portal::discovery::RegisteredConsole& console) {
+    if (is_waking_.load()) return;
+    is_waking_ = true;
+    waking_attempt_ = 1;
+    wake_hint_visible_ = false;
+    waking_status_text_ = std::format("Despertando {}... (intento 1/3)", console.host_name);
+    show_toast(waking_status_text_, 4.0f);
+
+    auto reg = console_registry_;
+    auto console_copy = console;
+
+    connect_thread_ = std::jthread([this, reg, console_copy](std::stop_token st) {
+        bool is_ps5 = (console_copy.host_type == "PS5" || console_copy.host_type.find("5") != std::string::npos);
+        
+        // Initial wake packet
+        (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
+
+        auto start = std::chrono::steady_clock::now();
+        bool awake = false;
+        int current_attempt = 1;
+
+        while (true) {
+            if (st.stop_requested()) break;
+            auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start).count();
+            if (elapsed_sec >= 30) break;
+
+            if (elapsed_sec >= 20 && current_attempt < 3) {
+                current_attempt = 3;
+                waking_attempt_ = 3;
+                waking_status_text_ = std::format("Despertando {}... (intento 3/3)", console_copy.host_name);
+                (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
+            } else if (elapsed_sec >= 10 && current_attempt < 2) {
+                current_attempt = 2;
+                waking_attempt_ = 2;
+                waking_status_text_ = std::format("Despertando {}... (intento 2/3)", console_copy.host_name);
+                (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            auto state = portal::discovery::DDPDiscovery::probe_console(console_copy.address, console_copy.port, 400);
+            if (state == portal::ConsoleState::Awake) {
+                awake = true;
+                reg->update_console_state(console_copy.host_id, state, console_copy.address);
+                break;
+            }
+        }
+
+        is_waking_ = false;
+        if (awake) {
+            wake_hint_visible_ = false;
+            show_toast(std::format("{} encendida y lista.", console_copy.host_name), 4.0f);
+        } else {
+            wake_hint_visible_ = true;
+            show_toast("No se pudo despertar la consola tras 30s.", 6.0f);
+        }
+    });
+}
+
 void App::wake_and_connect(const portal::discovery::RegisteredConsole& console) {
     if (is_waking_.load()) return;
     is_waking_ = true;
-    waking_status_text_ = std::format("Despertando {}...", console.host_name);
-    show_toast(std::format("Enviando señal de encendido (Wake-on-LAN) a {}...", console.host_name), 5.0f);
+    waking_attempt_ = 1;
+    wake_hint_visible_ = false;
+    waking_status_text_ = std::format("Despertando {}... (intento 1/3)", console.host_name);
+    show_toast(waking_status_text_, 4.0f);
 
     // Save preferred console for next startup
     if (!console.host_id.empty()) {
@@ -2191,16 +2425,31 @@ void App::wake_and_connect(const portal::discovery::RegisteredConsole& console) 
     connect_thread_ = std::jthread([this, reg, sm, console_copy](std::stop_token st) {
         bool is_ps5 = (console_copy.host_type == "PS5" || console_copy.host_type.find("5") != std::string::npos);
         
-        // Step 1: Send initial wake packet
+        // Initial wake packet
         (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
 
-        // Step 2: Probe console up to 10 seconds (every 500ms) waiting for it to become Awake
         auto start = std::chrono::steady_clock::now();
         bool awake = false;
-        while (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start).count() < 10) {
+        int current_attempt = 1;
+
+        while (true) {
+            if (st.stop_requested()) break;
+            auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start).count();
+            if (elapsed_sec >= 30) break;
+
+            if (elapsed_sec >= 20 && current_attempt < 3) {
+                current_attempt = 3;
+                waking_attempt_ = 3;
+                waking_status_text_ = std::format("Despertando {}... (intento 3/3)", console_copy.host_name);
+                (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
+            } else if (elapsed_sec >= 10 && current_attempt < 2) {
+                current_attempt = 2;
+                waking_attempt_ = 2;
+                waking_status_text_ = std::format("Despertando {}... (intento 2/3)", console_copy.host_name);
+                (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
+            }
+
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            // Send another wake pulse
-            (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
             auto state = portal::discovery::DDPDiscovery::probe_console(console_copy.address, console_copy.port, 400);
             if (state == portal::ConsoleState::Awake) {
                 awake = true;
@@ -2210,6 +2459,14 @@ void App::wake_and_connect(const portal::discovery::RegisteredConsole& console) 
         }
 
         is_waking_ = false;
+
+        if (!awake) {
+            wake_hint_visible_ = true;
+            show_toast("No se pudo despertar la consola tras 30s.", 6.0f);
+            return;
+        }
+
+        wake_hint_visible_ = false;
 
         // Step 3: Connect
         portal::StreamConfig cfg;
@@ -2251,11 +2508,54 @@ void App::draw_home_screen() {
 
     // ── Console Cards Row ──
     float card_w = 340.0f;
-    float card_h = 245.0f;
+    float card_h = 250.0f;
     float card_spacing = 24.0f;
     float cards_y = start_y + 70.0f;
 
     ImDrawList* draw = ImGui::GetWindowDrawList();
+
+    // Wake-on-LAN hint alert banner on failure
+    if (wake_hint_visible_) {
+        ImVec2 banner_pos(40.0f, cards_y);
+        ImVec2 banner_size(ws.x - 80.0f, 60.0f);
+        draw->AddRectFilled(banner_pos, ImVec2(banner_pos.x + banner_size.x, banner_pos.y + banner_size.y),
+            IM_COL32(36, 26, 12, 235), 10.0f);
+        draw->AddRect(banner_pos, ImVec2(banner_pos.x + banner_size.x, banner_pos.y + banner_size.y),
+            IM_COL32(255, 171, 0, 220), 10.0f, 0, 1.5f);
+
+        if (font_small_) ImGui::PushFont(font_small_);
+        draw->AddText(ImVec2(banner_pos.x + 16.0f, banner_pos.y + 10.0f), IM_COL32(255, 190, 60, 255),
+            "Aviso de Despertar de Consola:");
+        draw->AddText(ImVec2(banner_pos.x + 16.0f, banner_pos.y + 28.0f), IM_COL32(220, 235, 255, 255),
+            "Comprueba que la consola tiene activado 'Ajustes > Sistema > Ahorro de energia > Funciones disponibles en modo de reposo > Activar encendido de la PS5/PS4 desde la red' y que esta conectada en la misma red.");
+        if (font_small_) ImGui::PopFont();
+
+        ImGui::SetCursorScreenPos(ImVec2(banner_pos.x + banner_size.x - 36.0f, banner_pos.y + 12.0f));
+        if (ImGui::Button("X##dismiss_wake_hint", ImVec2(24.0f, 24.0f))) {
+            wake_hint_visible_ = false;
+        }
+
+        cards_y += 74.0f;
+    }
+
+    // Visual Spinner during Wake-on-LAN
+    if (is_waking_.load()) {
+        float spinner_x = 40.0f;
+        float spinner_y = cards_y - 28.0f;
+        float pulse_t = static_cast<float>(ImGui::GetTime());
+        float angle = pulse_t * 6.0f;
+        ImVec2 s_center(spinner_x + 10.0f, spinner_y + 10.0f);
+        float s_r = 7.0f;
+        draw->AddCircle(s_center, s_r, IM_COL32(0, 112, 209, 80), 16, 2.5f);
+        draw->PathArcTo(s_center, s_r, angle, angle + 2.2f, 12);
+        draw->PathStroke(IM_COL32(0, 240, 255, 255), 0, 2.5f);
+
+        if (font_small_) ImGui::PushFont(font_small_);
+        std::string sp_text = waking_status_text_.empty() ? "Despertando consola..." : waking_status_text_;
+        draw->AddText(ImVec2(spinner_x + 26.0f, spinner_y + 2.0f), IM_COL32(0, 240, 255, 255), sp_text.c_str());
+        if (font_small_) ImGui::PopFont();
+    }
+
     auto consoles = console_registry_->get_all_consoles();
 
     // ── Dynamic Console Cards ──
@@ -2356,25 +2656,19 @@ void App::draw_home_screen() {
             show_login_pin_modal_ = true;
         }
 
-        // Action Button: Glowing PlayStation Blue (Awake) or Amber / Gold (Wake & Connect)
-        ImVec2 btn_pos(pos.x + 20.0f, pos.y + card_h - 52.0f);
-        ImVec2 btn_size(card_w - 40.0f, 38.0f);
-        ImGui::SetCursorScreenPos(btn_pos);
-
+        // Action Buttons: If awake -> [ CONECTAR AHORA ]. If standby -> [ Despertar ] and [ CONECTAR AHORA ]
         if (is_awake) {
+            ImVec2 btn_pos(pos.x + 20.0f, pos.y + card_h - 52.0f);
+            ImVec2 btn_size(card_w - 40.0f, 38.0f);
+            ImGui::SetCursorScreenPos(btn_pos);
+
             ImGui::PushStyleColor(ImGuiCol_Button, colors::kPrimary);
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.00f, 0.35f, 0.70f, 1.0f));
-        } else {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85f, 0.48f, 0.00f, 0.90f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.95f, 0.58f, 0.05f, 1.00f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.70f, 0.38f, 0.00f, 1.00f));
-        }
 
-        std::string btn_id = "##connect_" + std::to_string(card_idx);
-        if (ImGui::Button(btn_id.c_str(), btn_size)) {
-            target_login_console_host_id_ = c.host_id;
-            if (is_awake) {
+            std::string btn_id = "##connect_" + std::to_string(card_idx);
+            if (ImGui::Button(btn_id.c_str(), btn_size)) {
+                target_login_console_host_id_ = c.host_id;
                 show_toast(std::format("Iniciando conexion Remote Play con {}...", c.host_name), 4.0f);
                 
                 portal::StreamConfig cfg;
@@ -2397,20 +2691,65 @@ void App::draw_home_screen() {
                         show_toast(std::format("Error al conectar: {}", res.error().message), 6.0f);
                     }
                 });
-            } else {
+            }
+            ImGui::PopStyleColor(3);
+
+            const char* btn_text = "CONECTAR AHORA";
+            if (font_subtitle_) ImGui::PushFont(font_subtitle_);
+            ImVec2 btxt_sz = ImGui::CalcTextSize(btn_text);
+            draw->AddText(ImVec2(btn_pos.x + (btn_size.x - btxt_sz.x) * 0.5f, btn_pos.y + (btn_size.y - btxt_sz.y) * 0.5f),
+                IM_COL32(255, 255, 255, 255), btn_text);
+            if (font_subtitle_) ImGui::PopFont();
+        } else {
+            // Standby or Offline: Split action into [ Despertar ] and [ CONECTAR AHORA ]
+            float gap = 8.0f;
+            float wake_w = 95.0f;
+            float conn_w = (card_w - 40.0f) - wake_w - gap;
+            float btn_h_val = 38.0f;
+
+            ImVec2 wake_pos(pos.x + 20.0f, pos.y + card_h - 52.0f);
+            ImVec2 conn_pos(wake_pos.x + wake_w + gap, wake_pos.y);
+
+            // Button 1: Despertar
+            ImGui::SetCursorScreenPos(wake_pos);
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(35, 48, 75, 220));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(50, 68, 105, 255));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(25, 36, 58, 255));
+
+            std::string wake_id = "##wake_" + std::to_string(card_idx);
+            bool waking_now = is_waking_.load();
+            if (ImGui::Button(wake_id.c_str(), ImVec2(wake_w, btn_h_val)) && !waking_now) {
+                wake_console_only(c);
+            }
+            ImGui::PopStyleColor(3);
+
+            if (font_small_) ImGui::PushFont(font_small_);
+            const char* wake_lbl = waking_now ? "Enviando..." : "Despertar";
+            ImVec2 w_sz = ImGui::CalcTextSize(wake_lbl);
+            draw->AddText(ImVec2(wake_pos.x + (wake_w - w_sz.x) * 0.5f, wake_pos.y + (btn_h_val - w_sz.y) * 0.5f),
+                IM_COL32(200, 220, 255, 255), wake_lbl);
+            if (font_small_) ImGui::PopFont();
+
+            // Button 2: CONECTAR AHORA (Wake and connect)
+            ImGui::SetCursorScreenPos(conn_pos);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85f, 0.48f, 0.00f, 0.90f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.95f, 0.58f, 0.05f, 1.00f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.70f, 0.38f, 0.00f, 1.00f));
+
+            std::string conn_id = "##conn_wake_" + std::to_string(card_idx);
+            if (ImGui::Button(conn_id.c_str(), ImVec2(conn_w, btn_h_val)) && !waking_now) {
+                target_login_console_host_id_ = c.host_id;
                 wake_and_connect(c);
             }
-        }
-        ImGui::PopStyleColor(3);
+            ImGui::PopStyleColor(3);
 
-        // Vector Circle Icon and Button Text inside button
-        const char* btn_text = is_awake ? "CONECTAR AHORA" : "DESPERTAR Y CONECTAR";
-        DrawPSCircle(draw, ImVec2(btn_pos.x + 24.0f, btn_pos.y + 19.0f), 9.0f);
-        if (font_subtitle_) ImGui::PushFont(font_subtitle_);
-        ImVec2 btxt_sz = ImGui::CalcTextSize(btn_text);
-        draw->AddText(ImVec2(btn_pos.x + (btn_size.x - btxt_sz.x) * 0.5f + 10.0f, btn_pos.y + (btn_size.y - btxt_sz.y) * 0.5f),
-            IM_COL32(255, 255, 255, 255), btn_text);
-        if (font_subtitle_) ImGui::PopFont();
+            if (font_subtitle_) ImGui::PushFont(font_subtitle_);
+            const char* conn_lbl = waking_now ? "Despertando..." : "CONECTAR AHORA";
+            ImVec2 c_sz = ImGui::CalcTextSize(conn_lbl);
+            draw->AddText(ImVec2(conn_pos.x + (conn_w - c_sz.x) * 0.5f, conn_pos.y + (btn_h_val - c_sz.y) * 0.5f),
+                IM_COL32(255, 255, 255, 255), conn_lbl);
+            if (font_subtitle_) ImGui::PopFont();
+        }
 
         card_idx++;
     }
@@ -2930,7 +3269,39 @@ void App::draw_pin_modal() {
             }
             show_toast("PSN Account-ID auto-completado", 3.0f);
         } else {
-            show_toast("Inicia sesion en PSN desde la pantalla inicial primero", 5.0f);
+            login_thread_ = std::jthread([this](std::stop_token) {
+                auto res = portal::auth::WebView2Auth::login();
+                if (res.status == portal::auth::WebView2LoginStatus::Success) {
+                    auto result = account_manager_->add_account_from_code(res.code);
+                    if (result.has_value()) {
+                        auto acc = account_manager_->get_active_account();
+                        if (acc.has_value()) {
+                            show_toast("Cuenta vinculada, bienvenido " + acc->profile.online_id, 4.0f);
+                            if (!acc->profile.account_id_b64.empty()) {
+                                strncpy_s(account_id_b64_, acc->profile.account_id_b64.c_str(), sizeof(account_id_b64_) - 1);
+                            }
+                        }
+                        destroy_texture("avatar");
+                    } else {
+                        show_toast("Error al iniciar sesion: " + result.error().message, 5.0f);
+                    }
+                } else if (res.status == portal::auth::WebView2LoginStatus::UserCancelled) {
+                    show_toast("Inicio de sesion cancelado", 3.5f);
+                    login_cancelled_prompt_visible_ = true;
+                } else if (res.status == portal::auth::WebView2LoginStatus::SonyError) {
+                    show_toast("Sony devolvio un error de autenticacion. Abriendo navegador...", 5.0f);
+                    std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
+                    ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                    memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
+                    show_browser_fallback_modal_ = true;
+                } else {
+                    show_toast("WebView2 no disponible. Abriendo navegador web...", 4.0f);
+                    std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
+                    ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                    memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
+                    show_browser_fallback_modal_ = true;
+                }
+            });
         }
     }
     ImGui::PopStyleColor(2);
@@ -2951,11 +3322,19 @@ void App::draw_pin_modal() {
     // ── STEP 2: PIN Entry ──
     cur_y += 12.0f;
     if (font_small_) ImGui::PushFont(font_small_);
-    draw->AddText(ImVec2(modal_pos.x + 36.0f, cur_y), IM_COL32(130, 160, 200, 255), "Paso 2: Introduce el PIN de 8 digitos");
+    draw->AddText(ImVec2(modal_pos.x + 36.0f, cur_y), IM_COL32(130, 160, 200, 255), "Paso 2: Introduce el PIN de vinculacion");
     cur_y += 18.0f;
     draw->AddText(ImVec2(modal_pos.x + 36.0f, cur_y), IM_COL32(160, 180, 210, 200),
-        "En tu PS5: Ajustes > Sistema > Uso a distancia > Vincular dispositivo");
+        "PS5 y PS4 actuales: 8 digitos (Ajustes > Sistema > Uso a distancia > Vincular dispositivo).");
+    cur_y += 16.0f;
+    draw->AddText(ImVec2(modal_pos.x + 36.0f, cur_y), IM_COL32(140, 160, 190, 180),
+        "PS4 antigua: puede pedir 4 digitos. Si tu cuenta ya esta activa en la consola, prueba sin PIN.");
     if (font_small_) ImGui::PopFont();
+
+    // Toggle: Mi consola no pide PIN
+    cur_y += 20.0f;
+    ImGui::SetCursorScreenPos(ImVec2(modal_pos.x + 36.0f, cur_y));
+    ImGui::Checkbox("Mi consola no pide PIN (Vincular sin PIN / PIN 0)", &no_pin_needed_);
 
     // ── 8 PIN Boxes ──
     cur_y += 28.0f;
@@ -2978,16 +3357,19 @@ void App::draw_pin_modal() {
 
         ImVec2 b_min(bx, cur_y);
         ImVec2 b_max(bx + box_w, cur_y + box_h);
-        bool is_active = (active_pin_digit_ == i);
+        bool is_active = !no_pin_needed_ && (active_pin_digit_ == i);
         bool has_digit = (pin_digits_[i] >= '0' && pin_digits_[i] <= '9');
 
         ImGui::SetCursorScreenPos(b_min);
-        if (ImGui::InvisibleButton(std::format("##pin_box_{}", i).c_str(), ImVec2(box_w, box_h))) {
-            active_pin_digit_ = i;
+        if (!no_pin_needed_) {
+            if (ImGui::InvisibleButton(std::format("##pin_box_{}", i).c_str(), ImVec2(box_w, box_h))) {
+                active_pin_digit_ = i;
+            }
         }
-        bool is_hovered = ImGui::IsItemHovered();
+        bool is_hovered = !no_pin_needed_ && ImGui::IsItemHovered();
 
-        ImU32 box_bg = is_active ? IM_COL32(16, 28, 56, 250) :
+        ImU32 box_bg = no_pin_needed_ ? IM_COL32(8, 12, 24, 150) :
+                       is_active ? IM_COL32(16, 28, 56, 250) :
                        is_hovered ? IM_COL32(18, 26, 48, 230) :
                                     IM_COL32(11, 19, 38, 210);
         draw->AddRectFilled(b_min, b_max, box_bg, 10.0f);
@@ -3000,13 +3382,13 @@ void App::draw_pin_modal() {
             draw->AddLine(ImVec2(b_min.x + 10.0f, b_max.y - 8.0f),
                           ImVec2(b_max.x - 10.0f, b_max.y - 8.0f),
                           IM_COL32(0, 240, 255, static_cast<int>(200 + 55 * pulse)), 2.5f);
-        } else if (has_digit) {
+        } else if (has_digit && !no_pin_needed_) {
             draw->AddRect(b_min, b_max, IM_COL32(0, 112, 209, 200), 10.0f, 0, 1.5f);
         } else {
             draw->AddRect(b_min, b_max, IM_COL32(50, 70, 105, 120), 10.0f, 0, 1.0f);
         }
 
-        if (has_digit) {
+        if (has_digit && !no_pin_needed_) {
             char d_str[2] = {pin_digits_[i], '\0'};
             if (font_pin_) ImGui::PushFont(font_pin_);
             ImVec2 dsz = ImGui::CalcTextSize(d_str);
@@ -3034,7 +3416,7 @@ void App::draw_pin_modal() {
         ImGui::SetCursorScreenPos(kp_pos);
         ImGui::PushStyleColor(ImGuiCol_Button, colors::kSurface);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimary);
-        if (ImGui::Button(std::format("{}", d).c_str(), ImVec2(kp_btn_w, kp_btn_h))) {
+        if (ImGui::Button(std::format("{}", d).c_str(), ImVec2(kp_btn_w, kp_btn_h)) && !no_pin_needed_) {
             pin_digits_[active_pin_digit_] = static_cast<char>('0' + d);
             if (active_pin_digit_ < 7) active_pin_digit_++;
         }
@@ -3045,7 +3427,7 @@ void App::draw_pin_modal() {
     ImGui::SetCursorScreenPos(bsp_pos);
     ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(40, 25, 35, 220));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(80, 30, 45, 255));
-    if (ImGui::Button("Borrar", ImVec2(72.0f, kp_btn_h))) {
+    if (ImGui::Button("Borrar", ImVec2(72.0f, kp_btn_h)) && !no_pin_needed_) {
         if (pin_digits_[active_pin_digit_] != '\0') {
             pin_digits_[active_pin_digit_] = '\0';
         } else if (active_pin_digit_ > 0) {
@@ -3076,13 +3458,13 @@ void App::draw_pin_modal() {
     float btn_h = 44.0f;
     float btns_start_x = modal_pos.x + (modal_w - (btn_w * 2 + 24.0f)) * 0.5f;
 
-    bool pin_ready = true;
+    std::string entered_pin_str;
     for (int i = 0; i < 8; i++) {
-        if (pin_digits_[i] < '0' || pin_digits_[i] > '9') {
-            pin_ready = false;
-            break;
+        if (pin_digits_[i] >= '0' && pin_digits_[i] <= '9') {
+            entered_pin_str.push_back(pin_digits_[i]);
         }
     }
+    bool pin_ready = no_pin_needed_ || (!entered_pin_str.empty() && entered_pin_str.length() <= 8);
     bool can_pair = pin_ready && has_account_id && (register_ip_[0] != '\0');
 
     // Button 1: Vincular Consola (disabled until account + PIN + IP)
@@ -3091,58 +3473,61 @@ void App::draw_pin_modal() {
     ImGui::PushStyleColor(ImGuiCol_Button, can_pair ? colors::kPrimary : ImVec4(0.08f, 0.14f, 0.25f, 0.70f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, can_pair ? colors::kPrimaryHover : ImVec4(0.08f, 0.14f, 0.25f, 0.70f));
     if (ImGui::Button("##do_pair", ImVec2(btn_w, btn_h)) && can_pair) {
-        std::string pin_str(pin_digits_, 8);
-        try {
-            uint32_t pin_num = static_cast<uint32_t>(std::stoul(pin_str));
-            show_toast(std::format("Vinculando con PS5 ({}) usando PIN {}...", register_ip_, pin_str), 5.0f);
-            std::string ip = register_ip_;
-            std::string name = register_name_;
-            std::string acc_id = account_id_b64_;
-            register_thread_ = std::jthread([this, ip, name, pin_num, acc_id](std::stop_token) {
-                auto res = portal::crypto::PS5Protocol::register_with_pin(ip, 9295, pin_num, acc_id);
-                if (res.has_value()) {
-                    std::string host_id = res->host_id;
-                    if (host_id.empty()) {
-                        host_id = res->mac;
-                    }
-                    for (const auto& uc : unbound_consoles_) {
-                        if (uc.address == ip && !uc.host_id.empty()) {
-                            host_id = uc.host_id;
-                            break;
-                        }
-                    }
-                    if (host_id.empty()) {
-                        host_id = "PS5-" + ip;
-                    }
-
-                    std::string console_name = !name.empty() ? name : (!res->host_name.empty() ? res->host_name : "PlayStation 5");
-
-                    portal::discovery::DiscoveredConsole dc {
-                        console_name,
-                        host_id,
-                        "PS5",
-                        ip,
-                        9295,
-                        portal::ConsoleState::Awake,
-                        "13600007"
-                    };
-                    (void)console_registry_->register_console(dc, res->rp_key, res->regist_key);
-
-                    // Remove from unbound consoles list if present
-                    std::erase_if(unbound_consoles_, [&](const auto& uc) {
-                        return uc.address == ip || (!host_id.empty() && uc.host_id == host_id);
-                    });
-
-                    show_toast(std::format("Consola vinculada: {}", console_name), 5.0f);
-                    show_pin_modal_ = false;
-                    current_screen_ = Screen::Home;
-                } else {
-                    show_toast("Error al vincular: " + res.error().message, 6.0f);
-                }
-            });
-        } catch (...) {
-            show_toast("PIN invalido. Introduce 8 digitos numericos.", 4.0f);
+        uint32_t pin_num = 0;
+        if (!no_pin_needed_) {
+            try {
+                pin_num = static_cast<uint32_t>(std::stoul(entered_pin_str));
+            } catch (...) {
+                pin_num = 0;
+            }
         }
+        std::string display_pin = no_pin_needed_ ? "0 (Sin PIN)" : entered_pin_str;
+        show_toast(std::format("Vinculando con PS5 ({}) usando PIN {}...", register_ip_, display_pin), 5.0f);
+        std::string ip = register_ip_;
+        std::string name = register_name_;
+        std::string acc_id = account_id_b64_;
+        register_thread_ = std::jthread([this, ip, name, pin_num, acc_id](std::stop_token) {
+            auto res = portal::crypto::PS5Protocol::register_with_pin(ip, 9295, pin_num, acc_id);
+            if (res.has_value()) {
+                std::string host_id = res->host_id;
+                if (host_id.empty()) {
+                    host_id = res->mac;
+                }
+                for (const auto& uc : unbound_consoles_) {
+                    if (uc.address == ip && !uc.host_id.empty()) {
+                        host_id = uc.host_id;
+                        break;
+                    }
+                }
+                if (host_id.empty()) {
+                    host_id = "PS5-" + ip;
+                }
+
+                std::string console_name = !name.empty() ? name : (!res->host_name.empty() ? res->host_name : "PlayStation 5");
+
+                portal::discovery::DiscoveredConsole dc {
+                    console_name,
+                    host_id,
+                    "PS5",
+                    ip,
+                    9295,
+                    portal::ConsoleState::Awake,
+                    "13600007"
+                };
+                (void)console_registry_->register_console(dc, res->rp_key, res->regist_key);
+
+                // Remove from unbound consoles list if present
+                std::erase_if(unbound_consoles_, [&](const auto& uc) {
+                    return uc.address == ip || (!host_id.empty() && uc.host_id == host_id);
+                });
+
+                show_toast(std::format("Consola vinculada: {}", console_name), 5.0f);
+                show_pin_modal_ = false;
+                current_screen_ = Screen::Home;
+            } else {
+                show_toast(std::format("Error al vincular: {}. PIN rechazado por la consola. Comprueba los digitos o genera un PIN nuevo.", res.error().message), 7.0f);
+            }
+        });
     }
     ImGui::PopStyleColor(2);
 
@@ -3200,136 +3585,182 @@ void App::draw_onboarding() {
 
     // Login Button
     cur_y += 60.0f;
-    float btn_w = 320.0f;
+    float btn_w = 360.0f;
     float btn_h = 56.0f;
     ImGui::SetCursorScreenPos(ImVec2(center_x - btn_w * 0.5f, cur_y));
     ImGui::PushStyleColor(ImGuiCol_Button, colors::kPrimary);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
     if (ImGui::Button("Iniciar Sesion con PlayStation Network##onboard_login", ImVec2(btn_w, btn_h))) {
         login_thread_ = std::jthread([this](std::stop_token) {
-            auto code_opt = portal::auth::WebView2Auth::login();
-            if (code_opt.has_value()) {
-                std::string code = code_opt.value();
-                if (code.empty()) {
-                    // User cancelled the login (closed the window)
-                    spdlog::info("User cancelled WebView2 login");
-                    return;
-                }
-                
-                auto result = account_manager_->add_account_from_code(code);
+            auto res = portal::auth::WebView2Auth::login();
+            if (res.status == portal::auth::WebView2LoginStatus::Success) {
+                auto result = account_manager_->add_account_from_code(res.code);
                 if (result.has_value()) {
                     auto acc = account_manager_->get_active_account();
                     if (acc.has_value()) {
                         show_toast("Cuenta vinculada, bienvenido " + acc->profile.online_id, 4.0f);
+                        if (!acc->profile.account_id_b64.empty()) {
+                            strncpy_s(account_id_b64_, acc->profile.account_id_b64.c_str(), sizeof(account_id_b64_) - 1);
+                        }
                     } else {
                         show_toast("Sesion PSN iniciada con exito!", 4.0f);
                     }
+                    destroy_texture("avatar");
+                    login_cancelled_prompt_visible_ = false;
                     current_screen_ = Screen::Home;
-                    
-                    // Auto-populate account_id_b64_ for registration
-                    if (acc.has_value()) {
-                        if (!acc->profile.account_id_b64.empty()) {
-                            strncpy_s(account_id_b64_, acc->profile.account_id_b64.c_str(), sizeof(account_id_b64_) - 1);
-                        } else if (!acc->account_id_b64.empty()) {
-                            strncpy_s(account_id_b64_, acc->account_id_b64.c_str(), sizeof(account_id_b64_) - 1);
-                        } else if (acc->profile.account_id != 0) {
-                            uint8_t le_bytes[8];
-                            for (int i = 0; i < 8; ++i) {
-                                le_bytes[i] = static_cast<uint8_t>((acc->profile.account_id >> (i * 8)) & 0xFF);
-                            }
-                            std::string b64(16, '\0');
-                            int len = EVP_EncodeBlock(reinterpret_cast<uint8_t*>(b64.data()), le_bytes, 8);
-                            b64.resize(len);
-                            strncpy_s(account_id_b64_, b64.c_str(), sizeof(account_id_b64_) - 1);
-                        }
-                    }
                 } else {
                     show_toast("Error al iniciar sesion: " + result.error().message, 5.0f);
                 }
-            } else {
-                show_toast("WebView2 no disponible. Abriendo el navegador web...", 4.0f);
-                spdlog::warn("WebView2 login failed or not available, falling back to manual browser login");
+            } else if (res.status == portal::auth::WebView2LoginStatus::UserCancelled) {
+                spdlog::info("WebView2Auth: login window closed by user");
+                show_toast("Inicio de sesion cancelado", 3.5f);
+                login_cancelled_prompt_visible_ = true;
+            } else if (res.status == portal::auth::WebView2LoginStatus::SonyError) {
+                spdlog::warn("WebView2Auth: Sony error reported: {}", res.error_details);
+                show_toast("Sony devolvio un error de autenticacion. Abriendo navegador...", 5.0f);
                 std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
                 ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
+                show_browser_fallback_modal_ = true;
+            } else {
+                show_toast("WebView2 no disponible. Abriendo el navegador web...", 4.0f);
+                spdlog::warn("WebView2 login unavailable, falling back to system browser");
+                std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
+                ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
+                show_browser_fallback_modal_ = true;
             }
         });
     }
     ImGui::PopStyleColor(2);
 
-    // Fallback Code Input Field
-    cur_y += 80.0f;
-    float input_w = 400.0f;
-    ImGui::SetCursorScreenPos(ImVec2(center_x - input_w * 0.5f - 120.0f, cur_y));
+    // Skip Button
+    cur_y += 70.0f;
+    ImGui::SetCursorScreenPos(ImVec2(center_x - 90.0f, cur_y));
+    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 255, 255, 20));
+    if (ImGui::Button("Saltar por ahora##skip_onboard", ImVec2(180.0f, 32.0f))) {
+        current_screen_ = Screen::Home;
+    }
+    ImGui::PopStyleColor(2);
+}
+
+// ─── Modal de Fallback de Navegador para PSN OAuth ─────────
+void App::draw_browser_fallback_modal() {
+    ImVec2 ws = ImGui::GetIO().DisplaySize;
+    float modal_w = 580.0f;
+    float modal_h = 320.0f;
+    ImVec2 modal_pos((ws.x - modal_w) * 0.5f, (ws.y - modal_h) * 0.5f);
+    ImVec2 modal_end(modal_pos.x + modal_w, modal_pos.y + modal_h);
+
+    ImDrawList* draw = ImGui::GetForegroundDrawList();
+
+    // Dark glass backdrop scrim over whole screen
+    draw->AddRectFilled(ImVec2(0, 0), ws, IM_COL32(4, 7, 16, 220));
+
+    // Modal Container (#0b1021 with glowing border)
+    draw->AddRectFilled(modal_pos, modal_end, IM_COL32(11, 16, 33, 252), 20.0f);
+    draw->AddRect(ImVec2(modal_pos.x - 2, modal_pos.y - 2), ImVec2(modal_end.x + 2, modal_end.y + 2),
+        IM_COL32(0, 240, 255, 50), 22.0f, 0, 3.0f);
+    draw->AddRect(modal_pos, modal_end, IM_COL32(0, 240, 255, 180), 20.0f, 0, 1.5f);
+
+    // Top reflection
+    draw->AddLine(ImVec2(modal_pos.x + 20.0f, modal_pos.y + 1.0f),
+                  ImVec2(modal_end.x - 20.0f, modal_pos.y + 1.0f),
+                  IM_COL32(255, 255, 255, 40), 1.0f);
+
+    // Header
+    float cur_y = modal_pos.y + 24.0f;
+    DrawPSCross(draw, ImVec2(modal_pos.x + 36.0f, cur_y + 12.0f), 12.0f);
+
+    if (font_title_) ImGui::PushFont(font_title_);
+    draw->AddText(ImVec2(modal_pos.x + 58.0f, cur_y - 2.0f), IM_COL32(255, 255, 255, 255), "Inicio de Sesión en Navegador");
+    if (font_title_) ImGui::PopFont();
+
+    cur_y += 38.0f;
     if (font_body_) ImGui::PushFont(font_body_);
-    ImGui::TextColored(ImVec4(0.65f, 0.73f, 0.85f, 1.0f), "¿Se abrio el navegador?");
-    ImGui::SameLine();
-    static char fallback_url_input[2048] = "";
+    draw->AddText(ImVec2(modal_pos.x + 36.0f, cur_y), IM_COL32(180, 195, 225, 240),
+        "Se ha abierto el navegador para iniciar sesión en PlayStation Network.");
+    cur_y += 24.0f;
+    draw->AddText(ImVec2(modal_pos.x + 36.0f, cur_y), IM_COL32(255, 220, 120, 255),
+        "Cuando te salga la página en blanco, copia la URL completa y pégala aquí:");
+    if (font_body_) ImGui::PopFont();
+
+    // Input text field
+    cur_y += 36.0f;
+    float input_x = modal_pos.x + 36.0f;
+    float input_w = modal_w - 72.0f;
+    ImGui::SetCursorScreenPos(ImVec2(input_x, cur_y));
     ImGui::SetNextItemWidth(input_w);
-    ImGui::InputTextWithHint("##fallback_code", "Pega aqui la URL en blanco o el codigo 'code=...'", fallback_url_input, sizeof(fallback_url_input));
-    ImGui::SameLine();
-    if (ImGui::Button("Confirmar##fallback_btn")) {
-        std::string input = fallback_url_input;
+    if (font_body_) ImGui::PushFont(font_body_);
+    ImGui::InputTextWithHint("##browser_fallback_url", "https://remoteplay.dl.playstation.net/remoteplay/redirect?code=...",
+        browser_fallback_url_input_, sizeof(browser_fallback_url_input_));
+    if (font_body_) ImGui::PopFont();
+
+    // Buttons Row
+    cur_y += 56.0f;
+    float btn_h = 44.0f;
+    float confirm_btn_w = 160.0f;
+    float cancel_btn_w = 120.0f;
+    float reopen_btn_w = 180.0f;
+
+    ImGui::SetCursorScreenPos(ImVec2(input_x, cur_y));
+    ImGui::PushStyleColor(ImGuiCol_Button, colors::kPrimary);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
+    if (ImGui::Button("Confirmar##fallback_confirm", ImVec2(confirm_btn_w, btn_h))) {
+        std::string input = browser_fallback_url_input_;
         std::string extracted_code;
         size_t code_pos = input.find("code=");
         if (code_pos != std::string::npos) {
             size_t start = code_pos + 5;
             size_t end = input.find("&", start);
-            if (end == std::string::npos) {
-                extracted_code = input.substr(start);
-            } else {
-                extracted_code = input.substr(start, end - start);
-            }
+            extracted_code = (end == std::string::npos) ? input.substr(start) : input.substr(start, end - start);
         } else if (input.length() > 20 && input.find("=") == std::string::npos) {
-            // Might be just the code
             extracted_code = input;
         }
 
         if (!extracted_code.empty()) {
+            spdlog::info("Fallback code submitted ({} chars)", extracted_code.length());
             login_thread_ = std::jthread([this, extracted_code](std::stop_token) {
                 auto result = account_manager_->add_account_from_code(extracted_code);
                 if (result.has_value()) {
                     auto acc = account_manager_->get_active_account();
                     if (acc.has_value()) {
                         show_toast("Cuenta vinculada, bienvenido " + acc->profile.online_id, 4.0f);
+                        if (!acc->profile.account_id_b64.empty()) {
+                            strncpy_s(account_id_b64_, acc->profile.account_id_b64.c_str(), sizeof(account_id_b64_) - 1);
+                        }
                     } else {
                         show_toast("Sesion PSN iniciada con exito!", 4.0f);
                     }
+                    destroy_texture("avatar");
                     current_screen_ = Screen::Home;
-                    memset(fallback_url_input, 0, sizeof(fallback_url_input));
-                    
-                    if (acc.has_value()) {
-                        if (!acc->profile.account_id_b64.empty()) {
-                            strncpy_s(account_id_b64_, acc->profile.account_id_b64.c_str(), sizeof(account_id_b64_) - 1);
-                        } else if (!acc->account_id_b64.empty()) {
-                            strncpy_s(account_id_b64_, acc->account_id_b64.c_str(), sizeof(account_id_b64_) - 1);
-                        } else if (acc->profile.account_id != 0) {
-                            uint8_t le_bytes[8];
-                            for (int i = 0; i < 8; ++i) {
-                                le_bytes[i] = static_cast<uint8_t>((acc->profile.account_id >> (i * 8)) & 0xFF);
-                            }
-                            std::string b64(16, '\0');
-                            int len = EVP_EncodeBlock(reinterpret_cast<uint8_t*>(b64.data()), le_bytes, 8);
-                            b64.resize(len);
-                            strncpy_s(account_id_b64_, b64.c_str(), sizeof(account_id_b64_) - 1);
-                        }
-                    }
+                    show_browser_fallback_modal_ = false;
+                    memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
                 } else {
                     show_toast("Error al iniciar sesion: " + result.error().message, 5.0f);
                 }
             });
         } else {
-            show_toast("Por favor pega el codigo completo.", 4.0f);
+            show_toast("Por favor pega la URL completa o el código de autorización.", 4.0f);
         }
     }
-    if (font_body_) ImGui::PopFont();
+    ImGui::PopStyleColor(2);
 
-    // Skip Button
-    cur_y += 60.0f;
-    ImGui::SetCursorScreenPos(ImVec2(center_x - 80.0f, cur_y));
-    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 255, 255, 20));
-    if (ImGui::Button("Saltar por ahora##skip_onboard", ImVec2(160.0f, 30.0f))) {
-        current_screen_ = Screen::Home;
+    ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(35, 48, 75, 200));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(50, 68, 105, 255));
+    if (ImGui::Button("Cancelar##fallback_cancel", ImVec2(cancel_btn_w, btn_h))) {
+        show_browser_fallback_modal_ = false;
+    }
+    ImGui::PopStyleColor(2);
+
+    ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(20, 30, 50, 160));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(30, 45, 75, 220));
+    if (ImGui::Button("Reabrir Navegador##fallback_reopen", ImVec2(reopen_btn_w, btn_h))) {
+        std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
+        ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     }
     ImGui::PopStyleColor(2);
 }
@@ -3689,6 +4120,29 @@ void App::draw_settings() {
         ImGui::TextColored(colors::kTextSecondary, "Color LED DualSense:");
         ImGui::SetNextItemWidth(panel_w - 40.0f);
         ImGui::Combo("##led_col", &led_color, leds, 4);
+
+        ImGui::Dummy(ImVec2(0, 10));
+        ImGui::TextColored(colors::kTextSecondary, "Zona Muerta Radial de Sticks (Anti-Drift):");
+        ImGui::SetNextItemWidth(panel_w - 40.0f);
+        if (ImGui::SliderFloat("##stick_deadzone", &settings_.stick_deadzone, 0.00f, 0.40f, "%.2f")) {
+            if (controller_manager_) {
+                controller_manager_->set_stick_deadzone(settings_.stick_deadzone);
+            }
+            (void)settings_.save(settings_path_);
+        }
+
+        ImGui::Dummy(ImVec2(0, 10));
+        if (ImGui::Checkbox("Sensor de Movimiento / Giroscopio", &settings_.enable_gyro)) {
+            if (controller_manager_) {
+                controller_manager_->set_enable_gyro(settings_.enable_gyro);
+            }
+            (void)settings_.save(settings_path_);
+        }
+
+        ImGui::Dummy(ImVec2(0, 12));
+        if (ImGui::Button("Probar Mando y Sticks##btn_test_ctrl", ImVec2(panel_w - 40.0f, 34.0f))) {
+            show_controller_test_modal_ = true;
+        }
     }
     ImGui::EndChild();
 
@@ -3925,6 +4379,205 @@ void App::draw_status_bar() {
     if (font_small_) ImGui::PopFont();
 
     ImGui::End();
+}
+
+// ─── Controller Test & Calibration Modal ─────────────────
+void App::draw_controller_test_modal() {
+    if (!show_controller_test_modal_) return;
+
+    ImVec2 ws = ImGui::GetIO().DisplaySize;
+    float modal_w = 720.0f;
+    float modal_h = 570.0f;
+    ImVec2 modal_pos((ws.x - modal_w) * 0.5f, (ws.y - modal_h) * 0.5f);
+    ImVec2 modal_end(modal_pos.x + modal_w, modal_pos.y + modal_h);
+
+    ImDrawList* draw = ImGui::GetForegroundDrawList();
+
+    // Dark scrim backdrop
+    draw->AddRectFilled(ImVec2(0, 0), ws, IM_COL32(4, 7, 16, 220));
+
+    // Modal background & glowing border
+    draw->AddRectFilled(modal_pos, modal_end, IM_COL32(11, 16, 33, 252), 20.0f);
+    draw->AddRect(modal_pos, modal_end, IM_COL32(0, 240, 255, 180), 20.0f, 0, 1.5f);
+
+    float cur_y = modal_pos.y + 24.0f;
+
+    // Header
+    if (font_title_) ImGui::PushFont(font_title_);
+    draw->AddText(ImVec2(modal_pos.x + 36.0f, cur_y), IM_COL32(255, 255, 255, 255), "Test de Mando y Calibracion");
+    if (font_title_) ImGui::PopFont();
+
+    cur_y += 34.0f;
+
+    // Status info
+    std::string ctrl_name = controller_manager_ ? controller_manager_->get_controller_name() : "Sin mando";
+    bool connected = controller_manager_ ? controller_manager_->is_connected() : false;
+    float deadzone = controller_manager_ ? controller_manager_->get_stick_deadzone() : settings_.stick_deadzone;
+
+    portal::input::ControllerState state{};
+    if (controller_manager_ && connected) {
+        state = controller_manager_->poll();
+    }
+
+    if (font_body_) ImGui::PushFont(font_body_);
+    draw->AddText(ImVec2(modal_pos.x + 36.0f, cur_y),
+        connected ? IM_COL32(0, 230, 118, 255) : IM_COL32(255, 171, 0, 255),
+        connected ? std::format("Conectado: {}", ctrl_name).c_str() : "No se detecta ningun mando");
+
+    std::string dz_info = std::format("Zona muerta activa: {:.2f}", deadzone);
+    draw->AddText(ImVec2(modal_pos.x + 400.0f, cur_y), IM_COL32(180, 200, 230, 255), dz_info.c_str());
+    if (font_body_) ImGui::PopFont();
+
+    cur_y += 32.0f;
+
+    // ── Stick Visualizers (Left & Right) ──
+    float stick_box_size = 140.0f;
+    float stick_center_r = stick_box_size * 0.5f;
+
+    // Left Stick
+    ImVec2 ls_box_pos(modal_pos.x + 50.0f, cur_y);
+    ImVec2 ls_box_end(ls_box_pos.x + stick_box_size, ls_box_pos.y + stick_box_size);
+    ImVec2 ls_center(ls_box_pos.x + stick_center_r, ls_box_pos.y + stick_center_r);
+
+    draw->AddRectFilled(ls_box_pos, ls_box_end, IM_COL32(18, 24, 44, 220), 12.0f);
+    draw->AddRect(ls_box_pos, ls_box_end, IM_COL32(50, 70, 105, 140), 12.0f);
+
+    draw->AddLine(ImVec2(ls_center.x, ls_box_pos.y + 10.0f), ImVec2(ls_center.x, ls_box_end.y - 10.0f), IM_COL32(70, 90, 120, 100));
+    draw->AddLine(ImVec2(ls_box_pos.x + 10.0f, ls_center.y), ImVec2(ls_box_end.x - 10.0f, ls_center.y), IM_COL32(70, 90, 120, 100));
+
+    float max_r = stick_center_r - 14.0f;
+    draw->AddCircle(ls_center, max_r, IM_COL32(0, 112, 209, 140), 32, 1.5f);
+
+    float ls_dz_r = max_r * deadzone;
+    draw->AddCircleFilled(ls_center, ls_dz_r, IM_COL32(255, 171, 0, 35));
+    draw->AddCircle(ls_center, ls_dz_r, IM_COL32(255, 171, 0, 140), 24, 1.2f);
+
+    float ls_norm_x = static_cast<float>(state.left_stick_x) / 32767.0f;
+    float ls_norm_y = static_cast<float>(state.left_stick_y) / 32767.0f;
+    float ls_mag = std::sqrt(ls_norm_x * ls_norm_x + ls_norm_y * ls_norm_y);
+    bool ls_in_dz = (ls_mag <= deadzone);
+
+    ImVec2 ls_dot(ls_center.x + ls_norm_x * max_r, ls_center.y + ls_norm_y * max_r);
+    draw->AddCircleFilled(ls_dot, 6.0f, ls_in_dz ? IM_COL32(0, 230, 118, 255) : IM_COL32(0, 240, 255, 255));
+    draw->AddCircle(ls_dot, 8.0f, IM_COL32(255, 255, 255, 180), 16, 1.5f);
+
+    if (font_small_) ImGui::PushFont(font_small_);
+    draw->AddText(ImVec2(ls_box_pos.x + 6.0f, ls_box_end.y + 6.0f), IM_COL32(200, 220, 245, 255), "Stick Izquierdo (L3)");
+    draw->AddText(ImVec2(ls_box_pos.x + 6.0f, ls_box_end.y + 22.0f),
+        ls_in_dz ? IM_COL32(0, 230, 118, 255) : IM_COL32(0, 240, 255, 255),
+        std::format("X: {:+.2f}  Y: {:+.2f}", ls_norm_x, ls_norm_y).c_str());
+    if (font_small_) ImGui::PopFont();
+
+    // Right Stick
+    ImVec2 rs_box_pos(modal_pos.x + 220.0f, cur_y);
+    ImVec2 rs_box_end(rs_box_pos.x + stick_box_size, rs_box_pos.y + stick_box_size);
+    ImVec2 rs_center(rs_box_pos.x + stick_center_r, rs_box_pos.y + stick_center_r);
+
+    draw->AddRectFilled(rs_box_pos, rs_box_end, IM_COL32(18, 24, 44, 220), 12.0f);
+    draw->AddRect(rs_box_pos, rs_box_end, IM_COL32(50, 70, 105, 140), 12.0f);
+
+    draw->AddLine(ImVec2(rs_center.x, rs_box_pos.y + 10.0f), ImVec2(rs_center.x, rs_box_end.y - 10.0f), IM_COL32(70, 90, 120, 100));
+    draw->AddLine(ImVec2(rs_box_pos.x + 10.0f, rs_center.y), ImVec2(rs_box_end.x - 10.0f, rs_center.y), IM_COL32(70, 90, 120, 100));
+
+    draw->AddCircle(rs_center, max_r, IM_COL32(0, 112, 209, 140), 32, 1.5f);
+
+    float rs_dz_r = max_r * deadzone;
+    draw->AddCircleFilled(rs_center, rs_dz_r, IM_COL32(255, 171, 0, 35));
+    draw->AddCircle(rs_center, rs_dz_r, IM_COL32(255, 171, 0, 140), 24, 1.2f);
+
+    float rs_norm_x = static_cast<float>(state.right_stick_x) / 32767.0f;
+    float rs_norm_y = static_cast<float>(state.right_stick_y) / 32767.0f;
+    float rs_mag = std::sqrt(rs_norm_x * rs_norm_x + rs_norm_y * rs_norm_y);
+    bool rs_in_dz = (rs_mag <= deadzone);
+
+    ImVec2 rs_dot(rs_center.x + rs_norm_x * max_r, rs_center.y + rs_norm_y * max_r);
+    draw->AddCircleFilled(rs_dot, 6.0f, rs_in_dz ? IM_COL32(0, 230, 118, 255) : IM_COL32(0, 240, 255, 255));
+    draw->AddCircle(rs_dot, 8.0f, IM_COL32(255, 255, 255, 180), 16, 1.5f);
+
+    if (font_small_) ImGui::PushFont(font_small_);
+    draw->AddText(ImVec2(rs_box_pos.x + 6.0f, rs_box_end.y + 6.0f), IM_COL32(200, 220, 245, 255), "Stick Derecho (R3)");
+    draw->AddText(ImVec2(rs_box_pos.x + 6.0f, rs_box_end.y + 22.0f),
+        rs_in_dz ? IM_COL32(0, 230, 118, 255) : IM_COL32(0, 240, 255, 255),
+        std::format("X: {:+.2f}  Y: {:+.2f}", rs_norm_x, rs_norm_y).c_str());
+    if (font_small_) ImGui::PopFont();
+
+    // ── Triggers L2 / R2 gauges ──
+    float trig_x = modal_pos.x + 390.0f;
+    float trig_w = 270.0f;
+    float trig_h = 16.0f;
+
+    if (font_small_) ImGui::PushFont(font_small_);
+    draw->AddText(ImVec2(trig_x, cur_y), IM_COL32(180, 200, 230, 255), std::format("Gatillo L2: {} / 255", state.l2).c_str());
+    draw->AddRectFilled(ImVec2(trig_x, cur_y + 18.0f), ImVec2(trig_x + trig_w, cur_y + 18.0f + trig_h), IM_COL32(20, 30, 50, 255), 4.0f);
+    draw->AddRectFilled(ImVec2(trig_x, cur_y + 18.0f), ImVec2(trig_x + trig_w * (state.l2 / 255.0f), cur_y + 18.0f + trig_h), IM_COL32(0, 240, 255, 255), 4.0f);
+
+    draw->AddText(ImVec2(trig_x, cur_y + 44.0f), IM_COL32(180, 200, 230, 255), std::format("Gatillo R2: {} / 255", state.r2).c_str());
+    draw->AddRectFilled(ImVec2(trig_x, cur_y + 62.0f), ImVec2(trig_x + trig_w, cur_y + 62.0f + trig_h), IM_COL32(20, 30, 50, 255), 4.0f);
+    draw->AddRectFilled(ImVec2(trig_x, cur_y + 62.0f), ImVec2(trig_x + trig_w * (state.r2 / 255.0f), cur_y + 62.0f + trig_h), IM_COL32(0, 240, 255, 255), 4.0f);
+
+    if (state.has_gyro) {
+        draw->AddText(ImVec2(trig_x, cur_y + 90.0f), IM_COL32(160, 220, 255, 255),
+            std::format("Giroscopio: X={:+.1f} Y={:+.1f} Z={:+.1f}", state.gyro_x, state.gyro_y, state.gyro_z).c_str());
+    } else {
+        draw->AddText(ImVec2(trig_x, cur_y + 90.0f), IM_COL32(120, 140, 170, 200), "Giroscopio: No activo");
+    }
+    if (font_small_) ImGui::PopFont();
+
+    // ── Button Status Pills ──
+    float pills_y = cur_y + stick_box_size + 48.0f;
+    float px = modal_pos.x + 40.0f;
+    float py = pills_y;
+    float pill_w = 68.0f;
+    float pill_h = 28.0f;
+    float p_gap = 10.0f;
+
+    auto draw_btn_pill = [&](const char* label, bool pressed) {
+        ImVec2 p0(px, py);
+        ImVec2 p1(px + pill_w, py + pill_h);
+        draw->AddRectFilled(p0, p1, pressed ? IM_COL32(0, 240, 255, 240) : IM_COL32(20, 30, 50, 200), 6.0f);
+        draw->AddRect(p0, p1, pressed ? IM_COL32(255, 255, 255, 255) : IM_COL32(60, 80, 110, 150), 6.0f);
+        if (font_small_) ImGui::PushFont(font_small_);
+        ImVec2 txt_sz = ImGui::CalcTextSize(label);
+        draw->AddText(ImVec2(p0.x + (pill_w - txt_sz.x) * 0.5f, p0.y + (pill_h - txt_sz.y) * 0.5f),
+            pressed ? IM_COL32(10, 15, 30, 255) : IM_COL32(200, 220, 255, 255), label);
+        if (font_small_) ImGui::PopFont();
+        px += pill_w + p_gap;
+    };
+
+    // Row 1
+    draw_btn_pill("Arriba", state.dpad_up);
+    draw_btn_pill("Abajo", state.dpad_down);
+    draw_btn_pill("Izq", state.dpad_left);
+    draw_btn_pill("Der", state.dpad_right);
+    draw_btn_pill("Sur", state.cross);
+    draw_btn_pill("Este", state.circle);
+    draw_btn_pill("Oeste", state.square);
+    draw_btn_pill("Norte", state.triangle);
+
+    // Row 2
+    px = modal_pos.x + 40.0f;
+    py += pill_h + p_gap;
+
+    draw_btn_pill("L1", state.l1);
+    draw_btn_pill("R1", state.r1);
+    draw_btn_pill("L3", state.l3);
+    draw_btn_pill("R3", state.r3);
+    draw_btn_pill("Vista", state.share);
+    draw_btn_pill("Menu", state.options);
+    draw_btn_pill("Guia", state.ps_btn);
+    draw_btn_pill("Touch", state.touchpad_btn);
+
+    // Close button
+    float close_w = 160.0f;
+    float close_h = 38.0f;
+    ImVec2 close_pos(modal_pos.x + (modal_w - close_w) * 0.5f, modal_end.y - 54.0f);
+    ImGui::SetCursorScreenPos(close_pos);
+    ImGui::PushStyleColor(ImGuiCol_Button, colors::kPrimary);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
+    if (ImGui::Button("Cerrar Test##btn_close_ctrl_test", ImVec2(close_w, close_h))) {
+        show_controller_test_modal_ = false;
+    }
+    ImGui::PopStyleColor(2);
 }
 
 // ─── Cleanup ─────────────────────────────────────────────

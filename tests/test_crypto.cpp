@@ -120,6 +120,29 @@ void test_aes_gcm_rpcrypt() {
     printf("PASSED\n"); fflush(stdout);
 }
 
+void test_log_masking() {
+    printf("[TEST] Testing Log Obfuscation (mask_secret)... ");
+    fflush(stdout);
+
+    // Short secret (<= 8 chars) -> "****"
+    assert(portal::mask_secret("1234") == "****");
+    assert(portal::mask_secret("12345678") == "****");
+
+    // Normal secret (> 8 chars) -> first 4 + "****" + last 4
+    assert(portal::mask_secret("123456789") == "1234****6789");
+    assert(portal::mask_secret("0123456789abcdef") == "0123****cdef");
+    assert(portal::mask_secret("AA:BB:CC:DD:EE:FF") == "AA:B****E:FF");
+    assert(portal::mask_secret("AABBCCDDEEFF") == "AABB****EEFF");
+
+    // Vector of bytes (e.g. 16-byte rp_key = 32 hex chars)
+    portal::ByteBuffer sample_key = {0x12, 0x34, 0x56, 0x78, 0x00, 0x00, 0x00, 0x00,
+                                     0x00, 0x00, 0x00, 0x00, 0xab, 0xcd, 0xef, 0x99};
+    std::string masked_hex = portal::mask_secret(sample_key);
+    assert(masked_hex == "1234****ef99");
+
+    printf("PASSED\n"); fflush(stdout);
+}
+
 int main() {
     printf("========================================\n");
     printf("  Ludelo Unit Tests: Cryptography       \n");
@@ -130,6 +153,7 @@ int main() {
         test_secure_random();
         test_ecdh_key_exchange();
         test_aes_gcm_rpcrypt();
+        test_log_masking();
         printf("\n>>> ALL CRYPTO TESTS PASSED SUCCESSFULLY! <<<\n");
         fflush(stdout);
         return 0;

@@ -103,6 +103,22 @@ void test_mixed_profile_json_parsing() {
     assert(prof2.plus_status == "active");
     assert(prof2.avatar_url == "https://example.com/direct_avatar.png");
 
+    // Flat root JSON format (no "profile" wrapper):
+    std::string flat_json = R"({
+        "onlineId": "player_three",
+        "accountId": "1122334455667788",
+        "plus": 1,
+        "avatarUrls": [
+            { "avatarUrl": "https://example.com/flat_avatar.png" }
+        ]
+    })";
+    auto prof_flat = portal::auth::PSNAuth::parse_profile_json(flat_json);
+    assert(prof_flat.online_id == "player_three");
+    assert(prof_flat.account_id == 1122334455667788ULL);
+    assert(!prof_flat.account_id_b64.empty());
+    assert(prof_flat.plus_status == "active");
+    assert(prof_flat.avatar_url == "https://example.com/flat_avatar.png");
+
     // Robustness test: completely malformed or missing fields should NOT crash
     std::string malformed = "{ \"profile\": \"not_an_object\" }";
     auto prof3 = portal::auth::PSNAuth::parse_profile_json(malformed, 55555ULL, "b64test==");

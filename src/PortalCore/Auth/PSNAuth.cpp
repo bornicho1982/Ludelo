@@ -269,69 +269,95 @@ PSNProfile PSNAuth::parse_profile_json(const std::string& json_str, uint64_t kno
     try {
         auto json = nlohmann::json::parse(json_str);
 
-        if (json.contains("profile") && json["profile"].is_object()) {
-            const auto& prof = json["profile"];
-            
-            // onlineId (can be string or number)
-            if (prof.contains("onlineId")) {
+        const auto& prof = (json.contains("profile") && json["profile"].is_object()) ? json["profile"] : json;
+        
+        // onlineId (can be string or number)
+        for (const char* k : {"onlineId", "online_id"}) {
+            if (prof.contains(k)) {
                 try {
-                    if (prof["onlineId"].is_string()) {
-                        profile.online_id = prof["onlineId"].get<std::string>();
-                    } else if (prof["onlineId"].is_number()) {
-                        profile.online_id = std::to_string(prof["onlineId"].get<uint64_t>());
+                    if (prof[k].is_string()) {
+                        profile.online_id = prof[k].get<std::string>();
+                    } else if (prof[k].is_number()) {
+                        profile.online_id = std::to_string(prof[k].get<uint64_t>());
                     }
+                    if (!profile.online_id.empty()) break;
                 } catch (const nlohmann::json::exception& e) {
                     spdlog::warn("parse_profile_json: parsing onlineId warning: {}", e.what());
                 }
             }
+        }
 
-            // avatarUrls (array of objects or strings)
-            if (prof.contains("avatarUrls") && prof["avatarUrls"].is_array() && !prof["avatarUrls"].empty()) {
+        // avatarUrls / avatars (array of objects or strings)
+        for (const char* k : {"avatarUrls", "avatars"}) {
+            if (prof.contains(k) && prof[k].is_array() && !prof[k].empty()) {
                 try {
-                    const auto& first_av = prof["avatarUrls"][0];
-                    if (first_av.is_object() && first_av.contains("avatarUrl") && first_av["avatarUrl"].is_string()) {
-                        profile.avatar_url = first_av["avatarUrl"].get<std::string>();
-                    } else if (first_av.is_string()) {
-                        profile.avatar_url = first_av.get<std::string>();
+                    // Try to pick the best avatar (prefer large or first valid)
+                    for (const auto& av_item : prof[k]) {
+                        if (av_item.is_object()) {
+                            if (av_item.contains("avatarUrl") && av_item["avatarUrl"].is_string()) {
+                                profile.avatar_url = av_item["avatarUrl"].get<std::string>();
+                                break;
+                            } else if (av_item.contains("url") && av_item["url"].is_string()) {
+                                profile.avatar_url = av_item["url"].get<std::string>();
+                                break;
+                            }
+                        } else if (av_item.is_string()) {
+                            profile.avatar_url = av_item.get<std::string>();
+                            break;
+                        }
                     }
                 } catch (const nlohmann::json::exception& e) {
                     spdlog::warn("parse_profile_json: parsing avatarUrls warning: {}", e.what());
                 }
             }
-            if (profile.avatar_url.empty() && prof.contains("avatarUrl")) {
-                try {
-                    if (prof["avatarUrl"].is_string()) {
-                        profile.avatar_url = prof["avatarUrl"].get<std::string>();
-                    }
-                } catch (...) {}
+            if (!profile.avatar_url.empty()) break;
+        }
+        if (profile.avatar_url.empty()) {
+            for (const char* k : {"avatarUrl", "avatar"}) {
+                if (prof.contains(k)) {
+                    try {
+                        if (prof[k].is_string()) {
+                            profile.avatar_url = prof[k].get<std::string>();
+                            if (!profile.avatar_url.empty()) break;
+                        }
+                    } catch (...) {}
+                }
             }
+        }
 
-            // plus / is_plus (can be number 0/1, bool, or string)
-            if (prof.contains("plus")) {
+        // plus / is_plus (can be number 0/1, bool, or string)
+        for (const char* k : {"plus", "is_plus"}) {
+            if (prof.contains(k)) {
                 try {
-                    if (prof["plus"].is_number()) {
-                        profile.plus_status = (prof["plus"].get<int>() != 0) ? "active" : "none";
-                    } else if (prof["plus"].is_string()) {
-                        profile.plus_status = prof["plus"].get<std::string>();
-                    } else if (prof["plus"].is_boolean()) {
-                        profile.plus_status = prof["plus"].get<bool>() ? "active" : "none";
+                    if (prof[k].is_number()) {
+                        profile.plus_status = (prof[k].get<int>() != 0) ? "active" : "none";
+                    } else if (prof[k].is_string()) {
+                        profile.plus_status = prof[k].get<std::string>();
+                    } else if (prof[k].is_boolean()) {
+                        profile.plus_status = prof[k].get<bool>() ? "active" : "none";
                     }
+                    break;
                 } catch (const nlohmann::json::exception& e) {
                     spdlog::warn("parse_profile_json: parsing plus warning: {}", e.what());
                     profile.plus_status = "none";
                 }
             }
+        }
 
-            // accountId in profile (can be number or string)
-            if (profile.account_id == 0 && prof.contains("accountId")) {
-                try {
-                    if (prof["accountId"].is_number()) {
-                        profile.account_id = prof["accountId"].get<uint64_t>();
-                    } else if (prof["accountId"].is_string()) {
-                        profile.account_id = std::stoull(prof["accountId"].get<std::string>());
+        // accountId in profile (can be number or string)
+        if (profile.account_id == 0) {
+            for (const char* k : {"accountId", "account_id"}) {
+                if (prof.contains(k)) {
+                    try {
+                        if (prof[k].is_number()) {
+                            profile.account_id = prof[k].get<uint64_t>();
+                        } else if (prof[k].is_string()) {
+                            profile.account_id = std::stoull(prof[k].get<std::string>());
+                        }
+                        if (profile.account_id != 0) break;
+                    } catch (const nlohmann::json::exception& e) {
+                        spdlog::warn("parse_profile_json: parsing accountId warning: {}", e.what());
                     }
-                } catch (const nlohmann::json::exception& e) {
-                    spdlog::warn("parse_profile_json: parsing accountId warning: {}", e.what());
                 }
             }
         }

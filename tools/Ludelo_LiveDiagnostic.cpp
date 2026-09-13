@@ -195,12 +195,58 @@ void test_assets_integrity() {
     std::cout << "    [+] Tipografia oficial SFNS.ttf: " << (font_ok ? "OK" : "NO ENCONTRADA") << "\n";
 }
 
-int main() {
+void run_glass_to_glass_test() {
+    std::cout << "\n";
+    std::cout << "======================================================================\n";
+    std::cout << "          Ludelo - MODO DE MEDICION GLASS-TO-GLASS (LATENCIA)        \n";
+    std::cout << "======================================================================\n\n";
+    std::cout << "Instrucciones para medicion de latencia punta a punta (Glass-to-Glass):\n";
+    std::cout << " 1. Coloca este monitor justo al lado del televisor/pantalla de tu PS5.\n";
+    std::cout << " 2. Inicia streaming en Ludelo en tu PC.\n";
+    std::cout << " 3. Apunta la camara de tu smartphone en modo 'Camara Lenta' (240 FPS)\n";
+    std::cout << "    enfocando ambas pantallas a la vez.\n";
+    std::cout << " 4. Presiona un boton del mando (o mueve el stick) y graba la respuesta.\n";
+    std::cout << " 5. Reproduce fotograma a fotograma en el movil y cuenta los frames:\n";
+    std::cout << "    Latencia (ms) = (Frames transcurridos / 240.0) * 1000.0 ms.\n\n";
+    std::cout << "[*] Iniciando reloj de alta precision (std::chrono::high_resolution_clock)...\n";
+    std::cout << "[*] Presiona Ctrl+C para salir.\n\n";
+
+    auto t0 = std::chrono::high_resolution_clock::now();
+    uint64_t frame_count = 0;
+
+    for (int i = 0; i < 5000; ++i) { // Run for ~5 seconds when called non-interactively or until aborted
+        auto now = std::chrono::high_resolution_clock::now();
+        auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(now - t0).count();
+        uint64_t sec = elapsed_us / 1000000ULL;
+        uint64_t ms = (elapsed_us % 1000000ULL) / 1000ULL;
+        uint64_t us = elapsed_us % 1000ULL;
+
+        std::cout << "\r >>> [" 
+                  << std::setw(3) << std::setfill('0') << sec << "s "
+                  << std::setw(3) << std::setfill('0') << ms << "ms "
+                  << std::setw(3) << std::setfill('0') << us << "us]  Frame #" 
+                  << std::setw(8) << std::setfill(' ') << ++frame_count 
+                  << "  <<<" << std::flush;
+
+        std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    }
+    std::cout << "\n[OK] Prueba Glass-to-Glass completada.\n";
+}
+
+int main(int argc, char** argv) {
     try {
         #ifdef _WIN32
         WSADATA wsa;
         WSAStartup(MAKEWORD(2, 2), &wsa);
         #endif
+
+        if (argc > 1 && (std::string(argv[1]) == "--glass-to-glass" || std::string(argv[1]) == "-g")) {
+            run_glass_to_glass_test();
+            #ifdef _WIN32
+            WSACleanup();
+            #endif
+            return 0;
+        }
 
         portal::init_logging(spdlog::level::warn);
         print_banner();

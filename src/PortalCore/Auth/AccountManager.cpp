@@ -1,6 +1,7 @@
 // Archivo: src/PortalCore/Auth/AccountManager.cpp
 #include "AccountManager.h"
 #include "PortalCore/Auth/Keychain.h"
+#include "PortalCore/Net/HttpClient.h"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -55,6 +56,25 @@ Result<void> AccountManager::add_account_from_code(const std::string& auth_code)
     }
     spdlog::info("AccountManager::add_account_from_code: fetch_profile OK, online_id='{}', account_id={}", 
         profile.online_id, profile.account_id_b64);
+
+    if (!profile.avatar_url.empty()) {
+        try {
+            const char* appdata = getenv("APPDATA");
+            std::filesystem::path av_dir = appdata ? (std::filesystem::path(appdata) / "Ludelo") : std::filesystem::path("Ludelo");
+            std::filesystem::create_directories(av_dir);
+            std::filesystem::path av_file = av_dir / "avatar.png";
+
+            portal::net::HttpClient dl_client;
+            auto dl_res = dl_client.get(profile.avatar_url);
+            if (dl_res && !dl_res->body.empty()) {
+                std::ofstream ofs(av_file, std::ios::binary);
+                ofs.write(dl_res->body.data(), dl_res->body.size());
+                spdlog::info("AccountManager: avatar downloaded to {} ({} bytes)", av_file.string(), dl_res->body.size());
+            }
+        } catch (const std::exception& e) {
+            spdlog::warn("AccountManager: failed downloading avatar: {}", e.what());
+        }
+    }
 
     PSNAccount acc;
     acc.account_id = (profile.account_id != 0) ? profile.account_id : tokens_res->account_id;

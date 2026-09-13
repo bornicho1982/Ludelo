@@ -124,6 +124,26 @@ bool SessionManager::on_chiaki_video_sample(uint8_t *buf, size_t buf_size, int32
     auto* self = static_cast<SessionManager*>(user);
     if (!self || !buf || buf_size == 0) return false;
 
+#ifdef _WIN32
+    static thread_local bool s_thread_priority_set = false;
+    if (!s_thread_priority_set) {
+        SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+        HMODULE hAvrt = LoadLibraryA("avrt.dll");
+        if (hAvrt) {
+            typedef HANDLE (WINAPI *AvSetMmThreadCharacteristicsW_fn)(LPCWSTR, LPDWORD);
+            auto pfnAvSet = reinterpret_cast<AvSetMmThreadCharacteristicsW_fn>(GetProcAddress(hAvrt, "AvSetMmThreadCharacteristicsW"));
+            if (pfnAvSet) {
+                DWORD task_idx = 0;
+                HANDLE mm_h = pfnAvSet(L"Games", &task_idx);
+                if (mm_h) {
+                    spdlog::info("[SessionManager] Video receiver thread elevated to MMCSS 'Games' & THREAD_PRIORITY_HIGHEST");
+                }
+            }
+        }
+        s_thread_priority_set = true;
+    }
+#endif
+
     if (frames_lost > 0) {
         spdlog::debug("[SessionManager] Video sample: {} frames lost, recovered={}", frames_lost, frame_recovered);
     }
@@ -182,6 +202,11 @@ VoidResult SessionManager::connect_local(const portal::discovery::RegisteredCons
     }
     (void)m_audio_decoder->init(48000, 2);
 
+    spdlog::info("[SessionManager] Video stream pipeline ready: codec={}, hw_decoder='{}', threads=4, target_fps={}",
+        (codec == VideoCodec::H265 ? "H.265 (HEVC)" : "H.264 (AVC)"),
+        m_video_decoder->get_hw_device_type(),
+        (config.fps == FrameRate::FPS60 ? 60 : 30));
+
     // Setup Chiaki Logging
     chiaki_log_init(&m_chiaki_log, CHIAKI_LOG_ALL, on_chiaki_log, this);
 
@@ -230,6 +255,9 @@ VoidResult SessionManager::connect_local(const portal::discovery::RegisteredCons
         set_state(SessionState::Error);
         return std::unexpected(Error(ErrorCode::RegistrationError, "Console has no rp_key. Please re-register the console."));
     }
+
+    spdlog::info("[SessionManager] Connecting to {} (rp_auth={}, rp_key={})",
+        host, portal::mask_secret(auth_str), portal::mask_secret(console.rp_key));
 
     // Video Profile
     ChiakiVideoResolutionPreset res_preset = CHIAKI_VIDEO_RESOLUTION_PRESET_1080p;

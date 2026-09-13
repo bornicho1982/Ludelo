@@ -19,7 +19,7 @@ static bool iequals(std::string_view a, std::string_view b) {
 
 Result<void> ConsoleRegistry::register_console(const DiscoveredConsole& console, const portal::ByteBuffer& rp_key, const std::string& credentials) {
     auto logger = spdlog::get("portal");
-    if (logger) logger->info("Registering console {} at {}", console.host_id, console.address);
+    if (logger) logger->info("Registering console {} at {}", portal::mask_secret(console.host_id), console.address);
 
     RegisteredConsole reg;
     reg.host_name = console.host_name.empty() ? "PlayStation 5" : console.host_name;

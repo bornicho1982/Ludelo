@@ -276,6 +276,33 @@ inline void init_logging(spdlog::level::level_enum level = spdlog::level::info, 
     spdlog::set_default_logger(logger);
 }
 
+// ─── Log Hygiene / Obfuscation ───────────────────────────
+/// Obfuscates sensitive strings (keys, tokens, nonces, MACs, BSSIDs)
+/// Keeps first 4 and last 4 chars, replacing the middle with "****".
+/// If length <= 8, returns "****".
+inline std::string mask_secret(std::string_view s) {
+    if (s.size() <= 8) return "****";
+    return std::string(s.substr(0, 4)) + "****" + std::string(s.substr(s.size() - 4));
+}
+
+inline std::string mask_secret(const std::vector<uint8_t>& bytes) {
+    if (bytes.empty()) return "<empty>";
+    std::string hex;
+    for (uint8_t b : bytes) {
+        hex += std::format("{:02x}", b);
+    }
+    return mask_secret(hex);
+}
+
+inline std::string mask_secret(const uint8_t* data, size_t len) {
+    if (!data || len == 0) return "<empty>";
+    std::string hex;
+    for (size_t i = 0; i < len; ++i) {
+        hex += std::format("{:02x}", data[i]);
+    }
+    return mask_secret(hex);
+}
+
 namespace auth {}
 namespace discovery {}
 namespace stream {}

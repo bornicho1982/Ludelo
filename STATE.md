@@ -56,3 +56,12 @@
 - [x] Onboarding: pantalla de bienvenida con login NPSSO al primer arranque sin cuenta.
 - [x] Registro PS5 integrado con Chiaki Core (chiaki_regist_start / stop / fini), sustituyendo implementación manual (fix 403 80108bff).
 - [x] Persistencia automática en ConsoleRegistry con rp_key y rp_regist_key vía DPAPI y transición inmediata a tarjeta de consola activa ("CONECTAR AHORA").
+- [x] Limitador de FPS y VSync (present mode FIFO) en render loop: 60 FPS en menús activos, 20 FPS en reposo/minimizado, y cap al framerate de stream durante sesión (GPU 100% resuelto).
+- [x] Deadzone radial configurable de sticks (default 0.15) en ControllerManager antes de enviar state a Chiaki, slider en Ajustes > Mando y log de confirmación (drift resuelto).
+- [x] Higiene de logs de seguridad: ofuscación obligatoria (primeros/últimos 4 caracteres + ****) en rp_key, rp_auth, RP-Nonce y MAC/host_id de la consola en todo log output y suite de tests.
+- [x] Login PSN automático: reemplazo completo del flujo manual (eliminadas instrucciones de F12/cookies/NPSSO) por WebView2 embebido modal con captura de redirect code, descarga silenciosa oficial del bootstrapper Evergreen si falta runtime, fallback modal de navegador ("copia la URL completa") sin cookies, descarga inmediata de avatar PNG y visualización de online_id real en la tarjeta de perfil del dashboard.
+- [x] A1: Wake-on-LAN vía chiaki_discovery_wakeup() con reintentos a 10s/20s, timeout 30s, botón 'Despertar' separado y banner de ayuda en fallo.
+- [x] A2: Modal de PIN flexible (1-8 dígitos), toggle 'Mi consola no pide PIN' (PIN 0), textos de ayuda y feedback de PIN rechazado.
+- [x] A3: Paridad de streaming con fast_bilinear, cola de frames cero lag, prioridad MMCSS (THREAD_PRIORITY_HIGHEST / Games) y modo --glass-to-glass en diagnóstico.
+- [x] A4: Paridad de mando con carga de gamecontrollerdb.txt, soporte de giroscopio configurable, fallback de touchpad y modal de test interactivo de sticks/botones.
+- [x] A5: UX de errores WebView2 con detección DOM de 'Something went wrong', redirección automática a fallback y toast interactivo de cancelación [Reintentar]/[Usar navegador].

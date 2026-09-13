@@ -116,8 +116,8 @@ int main(int argc, char* argv[]) {
                 if (!all.empty()) {
                     console = all.front();
                     console_found = true;
-                    spdlog::info("Loaded registered console: {} @ {} (rp_auth len={}, rp_key len={})",
-                        console.host_name, console.address, console.rp_auth.size(), console.rp_key.size());
+                    spdlog::info("Loaded registered console: {} @ {} (rp_auth={}, rp_key={})",
+                        console.host_name, console.address, portal::mask_secret(console.rp_auth), portal::mask_secret(console.rp_key));
                 }
             }
             if (!console_found) {

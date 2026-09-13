@@ -108,10 +108,13 @@ private:
     void draw_status_bar();
     void draw_toast_notification();
     void draw_onboarding();
+    void draw_browser_fallback_modal();
     void show_toast(const std::string& message, float duration = 3.5f);
 
     void probe_consoles_background();
     void wake_and_connect(const portal::discovery::RegisteredConsole& console);
+    void wake_console_only(const portal::discovery::RegisteredConsole& console);
+    void draw_controller_test_modal();
 
     // Cleanup
     void cleanup_vulkan();
@@ -176,6 +179,7 @@ private:
     bool load_texture(const std::string& name, const std::string& filepath);
     void load_all_icons();
     void destroy_textures();
+    void destroy_texture(const std::string& name);
     ImTextureID get_texture(const std::string& name);
 
     // Dynamic Video Streaming Surface
@@ -227,16 +231,34 @@ private:
     bool remember_login_pin_ = true;
     std::string target_login_console_host_id_;
 
+    // Browser OAuth Fallback Modal (when WebView2 is not available)
+    bool show_browser_fallback_modal_ = false;
+    char browser_fallback_url_input_[2048] = {'\0'};
+
     // Background probing & Wakeup
     float last_probe_time_ = 0.0f;
     std::atomic<bool> is_probing_{false};
     std::atomic<bool> is_waking_{false};
     std::string waking_status_text_;
+    int waking_attempt_ = 1;
+    bool wake_hint_visible_ = false;
     std::vector<portal::discovery::DiscoveredConsole> unbound_consoles_;
+
+    // PIN registration options
+    bool no_pin_needed_ = false;
+
+    // Controller Test Modal
+    bool show_controller_test_modal_ = false;
+
+    // Login cancelled action prompt
+    bool login_cancelled_prompt_visible_ = false;
 
     // Streaming Fullscreen & HUD Overlay Auto-hide
     float last_mouse_activity_time_ = 0.0f;
     bool stream_hud_visible_ = true;
+
+    // Frame limiter & idle activity tracking
+    std::chrono::steady_clock::time_point last_user_activity_ = std::chrono::steady_clock::now();
 
     // Windows 11 Mica backdrop state
     bool mica_active_ = false;

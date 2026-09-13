@@ -185,44 +185,8 @@ call :generate_protos
 if !ERRORLEVEL! neq 0 exit /b !ERRORLEVEL!
 
 :: ── [1/4] Compilar Chiaki Core (C) ───────────────────────
-set "CHIAKI_OBJ_DIR=%BUILD_DIR%\obj_chiaki"
-if not exist "!CHIAKI_OBJ_DIR!" mkdir "!CHIAKI_OBJ_DIR!"
-
-echo [1/4] Compilando motor Chiaki Core (nanopb + gf-complete + jerasure + chiaki C)...
-set CHIAKI_INCLUDES=/I "%PROJECT_ROOT%\src\PortalCore\Chiaki\include" /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\nanopb" /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\jerasure\include" /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\gf-complete\include" /I "%PROJECT_ROOT%\third_party\ffmpeg\include"
-
-:: Detectar OpenSSL (buscar en ubicaciones comunes)
-set "OPENSSL_INC="
-set "OPENSSL_LIB="
-if exist "C:\Program Files\OpenSSL-Win64\include" (
-    set "OPENSSL_INC=/I "C:\Program Files\OpenSSL-Win64\include""
-    set "OPENSSL_LIB=/LIBPATH:"C:\Program Files\OpenSSL-Win64\lib\VC\x64\MD""
-)
-if exist "C:\Program Files\OpenSSL\include" (
-    set "OPENSSL_INC=/I "C:\Program Files\OpenSSL\include""
-    set "OPENSSL_LIB=/LIBPATH:"C:\Program Files\OpenSSL\lib\VC\x64\MD""
-)
-
-set "CHIAKI_CFLAGS=/nologo /TC /O2 /MP /W3 /D_CRT_SECURE_NO_WARNINGS /D_WIN32 /DWIN32_LEAN_AND_MEAN /DPB_C99_STATIC_ASSERT /wd4244 /wd4267 /wd4018 /wd4133 /wd4090"
-
-cl !CHIAKI_CFLAGS! !CHIAKI_INCLUDES! !OPENSSL_INC! /c /Fo"!CHIAKI_OBJ_DIR!/" ^
-   "%PROJECT_ROOT%\src\PortalCore\Chiaki\nanopb\*.c" ^
-   "%PROJECT_ROOT%\src\PortalCore\Chiaki\gf-complete\src\*.c" ^
-   "%PROJECT_ROOT%\src\PortalCore\Chiaki\jerasure\src\*.c" ^
-   "%PROJECT_ROOT%\src\PortalCore\Chiaki\src\*.c" ^
-   "%PROJECT_ROOT%\src\PortalCore\Chiaki\src\remote\remote_stubs.c"
-
-if !ERRORLEVEL! neq 0 (
-    echo.
-    echo [ERROR] Fallo la compilacion de objetos Chiaki Core.
-    exit /b 1
-)
-
-lib /NOLOGO /OUT:"%BUILD_DIR%\chiaki.lib" "!CHIAKI_OBJ_DIR!\*.obj"
-if !ERRORLEVEL! neq 0 (
-    echo [ERROR] Fallo la creacion de chiaki.lib.
-    exit /b 1
-)
+call :build_chiaki_core
+if !ERRORLEVEL! neq 0 exit /b !ERRORLEVEL!
 
 :: ── [2/4] Compilar unidades C++23 ────────────────────────
 echo.
@@ -378,11 +342,16 @@ set INCLUDES=/I "%PROJECT_ROOT%\src" ^
  /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\include" ^
  !OPENSSL_INC!
 
+if not exist "%BUILD_DIR%\chiaki.lib" (
+    call :build_chiaki_core
+    if !ERRORLEVEL! neq 0 exit /b !ERRORLEVEL!
+)
+
 set "LIBPATHS_T=/LIBPATH:"%BUILD_DIR%""
 if defined OPENSSL_LIB set "LIBPATHS_T=!LIBPATHS_T! !OPENSSL_LIB!"
 
 set "CFLAGS=/nologo /std:c++latest /EHsc /utf-8 /O2 /D_CRT_SECURE_NO_WARNINGS /D_WINSOCK_DEPRECATED_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /DNOMINMAX"
-set "COMMON_LIBS=libcrypto.lib libssl.lib crypt32.lib shell32.lib ws2_32.lib hid.lib setupapi.lib iphlpapi.lib bcrypt.lib"
+set "COMMON_LIBS=chiaki.lib libcrypto.lib libssl.lib crypt32.lib shell32.lib ws2_32.lib hid.lib setupapi.lib iphlpapi.lib bcrypt.lib"
 
 set "TESTS_OBJ_DIR=%BUILD_DIR%\obj_tests"
 if not exist "!TESTS_OBJ_DIR!" mkdir "!TESTS_OBJ_DIR!"
@@ -531,12 +500,18 @@ exit /b 0
 :build_diag
 echo [DIAG] Compilando Ludelo Live Diagnostic Tool...
 
+if not exist "%BUILD_DIR%\chiaki.lib" (
+    call :build_chiaki_core
+    if !ERRORLEVEL! neq 0 exit /b !ERRORLEVEL!
+)
+
 set "DIAG_OBJ_DIR=%BUILD_DIR%\obj_diag"
 if not exist "!DIAG_OBJ_DIR!" mkdir "!DIAG_OBJ_DIR!"
 
-set "DIAG_INC=/I "%PROJECT_ROOT%\src" /I "%PROJECT_ROOT%\third_party\spdlog\include" /I "%PROJECT_ROOT%\third_party\json\single_include" /I "%PROJECT_ROOT%\third_party\webview2\build\native\include""
+set "DIAG_INC=/I "%PROJECT_ROOT%\src" /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\include" /I "%PROJECT_ROOT%\third_party\spdlog\include" /I "%PROJECT_ROOT%\third_party\json\single_include" /I "%PROJECT_ROOT%\third_party\webview2\build\native\include""
 if defined OPENSSL_INC set "DIAG_INC=!DIAG_INC! !OPENSSL_INC!"
-if defined OPENSSL_LIB set "DIAG_LIBPATHS=!OPENSSL_LIB!"
+set "DIAG_LIBPATHS=/LIBPATH:"%BUILD_DIR%""
+if defined OPENSSL_LIB set "DIAG_LIBPATHS=!DIAG_LIBPATHS! !OPENSSL_LIB!"
 
 cl /nologo /std:c++latest /EHsc /utf-8 /O2 ^
    !DIAG_INC! ^
@@ -546,7 +521,7 @@ cl /nologo /std:c++latest /EHsc /utf-8 /O2 ^
    "%PROJECT_ROOT%\src\PortalCore\Discovery\DDPDiscovery.cpp" ^
    "%PROJECT_ROOT%\src\PortalCore\Net\UDPSocket.cpp" ^
    "%PROJECT_ROOT%\src\PortalCore\Input\DualSenseHID.cpp" ^
-   /link !DIAG_LIBPATHS! ws2_32.lib hid.lib setupapi.lib iphlpapi.lib
+   /link !DIAG_LIBPATHS! chiaki.lib libcrypto.lib libssl.lib crypt32.lib shell32.lib bcrypt.lib ws2_32.lib hid.lib setupapi.lib iphlpapi.lib
 
 if !ERRORLEVEL! equ 0 (
     echo [OK] bin\Ludelo_LiveDiagnostic.exe compilado exitosamente.
@@ -554,6 +529,37 @@ if !ERRORLEVEL! equ 0 (
     echo [ERROR] Fallo al compilar la herramienta de diagnostico.
 )
 exit /b !ERRORLEVEL!
+
+:: ============================================================================
+::  Subrutina: Compilar Chiaki Core (C)
+:: ============================================================================
+:build_chiaki_core
+set "CHIAKI_OBJ_DIR=%BUILD_DIR%\obj_chiaki"
+if not exist "!CHIAKI_OBJ_DIR!" mkdir "!CHIAKI_OBJ_DIR!"
+
+echo [CHIAKI] Compilando motor Chiaki Core (nanopb + gf-complete + jerasure + chiaki C)...
+set CHIAKI_INCLUDES=/I "%PROJECT_ROOT%\src\PortalCore\Chiaki\include" /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\nanopb" /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\jerasure\include" /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\gf-complete\include" /I "%PROJECT_ROOT%\third_party\ffmpeg\include"
+
+set "CHIAKI_CFLAGS=/nologo /TC /O2 /MP /W3 /D_CRT_SECURE_NO_WARNINGS /D_WIN32 /DWIN32_LEAN_AND_MEAN /DPB_C99_STATIC_ASSERT /wd4244 /wd4267 /wd4018 /wd4133 /wd4090"
+
+cl !CHIAKI_CFLAGS! !CHIAKI_INCLUDES! !OPENSSL_INC! /c /Fo"!CHIAKI_OBJ_DIR!/" ^
+   "%PROJECT_ROOT%\src\PortalCore\Chiaki\nanopb\*.c" ^
+   "%PROJECT_ROOT%\src\PortalCore\Chiaki\gf-complete\src\*.c" ^
+   "%PROJECT_ROOT%\src\PortalCore\Chiaki\jerasure\src\*.c" ^
+   "%PROJECT_ROOT%\src\PortalCore\Chiaki\src\*.c" ^
+   "%PROJECT_ROOT%\src\PortalCore\Chiaki\src\remote\remote_stubs.c"
+
+if !ERRORLEVEL! neq 0 (
+    echo [ERROR] Fallo la compilacion de objetos Chiaki Core.
+    exit /b 1
+)
+
+lib /NOLOGO /OUT:"%BUILD_DIR%\chiaki.lib" "!CHIAKI_OBJ_DIR!\*.obj"
+if !ERRORLEVEL! neq 0 (
+    echo [ERROR] Fallo la creacion de chiaki.lib.
+    exit /b 1
+)
+exit /b 0
 
 :: ============================================================================
 ::  Ayuda

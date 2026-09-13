@@ -236,7 +236,7 @@ Result<PS5RegistrationResult> PS5Protocol::register_with_pin(
 
     if (logger) {
         logger->info("[PS5Protocol] Registration succeeded via Chiaki Core! Host: {}, MAC: {}",
-            reg_res.host_name, reg_res.mac);
+            reg_res.host_name, portal::mask_secret(reg_res.mac));
     }
 
     return reg_res;
@@ -248,7 +248,7 @@ Result<PS5SessionInitResult> PS5Protocol::init_session(
     const std::string& regist_key
 ) {
     auto logger = spdlog::get("portal");
-    if (logger) logger->info("PS5Protocol: Initiating session with {}:{} using regist_key {}", host, port, regist_key);
+    if (logger) logger->info("PS5Protocol: Initiating session with {}:{} using regist_key {}", host, port, portal::mask_secret(regist_key));
 
     net::TCPSocket tcp;
     auto conn_res = tcp.connect(host, port, std::chrono::milliseconds(5000));

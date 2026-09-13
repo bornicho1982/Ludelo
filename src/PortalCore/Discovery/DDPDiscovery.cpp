@@ -6,6 +6,12 @@
 #include <sstream>
 #include <chrono>
 #include <algorithm>
+#include <cstdlib>
+
+extern "C" {
+#include <chiaki/discovery.h>
+#include <chiaki/log.h>
+}
 
 #ifdef _WIN32
 #include <iphlpapi.h>
@@ -137,7 +143,7 @@ Result<std::vector<DiscoveredConsole>> DDPDiscovery::search(int timeout_ms, cons
                     });
                     if (it == consoles.end()) {
                         spdlog::info("Discovered console: {} ({}, ID: {}, State: {}) at {}:{}",
-                            console.host_name, console.host_type, console.host_id,
+                            console.host_name, console.host_type, portal::mask_secret(console.host_id),
                             (int)console.state, console.address, console.port);
                         consoles.push_back(console);
                     } else {
@@ -188,60 +194,21 @@ ConsoleState DDPDiscovery::probe_console(const std::string& ip, uint16_t port, i
 }
 
 VoidResult DDPDiscovery::wake(const std::string& host, const std::string& rp_auth, bool is_ps5) {
-    spdlog::info("[DDPDiscovery] Sending Wake-on-LAN to {} (is_ps5: {})", host, is_ps5);
-
     uint64_t credential = 0;
-    std::string auth_clean = rp_auth;
-    if (auth_clean.size() == 16) {
-        std::string ascii_str;
-        for (size_t i = 0; i < 16; i += 2) {
-            std::string byte_hex = auth_clean.substr(i, 2);
-            ascii_str.push_back(static_cast<char>(std::stoul(byte_hex, nullptr, 16)));
-        }
-        try {
-            credential = std::stoull(ascii_str, nullptr, 16);
-        } catch (...) {
-            credential = 0;
-        }
-    } else if (!auth_clean.empty()) {
-        try {
-            credential = std::stoull(auth_clean, nullptr, 16);
-        } catch (...) {
-            credential = 0;
-        }
+    if (!rp_auth.empty()) {
+        credential = static_cast<uint64_t>(std::strtoull(rp_auth.c_str(), nullptr, 16));
+    }
+    spdlog::info("[DDPDiscovery] Sending Chiaki Wake-on-LAN to {} (credential: {}, is_ps5: {})",
+        host, portal::mask_secret(std::to_string(credential)), is_ps5);
+
+    // 1. Direct Unicast to target host via Chiaki Core
+    ChiakiErrorCode err1 = chiaki_discovery_wakeup(nullptr, nullptr, host.c_str(), credential, is_ps5);
+    if (err1 != CHIAKI_ERR_SUCCESS) {
+        spdlog::warn("[DDPDiscovery] chiaki_discovery_wakeup to host {} failed: {}", host, chiaki_error_string(err1));
     }
 
-    if (credential == 0) {
-        credential = 2062813029ULL; // Default 7af40765 in decimal
-    }
-
-    const char* proto_ver = is_ps5 ? "00030010" : "00020020";
-    std::string payload = std::format(
-        "WAKEUP * HTTP/1.1\n"
-        "client-type:vr\n"
-        "auth-type:R\n"
-        "model:w\n"
-        "app-type:r\n"
-        "user-credential:{}\n"
-        "device-discovery-protocol-version:{}\n\n",
-        credential, proto_ver
-    );
-
-    portal::net::UDPSocket sock;
-    (void)sock.bind(0);
-    (void)sock.set_broadcast(true);
-    std::span<const uint8_t> span_payload(reinterpret_cast<const uint8_t*>(payload.data()), payload.size());
-
-    uint16_t primary_port = is_ps5 ? 9302 : 987;
-    // Unicast to target host
-    (void)sock.send_to(host, primary_port, span_payload);
-    (void)sock.send_to(host, 987, span_payload);
-    (void)sock.send_to(host, 997, span_payload);
-    (void)sock.send_to(host, 9295, span_payload);
-
-    // Broadcast on local subnet
-    (void)sock.send_to("255.255.255.255", primary_port, span_payload);
-    (void)sock.send_to("255.255.255.255", 987, span_payload);
+    // 2. Broadcast to 255.255.255.255 as backup via Chiaki Core
+    (void)chiaki_discovery_wakeup(nullptr, nullptr, "255.255.255.255", credential, is_ps5);
 
     return {};
 }

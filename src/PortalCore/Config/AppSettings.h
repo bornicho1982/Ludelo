@@ -30,7 +30,8 @@ struct AppSettings {
     // ─── Input ───────────────────────────────────────────
     bool    haptics_enabled     = true;
     bool    adaptive_triggers   = true;
-    float   stick_deadzone      = 0.08f;  // 8% deadzone
+    float   stick_deadzone      = 0.15f;  // 15% radial deadzone (anti-drift)
+    bool    enable_gyro         = false;  // Experimental gyroscope motion control (default: off)
 
     // ─── PSN Login PIN (convenience) ─────────────────────
     bool    remember_login_pin  = true;

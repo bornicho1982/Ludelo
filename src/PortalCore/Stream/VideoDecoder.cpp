@@ -187,7 +187,7 @@ Result<DecodedFrame> VideoDecoder::decode(std::span<const uint8_t> nalu_data) {
             m_sws_ctx = sws_getContext(
                 width, height, src_fmt,
                 width, height, AV_PIX_FMT_RGBA,
-                SWS_BILINEAR | SWS_ACCURATE_RND | SWS_FULL_CHR_H_INT, nullptr, nullptr, nullptr
+                SWS_FAST_BILINEAR, nullptr, nullptr, nullptr
             );
             if (m_sws_ctx) {
                 int src_range = (output_frame->color_range == AVCOL_RANGE_JPEG) ? 1 : 0;

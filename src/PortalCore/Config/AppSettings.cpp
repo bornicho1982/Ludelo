@@ -57,6 +57,7 @@ Result<void> AppSettings::load(const std::filesystem::path& path) {
         JS_LOAD(j, haptics_enabled,     haptics_enabled);
         JS_LOAD(j, adaptive_triggers,   adaptive_triggers);
         JS_LOAD(j, stick_deadzone,      stick_deadzone);
+        JS_LOAD(j, enable_gyro,         enable_gyro);
         JS_LOAD(j, remember_login_pin,  remember_login_pin);
 
         // UI
@@ -107,6 +108,7 @@ Result<void> AppSettings::save(const std::filesystem::path& path) const {
         JS_SAVE(j, haptics_enabled);
         JS_SAVE(j, adaptive_triggers);
         JS_SAVE(j, stick_deadzone);
+        JS_SAVE(j, enable_gyro);
         JS_SAVE(j, remember_login_pin);
 
         // UI

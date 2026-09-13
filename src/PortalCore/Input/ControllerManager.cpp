@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 #include <SDL3/SDL.h>
 #include <cctype>
+#include <cmath>
 #include <algorithm>
 
 namespace portal::input {
@@ -21,6 +22,16 @@ portal::VoidResult ControllerManager::init() {
 
     if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD | SDL_INIT_HAPTIC)) {
         spdlog::warn("[ControllerManager] SDL_InitSubSystem Gamepad: {}", SDL_GetError());
+    }
+
+    int mappings_count = SDL_AddGamepadMappingsFromFile("assets/gamecontrollerdb.txt");
+    if (mappings_count < 0) {
+        mappings_count = SDL_AddGamepadMappingsFromFile("bin/assets/gamecontrollerdb.txt");
+    }
+    if (mappings_count >= 0) {
+        spdlog::info("[ControllerManager] Loaded {} mappings from gamecontrollerdb.txt", mappings_count);
+    } else {
+        spdlog::warn("[ControllerManager] gamecontrollerdb.txt could not be loaded");
     }
 
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -57,6 +68,10 @@ void ControllerManager::check_and_open_controller() {
             std::string name_lower = m_controller_name;
             for (auto& c : name_lower) c = static_cast<char>(std::tolower(c));
             m_is_dualsense = (name_lower.find("dualsense") != std::string::npos);
+            if (m_enable_gyro && SDL_GamepadHasSensor(m_sdl_gamepad, SDL_SENSOR_GYRO)) {
+                SDL_SetGamepadSensorEnabled(m_sdl_gamepad, SDL_SENSOR_GYRO, true);
+                spdlog::info("[ControllerManager] Sensor giroscopio activado en mando");
+            }
             spdlog::info("[ControllerManager] Mando conectado (SDL3): {} [ID: {}]", m_controller_name, joysticks[0]);
             SDL_free(joysticks);
             return;
@@ -139,6 +154,10 @@ ControllerState ControllerManager::poll() {
         fallback_poll_sdl(state);
     }
 
+    // Apply radial deadzone to eliminate stick drift before returning state
+    apply_stick_deadzone(state.left_stick_x, state.left_stick_y);
+    apply_stick_deadzone(state.right_stick_x, state.right_stick_y);
+
     // Teclado fallback para control inmediato con teclado de PC
     const bool* keys = SDL_GetKeyboardState(nullptr);
     if (keys) {
@@ -210,7 +229,20 @@ void ControllerManager::fallback_poll_sdl(ControllerState& state) {
     // PS Button: Guide button OR Options+Share chord (for Xbox and third-party gamepads)
     state.ps_btn       = get_btn(SDL_GAMEPAD_BUTTON_GUIDE) || 
                          (get_btn(SDL_GAMEPAD_BUTTON_START) && get_btn(SDL_GAMEPAD_BUTTON_BACK));
-    state.touchpad_btn = get_btn(SDL_GAMEPAD_BUTTON_TOUCHPAD);
+    
+    bool has_tp = get_btn(SDL_GAMEPAD_BUTTON_TOUCHPAD);
+    // On controllers without physical touchpad button (e.g. Xbox), touchpad click maps to Back/Share button
+    state.touchpad_btn = has_tp || (!m_is_dualsense && get_btn(SDL_GAMEPAD_BUTTON_BACK));
+
+    if (m_enable_gyro && SDL_GamepadHasSensor(m_sdl_gamepad, SDL_SENSOR_GYRO)) {
+        float gyro[3] = {0.0f, 0.0f, 0.0f};
+        if (SDL_GetGamepadSensorData(m_sdl_gamepad, SDL_SENSOR_GYRO, gyro, 3)) {
+            state.has_gyro = true;
+            state.gyro_x = gyro[0];
+            state.gyro_y = gyro[1];
+            state.gyro_z = gyro[2];
+        }
+    }
 }
 
 void ControllerManager::on_haptic(const HapticEvent& event) {
@@ -251,6 +283,53 @@ bool ControllerManager::is_dualsense() const {
 bool ControllerManager::is_connected() const {
     std::lock_guard<std::mutex> lock(m_mutex);
     return (m_dualsense && m_dualsense->is_open()) || (m_sdl_gamepad != nullptr);
+}
+
+void ControllerManager::set_stick_deadzone(float deadzone) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_stick_deadzone = std::clamp(deadzone, 0.0f, 0.95f);
+    spdlog::info("[Input] Applied stick radial deadzone: {:.2f}", m_stick_deadzone);
+}
+
+float ControllerManager::get_stick_deadzone() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_stick_deadzone;
+}
+
+void ControllerManager::apply_stick_deadzone(int16_t& x, int16_t& y) const {
+    if (m_stick_deadzone <= 0.001f) return;
+
+    float nx = static_cast<float>(x) / 32767.0f;
+    float ny = static_cast<float>(y) / 32767.0f;
+
+    float mag = std::sqrt(nx * nx + ny * ny);
+    if (mag <= m_stick_deadzone) {
+        x = 0;
+        y = 0;
+    } else {
+        float factor = (mag - m_stick_deadzone) / (1.0f - m_stick_deadzone);
+        factor = std::clamp(factor, 0.0f, 1.0f);
+
+        float scaled_x = (nx / mag) * factor;
+        float scaled_y = (ny / mag) * factor;
+
+        x = static_cast<int16_t>(std::clamp(scaled_x * 32767.0f, -32767.0f, 32767.0f));
+        y = static_cast<int16_t>(std::clamp(scaled_y * 32767.0f, -32767.0f, 32767.0f));
+    }
+}
+
+void ControllerManager::set_enable_gyro(bool enable) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_enable_gyro = enable;
+    if (m_sdl_gamepad && SDL_GamepadHasSensor(m_sdl_gamepad, SDL_SENSOR_GYRO)) {
+        SDL_SetGamepadSensorEnabled(m_sdl_gamepad, SDL_SENSOR_GYRO, enable);
+        spdlog::info("[ControllerManager] Gyroscope sensor set to: {}", enable);
+    }
+}
+
+bool ControllerManager::get_enable_gyro() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_enable_gyro;
 }
 
 } // namespace portal::input

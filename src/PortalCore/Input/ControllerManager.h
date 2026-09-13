@@ -23,6 +23,8 @@ struct ControllerState {
     bool square{false}, cross{false}, circle{false}, triangle{false};
     bool l1{false}, r1{false}, l3{false}, r3{false};
     bool share{false}, options{false}, ps_btn{false}, touchpad_btn{false};
+    float gyro_x{0.0f}, gyro_y{0.0f}, gyro_z{0.0f};
+    bool has_gyro{false};
 };
 
 struct HapticEvent {
@@ -48,16 +50,25 @@ public:
     bool is_dualsense() const;
     bool is_connected() const;
 
+    void set_stick_deadzone(float deadzone);
+    float get_stick_deadzone() const;
+
+    void set_enable_gyro(bool enable);
+    bool get_enable_gyro() const;
+
 private:
     void check_and_open_controller();
     void close_controller();
     void fallback_poll_sdl(ControllerState& state);
+    void apply_stick_deadzone(int16_t& x, int16_t& y) const;
 
     mutable std::mutex m_mutex;
     SDL_Gamepad* m_sdl_gamepad{nullptr};
     std::unique_ptr<DualSenseHID> m_dualsense;
     bool m_is_dualsense{false};
     std::string m_controller_name{"Sin mando"};
+    float m_stick_deadzone{0.15f};
+    bool m_enable_gyro{false};
 };
 
 } // namespace portal::input
