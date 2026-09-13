@@ -83,12 +83,18 @@ Result<HttpResponse> HttpClient::request_internal(const std::string& method, con
 
     std::istringstream header_stream(header_part);
     std::string line;
-    if (std::getline(header_stream, line)) {
-        std::regex status_regex(R"(HTTP/1\.[01] (\d{3}) .*)");
+    while (std::getline(header_stream, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.empty()) continue; // skip leading blank lines if any
+        
+        std::regex status_regex(R"(HTTP/\d(?:\.\d)?\s+(\d{3})(?:\s*.*)?)", std::regex::icase);
         std::smatch status_match;
         if (std::regex_match(line, status_match, status_regex)) {
             response.status_code = std::stoi(status_match[1]);
+        } else {
+            spdlog::warn("HttpClient: failed to parse status line: '{}'", line);
         }
+        break;
     }
 
     bool chunked = false;

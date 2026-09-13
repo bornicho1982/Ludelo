@@ -84,7 +84,10 @@ int main(int argc, char* argv[]) {
     ensure_directories(app_data);
 
     // ── Initialize logging ────────────────────────────────
-    portal::init_logging(spdlog::level::debug);
+    portal::init_logging(spdlog::level::debug, (app_data / "logs" / "ludelo.log").string());
+    if (!std::filesystem::exists(app_data / "logs" / "ludelo.log")) {
+        // Will show error in UI later, for now just try our best.
+    }
     spdlog::info("╔══════════════════════════════════════════╗");
     spdlog::info("║  Ludelo v{}                         ║", portal::kVersion);
     spdlog::info("║  PlayStation Remote Play Client          ║");

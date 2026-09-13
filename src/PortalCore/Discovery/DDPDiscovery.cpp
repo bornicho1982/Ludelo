@@ -131,9 +131,9 @@ Result<std::vector<DiscoveredConsole>> DDPDiscovery::search(int timeout_ms, cons
                 std::string response(reinterpret_cast<const char*>(buf.data()), buf.size());
                 auto console = parse_response(response, sender_ip, sender_port);
                 
-                if (!console.host_id.empty()) {
+                if (!console.host_name.empty()) {
                     auto it = std::find_if(consoles.begin(), consoles.end(), [&](const auto& c) {
-                        return c.host_id == console.host_id;
+                        return (!console.host_id.empty() && c.host_id == console.host_id) || c.address == console.address;
                     });
                     if (it == consoles.end()) {
                         spdlog::info("Discovered console: {} ({}, ID: {}, State: {}) at {}:{}",

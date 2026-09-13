@@ -58,6 +58,60 @@ void test_keychain_dpapi() {
     std::cout << "PASSED\n";
 }
 
+void test_mixed_profile_json_parsing() {
+    std::cout << "[TEST] PSN Mixed Profile JSON Parsing (Type-Safe)... ";
+
+    // Mixed JSON matching Sony's actual response:
+    // - onlineId: string
+    // - plus: integer 0 (not string or boolean)
+    // - accountId: uint64 number
+    // - avatarUrls: array of objects with avatarUrl
+    std::string sony_json = R"({
+        "profile": {
+            "onlineId": "player_one",
+            "accountId": 123456789012345678,
+            "plus": 0,
+            "avatarUrls": [
+                {
+                    "size": "m",
+                    "avatarUrl": "https://static-resource.np.community.playstation.net/avatar_m/user.png"
+                }
+            ]
+        }
+    })";
+
+    auto prof = portal::auth::PSNAuth::parse_profile_json(sony_json);
+    assert(prof.online_id == "player_one");
+    assert(prof.account_id == 123456789012345678ULL);
+    assert(!prof.account_id_b64.empty());
+    assert(prof.plus_status == "none");
+    assert(prof.avatar_url == "https://static-resource.np.community.playstation.net/avatar_m/user.png");
+
+    // Another variant: plus=1 (int), string accountId, direct avatarUrl
+    std::string sony_json2 = R"({
+        "profile": {
+            "onlineId": "player_two",
+            "accountId": "987654321098765432",
+            "plus": 1,
+            "avatarUrl": "https://example.com/direct_avatar.png"
+        }
+    })";
+    auto prof2 = portal::auth::PSNAuth::parse_profile_json(sony_json2);
+    assert(prof2.online_id == "player_two");
+    assert(prof2.account_id == 987654321098765432ULL);
+    assert(!prof2.account_id_b64.empty());
+    assert(prof2.plus_status == "active");
+    assert(prof2.avatar_url == "https://example.com/direct_avatar.png");
+
+    // Robustness test: completely malformed or missing fields should NOT crash
+    std::string malformed = "{ \"profile\": \"not_an_object\" }";
+    auto prof3 = portal::auth::PSNAuth::parse_profile_json(malformed, 55555ULL, "b64test==");
+    assert(prof3.account_id == 55555ULL);
+    assert(prof3.account_id_b64 == "b64test==");
+
+    std::cout << "PASSED\n";
+}
+
 int main() {
     std::cout << "========================================\n";
     std::cout << "  Ludelo Unit Tests: Auth & Keychain    \n";
@@ -66,6 +120,7 @@ int main() {
     try {
         test_jwt_account_id_decoding();
         test_keychain_dpapi();
+        test_mixed_profile_json_parsing();
         std::cout << "\n>>> ALL AUTH TESTS PASSED SUCCESSFULLY! <<<\n";
         return 0;
     } catch (const std::exception& e) {

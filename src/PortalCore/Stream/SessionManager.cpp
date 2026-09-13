@@ -6,6 +6,7 @@
 #include <chrono>
 #include <algorithm>
 #include <cstring>
+#include <cctype>
 
 namespace portal::stream {
 
@@ -204,7 +205,15 @@ VoidResult SessionManager::connect_local(const portal::discovery::RegisteredCons
         return std::unexpected(Error(ErrorCode::RegistrationError, "Console has no rp_auth key. Please register the console first."));
     }
     std::string auth_str = console.rp_auth;
-    if (auth_str.size() == 16) {
+    bool all_hex = !auth_str.empty() && std::all_of(auth_str.begin(), auth_str.end(), [](unsigned char c) {
+        return std::isxdigit(c);
+    });
+    if (auth_str.size() == 32 && all_hex) {
+        for (size_t i = 0; i < 16; ++i) {
+            std::string byte_str = auth_str.substr(i * 2, 2);
+            connect_info.regist_key[i] = static_cast<char>(std::stoul(byte_str, nullptr, 16));
+        }
+    } else if (auth_str.size() == 16 && all_hex) {
         for (size_t i = 0; i < 8; ++i) {
             std::string byte_str = auth_str.substr(i * 2, 2);
             connect_info.regist_key[i] = static_cast<char>(std::stoul(byte_str, nullptr, 16));

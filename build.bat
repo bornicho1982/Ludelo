@@ -241,6 +241,7 @@ set INCLUDES=/I "%PROJECT_ROOT%\src" ^
  /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\nanopb" ^
  /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\jerasure\include" ^
  /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\gf-complete\include" ^
+ /I "%PROJECT_ROOT%\third_party\webview2\build\native\include" ^
  !OPENSSL_INC!
 
 set "CFLAGS=/nologo /std:c++latest /EHsc /utf-8 /O2 /MP /W3 /D_CRT_SECURE_NO_WARNINGS /D_WINSOCK_DEPRECATED_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DVK_USE_PLATFORM_WIN32_KHR"
@@ -286,7 +287,8 @@ echo [3/4] Enlazando bin\Ludelo.exe...
 set LIBPATHS=/LIBPATH:"%PROJECT_ROOT%\third_party\SDL3\lib\x64" ^
  /LIBPATH:"%PROJECT_ROOT%\third_party\ffmpeg\lib" ^
  /LIBPATH:"%PROJECT_ROOT%\third_party\vulkan-headers\lib" ^
- /LIBPATH:"%BUILD_DIR%"
+ /LIBPATH:"%BUILD_DIR%" ^
+ /LIBPATH:"%PROJECT_ROOT%\third_party\webview2\build\native\x64"
 if defined OPENSSL_LIB set LIBPATHS=!LIBPATHS! !OPENSSL_LIB!
 
 set "LIBS=chiaki.lib vulkan-1.lib SDL3.lib"
@@ -294,7 +296,7 @@ set "LIBS=!LIBS! avcodec.lib avformat.lib avutil.lib swscale.lib swresample.lib"
 set "LIBS=!LIBS! libcrypto.lib libssl.lib"
 set "LIBS=!LIBS! ws2_32.lib shell32.lib user32.lib gdi32.lib advapi32.lib"
 set "LIBS=!LIBS! ole32.lib hid.lib setupapi.lib crypt32.lib iphlpapi.lib bcrypt.lib"
-set "LIBS=!LIBS! dwmapi.lib uxtheme.lib"
+set "LIBS=!LIBS! dwmapi.lib uxtheme.lib WebView2Loader.dll.lib"
 
 pushd "%OBJ_DIR%"
 link /NOLOGO /SUBSYSTEM:WINDOWS /MACHINE:X64 !LIBPATHS! /OUT:"%BIN_DIR%\Ludelo.exe" *.obj !LIBS!
@@ -340,6 +342,12 @@ for %%D in (libcrypto-4-x64.dll libssl-4-x64.dll) do (
         if not exist "%BIN_DIR%\%%D" copy /y "%PROJECT_ROOT%\%%D" "%BIN_DIR%\%%D" > nul
     )
 )
+)
+
+:: WebView2
+if exist "%PROJECT_ROOT%\third_party\webview2\build\native\x64\WebView2Loader.dll" (
+    copy /y "%PROJECT_ROOT%\third_party\webview2\build\native\x64\WebView2Loader.dll" "%BIN_DIR%\WebView2Loader.dll" > nul
+)
 
 :: Assets y shaders
 if exist "%PROJECT_ROOT%\assets" (
@@ -367,10 +375,11 @@ set INCLUDES=/I "%PROJECT_ROOT%\src" ^
  /I "%PROJECT_ROOT%\build\proto_gen" ^
  /I "%PROJECT_ROOT%\third_party\spdlog\include" ^
  /I "%PROJECT_ROOT%\third_party\json\single_include" ^
+ /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\include" ^
  !OPENSSL_INC!
 
-set "LIBPATHS_T="
-if defined OPENSSL_LIB set "LIBPATHS_T=!OPENSSL_LIB!"
+set "LIBPATHS_T=/LIBPATH:"%BUILD_DIR%""
+if defined OPENSSL_LIB set "LIBPATHS_T=!LIBPATHS_T! !OPENSSL_LIB!"
 
 set "CFLAGS=/nologo /std:c++latest /EHsc /utf-8 /O2 /D_CRT_SECURE_NO_WARNINGS /D_WINSOCK_DEPRECATED_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /DNOMINMAX"
 set "COMMON_LIBS=libcrypto.lib libssl.lib crypt32.lib shell32.lib ws2_32.lib hid.lib setupapi.lib iphlpapi.lib bcrypt.lib"
@@ -383,7 +392,7 @@ for %%T in (test_fec test_discovery test_dualsense test_takion test_auth test_cr
         echo [TEST BUILD] Compilando %%T.exe...
         set "EXTRA_SRCS="
         if "%%T"=="test_auth"      set "EXTRA_SRCS="%PROJECT_ROOT%\src\PortalCore\Auth\PSNAuth.cpp" "%PROJECT_ROOT%\src\PortalCore\Auth\Keychain.cpp" "%PROJECT_ROOT%\src\PortalCore\Net\HttpClient.cpp" "%PROJECT_ROOT%\src\PortalCore\Net\TLSSocket.cpp" "%PROJECT_ROOT%\src\PortalCore\Net\TCPSocket.cpp""
-        if "%%T"=="test_crypto"    set "EXTRA_SRCS="%PROJECT_ROOT%\src\PortalCore\Crypto\ECDHKeyExchange.cpp" "%PROJECT_ROOT%\src\PortalCore\Crypto\PS5Protocol.cpp" "%PROJECT_ROOT%\src\PortalCore\Crypto\RPCrypt.cpp" "%PROJECT_ROOT%\src\PortalCore\Crypto\SecureRandom.cpp" "%PROJECT_ROOT%\src\PortalCore\Net\TCPSocket.cpp""
+        if "%%T"=="test_crypto"    set "EXTRA_SRCS="%PROJECT_ROOT%\src\PortalCore\Crypto\ECDHKeyExchange.cpp" "%PROJECT_ROOT%\src\PortalCore\Crypto\RPCrypt.cpp" "%PROJECT_ROOT%\src\PortalCore\Crypto\SecureRandom.cpp""
         if "%%T"=="test_discovery" set "EXTRA_SRCS="%PROJECT_ROOT%\src\PortalCore\Discovery\DDPDiscovery.cpp" "%PROJECT_ROOT%\src\PortalCore\Discovery\ConsoleRegistry.cpp" "%PROJECT_ROOT%\src\PortalCore\Auth\Keychain.cpp" "%PROJECT_ROOT%\src\PortalCore\Net\UDPSocket.cpp""
         if "%%T"=="test_dualsense" set "EXTRA_SRCS="%PROJECT_ROOT%\src\PortalCore\Input\DualSenseHID.cpp""
         if "%%T"=="test_fec"       set "EXTRA_SRCS="%PROJECT_ROOT%\src\PortalCore\Stream\FECDecoder.cpp""
@@ -394,9 +403,9 @@ for %%T in (test_fec test_discovery test_dualsense test_takion test_auth test_cr
            /link !LIBPATHS_T! !COMMON_LIBS!
 
         if !ERRORLEVEL! equ 0 (
-            echo        -> [OK] bin\tests\%%T.exe
+            echo        -- [OK] bin\tests\%%T.exe
         ) else (
-            echo        -> [FAIL] Fallo compilar %%T.exe
+            echo        -- [FAIL] Fallo compilar %%T.exe
         )
     )
 )
@@ -525,7 +534,7 @@ echo [DIAG] Compilando Ludelo Live Diagnostic Tool...
 set "DIAG_OBJ_DIR=%BUILD_DIR%\obj_diag"
 if not exist "!DIAG_OBJ_DIR!" mkdir "!DIAG_OBJ_DIR!"
 
-set "DIAG_INC=/I "%PROJECT_ROOT%\src" /I "%PROJECT_ROOT%\third_party\spdlog\include" /I "%PROJECT_ROOT%\third_party\json\single_include""
+set "DIAG_INC=/I "%PROJECT_ROOT%\src" /I "%PROJECT_ROOT%\third_party\spdlog\include" /I "%PROJECT_ROOT%\third_party\json\single_include" /I "%PROJECT_ROOT%\third_party\webview2\build\native\include""
 if defined OPENSSL_INC set "DIAG_INC=!DIAG_INC! !OPENSSL_INC!"
 if defined OPENSSL_LIB set "DIAG_LIBPATHS=!OPENSSL_LIB!"
 

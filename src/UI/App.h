@@ -40,6 +40,7 @@ class SettingsScreen;
 class NavigationController;
 
 enum class Screen {
+    Onboarding,
     Home,
     ConsoleList,
     CloudGames,
@@ -106,6 +107,7 @@ private:
     void draw_streaming_overlay();
     void draw_status_bar();
     void draw_toast_notification();
+    void draw_onboarding();
     void show_toast(const std::string& message, float duration = 3.5f);
 
     void probe_consoles_background();
@@ -196,7 +198,7 @@ private:
     void update_stream_texture(const uint32_t* pixels, int width, int height);
     void destroy_stream_texture();
 
-    // Font pointers (SFNS)
+    // Font pointers (NotoSansCJK / system fallback)
     ImFont* font_title_ = nullptr;
     ImFont* font_subtitle_ = nullptr;
     ImFont* font_body_ = nullptr;
@@ -207,10 +209,11 @@ private:
     int current_tab_ = 0; // 0: Consolas, 1: PS Plus Cloud, 2: Ajustes
     int focused_card_ = 0;
     bool show_pin_modal_ = false;
-    char pin_digits_[8] = {'\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0'};
     int active_pin_digit_ = 0;
-    char register_ip_[64] = "";
+    char pin_digits_[8] = {'\0'};
+    char register_ip_[32] = "";
     char register_name_[64] = "";
+    char account_id_b64_[64] = ""; // Added for PS5 Registration
     std::string toast_message_;
     float toast_timer_ = 0.0f;
     int cloud_selected_category_ = 0;
@@ -229,6 +232,7 @@ private:
     std::atomic<bool> is_probing_{false};
     std::atomic<bool> is_waking_{false};
     std::string waking_status_text_;
+    std::vector<portal::discovery::DiscoveredConsole> unbound_consoles_;
 
     // Streaming Fullscreen & HUD Overlay Auto-hide
     float last_mouse_activity_time_ = 0.0f;
@@ -245,6 +249,10 @@ private:
     std::jthread probe_thread_;
     std::jthread connect_thread_;
     std::jthread register_thread_;
+    std::jthread login_thread_;
+    std::jthread avatar_thread_;
+    std::atomic<bool> avatar_downloaded_{false};
+    std::string avatar_path_;
     std::jthread suspend_thread_;
     std::jthread cloud_thread_;
 };

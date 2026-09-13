@@ -45,3 +45,14 @@
 - Cloud: solo experimental tras flag; nunca en listing.
 - Store: pago único 9,99€, sin suscripción.
 - Stack: C++23 + CMake/vcpkg, FFmpeg, SDL3, Vulkan/ImGui, OpenSSL, nlohmann, cpr, Catch2.
+- Datos de app: `%APPDATA%\Roaming\Ludelo\` (logs, config, keychain, cache). Se eligió Roaming sobre LocalAppData para permitir sincronización de perfil entre equipos del mismo dominio.
+- Fuente UI: NotoSansCJK-Regular.ttc (libre). SFNS.ttf (Apple) eliminada.
+
+## Fase 1 — Progreso
+- [x] PSN Account-ID incluido en regist (campo Np-AccountId, obligatorio para PS5).
+- [x] Propagación IP DDP→registro restaurada (fallback host_name en lugar de host_id).
+- [x] SFNS.ttf y texturas PlayStation eliminadas del proyecto.
+- [x] Modal de vinculación: sección PSN visible ANTES del PIN, botón deshabilitado sin cuenta.
+- [x] Onboarding: pantalla de bienvenida con login NPSSO al primer arranque sin cuenta.
+- [x] Registro PS5 integrado con Chiaki Core (chiaki_regist_start / stop / fini), sustituyendo implementación manual (fix 403 80108bff).
+- [x] Persistencia automática en ConsoleRegistry con rp_key y rp_regist_key vía DPAPI y transición inmediata a tarjeta de consola activa ("CONECTAR AHORA").

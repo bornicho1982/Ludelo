@@ -1,6 +1,6 @@
 # ─── Build Artifacts ──────────────────────────────────────
-build/
-bin/
+/build/
+/bin/
 *.obj
 *.pdb
 *.ilk
@@ -24,8 +24,23 @@ shaders/*.spv.bak
 *.appx
 *.appxbundle
 
+# Exception for vendored WebView2 loader
+!third_party/webview2/build/native/x64/WebView2Loader.dll
+!third_party/webview2/build/native/x64/WebView2Loader.dll.lib
+
+# WebView2 package metadata and unused managed assemblies
+third_party/webview2/lib/
+third_party/webview2/lib_manual/
+third_party/webview2/tools/
+third_party/webview2/package/
+third_party/webview2/\[Content_Types\].xml
+third_party/webview2/_rels/
+third_party/webview2/*.nuspec
+third_party/webview2/*.p7s
+third_party/webview2/buildTransitive/
+
 # ─── Protobuf generated files ─────────────────────────────
-build/proto_gen/
+/build/proto_gen/
 
 # ─── MSIX packaging staging ───────────────────────────────
 packaging/staging/
@@ -39,6 +54,9 @@ packaging/staging/
 .vscode/settings.json
 
 # ─── Sensitive data (NEVER commit credentials) ────────────
+accounts.json
+consoles.json
+avatar.png
 *.npsso
 *.token
 portalpc.log
@@ -46,6 +64,8 @@ ludelo.log
 *.log
 AUDIT.md
 backup*/
+[FAIL]
+docs/notes/
 
 # ─── OS Files ─────────────────────────────────────────────
 Thumbs.db
@@ -54,7 +74,7 @@ Desktop.ini
 .DS_Store
 
 # ─── Test binaries ────────────────────────────────────────
-bin/tests/
+/bin/tests/
 
 # ─── Temporary files ──────────────────────────────────────
 *.tmp

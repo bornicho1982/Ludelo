@@ -6,6 +6,7 @@
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
+#include <openssl/evp.h>
 
 namespace portal::auth {
 
@@ -29,6 +30,64 @@ Result<void> AccountManager::add_account(const std::string& npsso) {
     active_account_id = acc.account_id;
     
     return save_to_disk();
+}
+
+Result<void> AccountManager::add_account_from_code(const std::string& auth_code) {
+    spdlog::info("AccountManager::add_account_from_code: starting");
+
+    auto tokens_res = PSNAuth::exchange_code(auth_code);
+    if (!tokens_res) {
+        spdlog::error("AccountManager::add_account_from_code: exchange_code FAILED: {}", tokens_res.error().message);
+        return std::unexpected(tokens_res.error());
+    }
+    spdlog::info("AccountManager::add_account_from_code: exchange_code OK");
+
+    PSNProfile profile;
+    auto profile_res = PSNAuth::fetch_profile(tokens_res.value().access_token, tokens_res->account_id, tokens_res->account_id_b64);
+    if (!profile_res) {
+        spdlog::warn("AccountManager::add_account_from_code: profile fetch failed ({}), saving account anyway with defaults", profile_res.error().message);
+        profile.account_id = tokens_res->account_id;
+        profile.account_id_b64 = tokens_res->account_id_b64;
+        profile.online_id = "PSN User";
+        profile.plus_status = "none";
+    } else {
+        profile = profile_res.value();
+    }
+    spdlog::info("AccountManager::add_account_from_code: fetch_profile OK, online_id='{}', account_id={}", 
+        profile.online_id, profile.account_id_b64);
+
+    PSNAccount acc;
+    acc.account_id = (profile.account_id != 0) ? profile.account_id : tokens_res->account_id;
+    acc.account_id_b64 = (!profile.account_id_b64.empty()) ? profile.account_id_b64 : tokens_res->account_id_b64;
+    acc.npsso = ""; // NPSSO not used in this flow
+    acc.tokens = tokens_res.value();
+    acc.profile = profile;
+    if (acc.profile.account_id == 0) acc.profile.account_id = acc.account_id;
+    if (acc.profile.account_id_b64.empty()) acc.profile.account_id_b64 = acc.account_id_b64;
+
+    // Check if account already exists to update it, else add
+    bool updated = false;
+    for (auto& existing : accounts) {
+        if (existing.account_id == acc.account_id) {
+            existing = acc;
+            updated = true;
+            break;
+        }
+    }
+    if (!updated) {
+        accounts.push_back(acc);
+    }
+    
+    active_account_id = acc.account_id;
+
+    auto save_res = save_to_disk();
+    if (!save_res) {
+        spdlog::error("AccountManager::add_account_from_code: save_to_disk FAILED: {}", save_res.error().message);
+        return std::unexpected(save_res.error());
+    }
+
+    spdlog::info("Account saved, online_id {}", acc.profile.online_id);
+    return {};
 }
 
 void AccountManager::remove_account(uint64_t account_id) {
@@ -78,7 +137,7 @@ Result<std::string> AccountManager::get_access_token() {
 }
 
 Result<void> AccountManager::save_to_disk() {
-    auto logger = spdlog::get("portal");
+    spdlog::info("AccountManager::save_to_disk: serializing {} accounts", accounts.size());
     nlohmann::json j;
     j["active_account_id"] = active_account_id.value_or(0);
     
@@ -86,6 +145,7 @@ Result<void> AccountManager::save_to_disk() {
     for (const auto& acc : accounts) {
         nlohmann::json a;
         a["account_id"] = acc.account_id;
+        a["account_id_b64"] = !acc.account_id_b64.empty() ? acc.account_id_b64 : acc.profile.account_id_b64;
         a["npsso"] = acc.npsso;
         a["access_token"] = acc.tokens.access_token;
         a["refresh_token"] = acc.tokens.refresh_token;
@@ -101,9 +161,19 @@ Result<void> AccountManager::save_to_disk() {
     portal::ByteBuffer data(json_str.begin(), json_str.end());
     
     auto enc_res = Keychain::encrypt(data);
-    if (!enc_res) return std::unexpected(enc_res.error());
+    if (!enc_res) {
+        spdlog::error("AccountManager::save_to_disk: DPAPI encrypt FAILED: {}", enc_res.error().message);
+        return std::unexpected(enc_res.error());
+    }
+    spdlog::info("AccountManager::save_to_disk: DPAPI encrypt OK ({} bytes)", enc_res->size());
     
-    return Keychain::store_secret("accounts.json", enc_res.value());
+    auto store_res = Keychain::store_secret("accounts.json", enc_res.value());
+    if (!store_res) {
+        spdlog::error("AccountManager::save_to_disk: store_secret FAILED: {}", store_res.error().message);
+        return std::unexpected(store_res.error());
+    }
+    spdlog::info("AccountManager::save_to_disk: store_secret OK");
+    return {};
 }
 
 Result<void> AccountManager::load_from_disk() {
@@ -127,12 +197,28 @@ Result<void> AccountManager::load_from_disk() {
         for (const auto& a : j["accounts"]) {
             PSNAccount acc;
             acc.account_id = a["account_id"];
+            acc.account_id_b64 = a.value("account_id_b64", "");
             acc.npsso = a["npsso"];
             acc.tokens.access_token = a["access_token"];
             acc.tokens.refresh_token = a["refresh_token"];
             int64_t exp = a["expires_at"];
             acc.tokens.expires_at = std::chrono::system_clock::time_point(std::chrono::seconds(exp));
             acc.profile.account_id = acc.account_id;
+            acc.profile.account_id_b64 = acc.account_id_b64;
+
+            // If account_id_b64 is missing but account_id != 0, generate it
+            if (acc.account_id_b64.empty() && acc.account_id != 0) {
+                uint8_t le_bytes[8];
+                for (int i = 0; i < 8; ++i) {
+                    le_bytes[i] = static_cast<uint8_t>((acc.account_id >> (i * 8)) & 0xFF);
+                }
+                std::string b64(16, '\0');
+                int len = EVP_EncodeBlock(reinterpret_cast<uint8_t*>(b64.data()), le_bytes, 8);
+                b64.resize(len);
+                acc.account_id_b64 = b64;
+                acc.profile.account_id_b64 = b64;
+            }
+
             acc.profile.online_id = a["online_id"];
             acc.profile.avatar_url = a["avatar_url"];
             acc.profile.plus_status = a["plus_status"];

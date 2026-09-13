@@ -2,12 +2,19 @@
 #include "PS5Protocol.h"
 #include "PS5CryptoTables.h"
 #include "PortalCore/Crypto/SecureRandom.h"
+#include <chiaki/common.h>
+#include <chiaki/regist.h>
+#include <chiaki/base64.h>
+#include <chiaki/log.h>
 #include <spdlog/spdlog.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <format>
 #include <sstream>
 #include <algorithm>
+#include <future>
+#include <chrono>
+#include <mutex>
 
 namespace portal::crypto {
 
@@ -131,165 +138,108 @@ Result<PS5RegistrationResult> PS5Protocol::register_with_pin(
     uint32_t pin,
     const std::string& account_id_b64
 ) {
+    (void)port;
     auto logger = spdlog::get("portal");
-    if (logger) logger->info("PS5Protocol: Beginning PIN registration with {}:{} (PIN: {})", host, port, pin);
+    if (logger) logger->info("[PS5Protocol] Registering with PS5 at {} using Chiaki Core regist (PIN: {})", host, pin);
 
-    // 1. Generate 16-byte random ambassador
-    auto rnd = SecureRandom::random_bytes(16);
-    std::array<uint8_t, 16> ambassador{};
-    if (rnd.has_value()) {
-        std::memcpy(ambassador.data(), rnd->data(), 16);
+    static std::once_flag s_chiaki_init_flag;
+    std::call_once(s_chiaki_init_flag, []() {
+        chiaki_lib_init();
+    });
+
+    ChiakiRegistInfo info{};
+    info.target = CHIAKI_TARGET_PS5_1;
+    info.host = host.c_str();
+    info.broadcast = false;
+    info.pin = pin;
+    info.console_pin = 0;
+    info.holepunch_info = nullptr;
+    info.rudp = nullptr;
+    info.psn_online_id = nullptr;
+
+    // Decode 8-byte PSN Account-ID from base64
+    size_t out_len = sizeof(info.psn_account_id);
+    ChiakiErrorCode b64_err = chiaki_base64_decode(account_id_b64.c_str(), account_id_b64.size(), info.psn_account_id, &out_len);
+    if (b64_err != CHIAKI_ERR_SUCCESS || out_len != CHIAKI_PSN_ACCOUNT_ID_SIZE) {
+        if (logger) logger->error("[PS5Protocol] Failed to decode 8-byte PSN Account-ID from base64: '{}'", account_id_b64);
+        return std::unexpected(Error{ErrorCode::InvalidArgument, "Invalid PSN Account-ID (expected 8 bytes base64)"});
     }
 
-    // 2. Initialize 480-byte header with 'A'
-    constexpr size_t kInnerHdrOff = 0x1e0; // 480 bytes
-    portal::ByteBuffer payload(kInnerHdrOff, 'A');
+    ChiakiLog chiaki_log;
+    chiaki_log_init(&chiaki_log, CHIAKI_LOG_ALL, [](ChiakiLogLevel level, const char* msg, void*) {
+        auto log = spdlog::get("portal");
+        if (!log) return;
+        if (level & CHIAKI_LOG_ERROR) log->error("[ChiakiRegist] {}", msg);
+        else if (level & CHIAKI_LOG_WARNING) log->warn("[ChiakiRegist] {}", msg);
+        else if (level & CHIAKI_LOG_INFO) log->info("[ChiakiRegist] {}", msg);
+        else log->debug("[ChiakiRegist] {}", msg);
+    }, nullptr);
 
-    size_t key_0_off = payload[0x18D] & 0x1F; // 'A' & 0x1F = 1
-    size_t key_1_off = payload[0] >> 3;        // 'A' >> 3 = 8
+    struct RegistResult {
+        ChiakiRegistEventType type = CHIAKI_REGIST_EVENT_TYPE_FINISHED_FAILED;
+        ChiakiRegisteredHost registered_host{};
+    };
 
-    // 3. Compute bright key
-    std::array<uint8_t, 16> bright{};
-    for (size_t i = 0; i < 16; ++i) {
-        bright[i] = ps5_keys_0[i * 0x20 + key_0_off];
-    }
-    bright[0xc] ^= static_cast<uint8_t>((pin >> 24) & 0xFF);
-    bright[0xd] ^= static_cast<uint8_t>((pin >> 16) & 0xFF);
-    bright[0xe] ^= static_cast<uint8_t>((pin >> 8) & 0xFF);
-    bright[0xf] ^= static_cast<uint8_t>(pin & 0xFF);
+    std::promise<RegistResult> promise;
+    auto future = promise.get_future();
 
-    // 4. Compute aeropause
-    std::array<uint8_t, 16> aeropause{};
-    uint8_t wurzelbert = static_cast<uint8_t>(-0x2d);
-    for (size_t i = 0; i < 16; ++i) {
-        uint8_t k = ps5_keys_1[i * 0x20 + key_1_off];
-        aeropause[i] = static_cast<uint8_t>((ambassador[i] ^ k) + wurzelbert + i);
-    }
-
-    std::memcpy(&payload[0xc7], &aeropause[8], 8);
-    std::memcpy(&payload[0x191], &aeropause[0], 8);
-
-    // 5. Format and encrypt inner header
-    std::string client_type = "dabfa2ec873de5839bee8d3f4c0239c4282c07c25c6077a2931afcf0adc0d34f";
-    std::string inner_hdr = std::format(
-        "Client-Type: {}\r\nNp-AccountId: {}\r\n",
-        client_type, account_id_b64.empty() ? "2IFPSJ3ALmE=" : account_id_b64
-    );
-
-    auto iv0 = generate_iv(ambassador, 0);
-    auto enc_inner_res = aes_cfb_crypt(
-        bright, iv0,
-        std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(inner_hdr.data()), inner_hdr.size()),
-        true
-    );
-    if (!enc_inner_res) {
-        if (logger) logger->error("Failed to encrypt inner header");
-        return std::unexpected(enc_inner_res.error());
-    }
-
-    payload.insert(payload.end(), enc_inner_res->begin(), enc_inner_res->end());
-
-    // 6. Connect TCP and send HTTP POST
-    net::TCPSocket tcp;
-    auto conn_res = tcp.connect(host, port, std::chrono::milliseconds(5000));
-    if (!conn_res) {
-        if (logger) logger->error("Failed to connect to PS5 at {}:{}", host, port);
-        return std::unexpected(conn_res.error());
-    }
-
-    std::string req_header = std::format(
-        "POST /sie/ps5/rp/sess/rgst HTTP/1.1\r\n"
-        "Host: {}:{}\r\n"
-        "User-Agent: remoteplay Windows\r\n"
-        "Connection: close\r\n"
-        "Content-Length: {}\r\n"
-        "RP-Version: 1.0\r\n\r\n",
-        host, port, payload.size()
-    );
-
-    portal::ByteBuffer send_buf(req_header.begin(), req_header.end());
-    send_buf.insert(send_buf.end(), payload.begin(), payload.end());
-
-    auto send_res = tcp.send_all(send_buf);
-    if (!send_res) {
-        if (logger) logger->error("Failed to send rgst request");
-        return std::unexpected(send_res.error());
-    }
-
-    // 7. Receive HTTP response
-    portal::ByteBuffer recv_buf;
-    while (true) {
-        auto part = tcp.receive(2048);
-        if (!part || part->empty()) break;
-        recv_buf.insert(recv_buf.end(), part->begin(), part->end());
-        std::string_view sv(reinterpret_cast<const char*>(recv_buf.data()), recv_buf.size());
-        if (sv.find("\r\n\r\n") != std::string_view::npos) {
-            // Check content length if available
-            size_t cl_pos = sv.find("Content-Length: ");
-            if (cl_pos != std::string_view::npos) {
-                size_t cl_end = sv.find("\r\n", cl_pos);
-                int cl = std::stoi(std::string(sv.substr(cl_pos + 16, cl_end - (cl_pos + 16))));
-                size_t body_start = sv.find("\r\n\r\n") + 4;
-                if (recv_buf.size() >= body_start + cl) break;
+    auto cb = [](ChiakiRegistEvent* event, void* user) {
+        auto* prom = static_cast<std::promise<RegistResult>*>(user);
+        RegistResult res;
+        if (event) {
+            res.type = event->type;
+            if (event->type == CHIAKI_REGIST_EVENT_TYPE_FINISHED_SUCCESS && event->registered_host) {
+                res.registered_host = *event->registered_host;
             }
         }
+        prom->set_value(res);
+    };
+
+    ChiakiRegist regist{};
+    ChiakiErrorCode start_err = chiaki_regist_start(&regist, &chiaki_log, &info, cb, &promise);
+    if (start_err != CHIAKI_ERR_SUCCESS) {
+        if (logger) logger->error("[PS5Protocol] chiaki_regist_start failed with code: {}", static_cast<int>(start_err));
+        return std::unexpected(Error{ErrorCode::RegistrationError, "Failed to start Chiaki regist"});
     }
 
-    std::string full_resp(reinterpret_cast<const char*>(recv_buf.data()), recv_buf.size());
-    if (full_resp.find("200 OK") == std::string::npos) {
-        if (logger) logger->error("PS5 PIN registration rejected:\n{}", full_resp);
-        return std::unexpected(Error{ErrorCode::RegistrationRefused, "PS5 rejected registration PIN (403/Forbidden)"});
+    // Wait for registration to complete (timeout after 25 seconds)
+    if (future.wait_for(std::chrono::seconds(25)) == std::future_status::timeout) {
+        chiaki_regist_stop(&regist);
+        chiaki_regist_fini(&regist);
+        if (logger) logger->error("[PS5Protocol] Chiaki regist timed out after 25s");
+        return std::unexpected(Error{ErrorCode::NetworkTimeout, "Regist timed out waiting for console response"});
     }
 
-    size_t body_off = full_resp.find("\r\n\r\n");
-    if (body_off == std::string::npos) {
-        return std::unexpected(ErrorCode::HandshakeFailed);
-    }
-    body_off += 4;
+    RegistResult result = future.get();
+    chiaki_regist_fini(&regist);
 
-    std::span<const uint8_t> body_enc(recv_buf.data() + body_off, recv_buf.size() - body_off);
-    auto dec_body_res = aes_cfb_crypt(bright, iv0, body_enc, false);
-    if (!dec_body_res) {
-        if (logger) logger->error("Failed to decrypt registration response body");
-        return std::unexpected(dec_body_res.error());
+    if (result.type != CHIAKI_REGIST_EVENT_TYPE_FINISHED_SUCCESS) {
+        if (logger) logger->error("[PS5Protocol] Chiaki regist failed (event type: {})", static_cast<int>(result.type));
+        return std::unexpected(Error{ErrorCode::RegistrationRefused, "Registration failed or rejected by console"});
     }
 
-    std::string dec_str(reinterpret_cast<const char*>(dec_body_res->data()), dec_body_res->size());
-    if (logger) logger->info("Decrypted PS5 Registration Response:\n{}", dec_str);
-
-    PS5RegistrationResult result;
-    result.host_name = "PlayStation 5";
-    std::istringstream iss(dec_str);
-    std::string line;
-    while (std::getline(iss, line)) {
-        auto colon = line.find(':');
-        if (colon == std::string::npos) continue;
-        auto key = line.substr(0, colon);
-        auto val = line.substr(colon + 1);
-        while (!val.empty() && (val.front() == ' ' || val.front() == '\t')) val.erase(0, 1);
-        while (!val.empty() && (val.back() == '\r' || val.back() == ' ')) val.pop_back();
-
-        if (key == "RP-Key") {
-            result.rp_key = decode_hex(val);
-        } else if (key == "PS5-RegistKey") {
-            result.regist_key = val;
-        } else if (key == "PS5-Nickname") {
-            result.host_name = val;
-        } else if (key == "PS5-Mac") {
-            result.mac = val;
-            if (result.host_id.empty()) {
-                result.host_id = val;
-            }
-        } else if (key == "host-id" || key == "Host-Id" || key == "PS5-HostId" || key == "RP-HostId") {
-            result.host_id = val;
-        }
+    PS5RegistrationResult reg_res;
+    if (result.registered_host.server_nickname[0] != '\0') {
+        reg_res.host_name = result.registered_host.server_nickname;
+    } else {
+        reg_res.host_name = "PlayStation 5";
     }
 
-    if (result.rp_key.empty() || result.regist_key.empty()) {
-        return std::unexpected(ErrorCode::HandshakeFailed);
+    reg_res.mac = std::format("{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}",
+        result.registered_host.server_mac[0], result.registered_host.server_mac[1],
+        result.registered_host.server_mac[2], result.registered_host.server_mac[3],
+        result.registered_host.server_mac[4], result.registered_host.server_mac[5]);
+    reg_res.host_id = reg_res.mac;
+
+    reg_res.regist_key = std::string(result.registered_host.rp_regist_key, 16);
+    reg_res.rp_key.assign(result.registered_host.rp_key, result.registered_host.rp_key + 16);
+
+    if (logger) {
+        logger->info("[PS5Protocol] Registration succeeded via Chiaki Core! Host: {}, MAC: {}",
+            reg_res.host_name, reg_res.mac);
     }
 
-    return result;
+    return reg_res;
 }
 
 Result<PS5SessionInitResult> PS5Protocol::init_session(
