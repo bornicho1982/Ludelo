@@ -252,6 +252,7 @@ private:
 
     // Controller Test Modal
     bool show_controller_test_modal_ = false;
+    bool ctrl_modal_circle_prev_ = false;
 
     // Login cancelled action prompt
     bool login_cancelled_prompt_visible_ = false;

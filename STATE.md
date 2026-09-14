@@ -83,4 +83,5 @@
 - [x] C3: THIRD-PARTY-LICENSES.md actualizado con licencias de Inter Font (OFL-1.1), SDL GameControllerDB (zlib), Lucide Icons (ISC) y Noto Sans CJK (OFL-1.1).
 - [x] C4: Documento de diseño arquitectónico de streaming IPC preservado de forma privada en notas externas fuera del repo; docs/notes/ completamente ignorado y protegido.
 - [x] Higiene de repo: retirada de docs/notes/design-streaming-service.md del repo y del historial git, archivo resguardado en notes_privados/ y regla de exclusión estricta en DIRECTIVAS.md.
+- [x] Hotfix Sesión B1: Salidas múltiples en modal de test de mando (botón X visible, tecla Esc, botón B/Circle del mando y clic en dimmer).
 

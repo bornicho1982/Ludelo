@@ -329,8 +329,8 @@ void App::run() {
 
             // During active streaming, do NOT feed gamepad/keyboard input to ImGui
             // This prevents ImGui from hijacking buttons or focusing the disconnect button
-            // UNLESS a modal is open (PIN registration or Login PIN modal), where keyboard/mouse is needed!
-            bool modal_open = show_pin_modal_ || show_login_pin_modal_;
+            // UNLESS a modal is open, where keyboard/mouse is needed!
+            bool modal_open = show_pin_modal_ || show_login_pin_modal_ || show_controller_test_modal_ || show_browser_fallback_modal_;
             if (current_screen_ != Screen::Streaming || modal_open ||
                 (event.type >= SDL_EVENT_MOUSE_MOTION && event.type <= SDL_EVENT_MOUSE_WHEEL) ||
                 event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_QUIT) {
@@ -507,10 +507,16 @@ void App::run() {
                             else if (current_tab_ == 1) current_screen_ = Screen::CloudGames;
                             else if (current_tab_ == 2) current_screen_ = Screen::Settings;
                         } else if (event.gbutton.button == SDL_GAMEPAD_BUTTON_EAST) { // Circle (B)
-                            if (show_login_pin_modal_) {
+                            if (show_controller_test_modal_) {
+                                show_controller_test_modal_ = false;
+                                ctrl_modal_circle_prev_ = false;
+                            } else if (show_login_pin_modal_) {
                                 show_login_pin_modal_ = false;
                             } else if (show_pin_modal_) {
                                 show_pin_modal_ = false;
+                            } else if (show_browser_fallback_modal_) {
+                                show_browser_fallback_modal_ = false;
+                                browser_opened_ = false;
                             } else if (current_screen_ != Screen::Home) {
                                 current_screen_ = Screen::Home;
                                 current_tab_ = 0;
@@ -4528,11 +4534,29 @@ void App::draw_status_bar() {
 void App::draw_controller_test_modal() {
     if (!show_controller_test_modal_) return;
 
+    // 1. Esc key closes modal
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+        show_controller_test_modal_ = false;
+        ctrl_modal_circle_prev_ = false;
+        return;
+    }
+
     ImVec2 ws = ImGui::GetIO().DisplaySize;
     float modal_w = 720.0f;
     float modal_h = 570.0f;
     ImVec2 modal_pos((ws.x - modal_w) * 0.5f, (ws.y - modal_h) * 0.5f);
     ImVec2 modal_end(modal_pos.x + modal_w, modal_pos.y + modal_h);
+
+    // 2. Click on dimmer background (outside modal bounds) closes modal
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        ImVec2 mp = ImGui::GetMousePos();
+        if (mp.x < modal_pos.x || mp.x > modal_end.x ||
+            mp.y < modal_pos.y || mp.y > modal_end.y) {
+            show_controller_test_modal_ = false;
+            ctrl_modal_circle_prev_ = false;
+            return;
+        }
+    }
 
     ImDrawList* draw = ImGui::GetForegroundDrawList();
 
@@ -4542,6 +4566,19 @@ void App::draw_controller_test_modal() {
     // Modal background & glowing border
     draw->AddRectFilled(modal_pos, modal_end, IM_COL32(11, 16, 33, 252), 20.0f);
     draw->AddRect(modal_pos, modal_end, IM_COL32(0, 240, 255, 180), 20.0f, 0, 1.5f);
+
+    // 3. Top-right visible X / Close button
+    ImGui::SetCursorScreenPos(ImVec2(modal_end.x - 48.0f, modal_pos.y + 14.0f));
+    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(35, 48, 75, 200));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(230, 60, 60, 240));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(180, 40, 40, 255));
+    if (ImGui::Button("X##close_ctrl_modal_top", ImVec2(34.0f, 32.0f))) {
+        show_controller_test_modal_ = false;
+        ctrl_modal_circle_prev_ = false;
+        ImGui::PopStyleColor(3);
+        return;
+    }
+    ImGui::PopStyleColor(3);
 
     float cur_y = modal_pos.y + 24.0f;
 
@@ -4561,6 +4598,14 @@ void App::draw_controller_test_modal() {
     if (controller_manager_ && connected) {
         state = controller_manager_->poll();
     }
+
+    // 4. Gamepad B (Circle) closes modal
+    if (state.circle && !ctrl_modal_circle_prev_) {
+        show_controller_test_modal_ = false;
+        ctrl_modal_circle_prev_ = false;
+        return;
+    }
+    ctrl_modal_circle_prev_ = state.circle;
 
     if (font_body_) ImGui::PushFont(font_body_);
     draw->AddText(ImVec2(modal_pos.x + 36.0f, cur_y),
@@ -4719,6 +4764,7 @@ void App::draw_controller_test_modal() {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
     if (ImGui::Button("Cerrar Test##btn_close_ctrl_test", ImVec2(close_w, close_h))) {
         show_controller_test_modal_ = false;
+        ctrl_modal_circle_prev_ = false;
     }
     ImGui::PopStyleColor(2);
 }
