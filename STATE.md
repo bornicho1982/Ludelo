@@ -84,4 +84,5 @@
 - [x] C4: Documento de diseño arquitectónico de streaming IPC preservado de forma privada en notas externas fuera del repo; docs/notes/ completamente ignorado y protegido.
 - [x] Higiene de repo: retirada de docs/notes/design-streaming-service.md del repo y del historial git, archivo resguardado en notes_privados/ y regla de exclusión estricta en DIRECTIVAS.md.
 - [x] Hotfix Sesión B1: Salidas múltiples en modal de test de mando (botón X visible, tecla Esc, botón B/Circle del mando y clic en dimmer).
+- [x] Hotfix Sesión B2: Focus-gating total de gamepad e ImGui Nav en SDL_EVENT_WINDOW_FOCUS_GAINED/LOST (verificado: sin procesos Steam Input/mapeo global activos).
 

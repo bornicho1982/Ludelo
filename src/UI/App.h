@@ -263,6 +263,7 @@ private:
 
     // Frame limiter & idle activity tracking
     std::chrono::steady_clock::time_point last_user_activity_ = std::chrono::steady_clock::now();
+    bool window_focused_ = true;
 
     // Windows 11 Mica backdrop state
     bool mica_active_ = false;

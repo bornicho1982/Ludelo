@@ -161,7 +161,7 @@ VoidResult App::init() {
 
     // High-frequency (250Hz) Gamepad and Keyboard Input Poller
     session_manager_->set_input_poll_callback([this]() -> portal::stream::ControllerState {
-        if (!controller_manager_) return {};
+        if (!window_focused_ || !controller_manager_) return {};
         auto in = controller_manager_->poll();
         portal::stream::ControllerState out{};
         if (in.cross)        out.buttons |= (1 << 0);  // CROSS
@@ -287,6 +287,11 @@ VoidResult App::init() {
     }
 #endif
 
+    window_focused_ = (SDL_GetWindowFlags(window_) & SDL_WINDOW_INPUT_FOCUS) != 0;
+    if (controller_manager_) {
+        controller_manager_->set_window_focused(window_focused_);
+    }
+
     running_ = true;
     spdlog::info("App::init completed successfully!");
     if (spdlog::default_logger()) spdlog::default_logger()->flush();
@@ -315,32 +320,53 @@ void App::run() {
                 controller_manager_->handle_sdl_event(event);
             }
 
-            if (event.type >= SDL_EVENT_MOUSE_MOTION && event.type <= SDL_EVENT_MOUSE_WHEEL) {
-                last_mouse_activity_time_ = static_cast<float>(ImGui::GetTime());
-                last_user_activity_ = std::chrono::steady_clock::now();
-            } else if ((event.type >= SDL_EVENT_KEY_DOWN && event.type <= SDL_EVENT_KEY_UP) ||
-                       (event.type >= SDL_EVENT_GAMEPAD_BUTTON_DOWN && event.type <= SDL_EVENT_GAMEPAD_BUTTON_UP)) {
-                last_user_activity_ = std::chrono::steady_clock::now();
-            } else if (event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION) {
-                if (std::abs(event.gaxis.value) > 4000) {
+            if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED) {
+                window_focused_ = true;
+                if (controller_manager_) controller_manager_->set_window_focused(true);
+                spdlog::info("[App] Window gained input focus");
+            } else if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
+                window_focused_ = false;
+                if (controller_manager_) controller_manager_->set_window_focused(false);
+                spdlog::info("[App] Window lost input focus");
+            }
+
+            if (window_focused_) {
+                if (event.type >= SDL_EVENT_MOUSE_MOTION && event.type <= SDL_EVENT_MOUSE_WHEEL) {
+                    last_mouse_activity_time_ = static_cast<float>(ImGui::GetTime());
                     last_user_activity_ = std::chrono::steady_clock::now();
+                } else if ((event.type >= SDL_EVENT_KEY_DOWN && event.type <= SDL_EVENT_KEY_UP) ||
+                           (event.type >= SDL_EVENT_GAMEPAD_BUTTON_DOWN && event.type <= SDL_EVENT_GAMEPAD_BUTTON_UP)) {
+                    last_user_activity_ = std::chrono::steady_clock::now();
+                } else if (event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION) {
+                    if (std::abs(event.gaxis.value) > 4000) {
+                        last_user_activity_ = std::chrono::steady_clock::now();
+                    }
                 }
             }
 
-            // During active streaming, do NOT feed gamepad/keyboard input to ImGui
-            // This prevents ImGui from hijacking buttons or focusing the disconnect button
-            // UNLESS a modal is open, where keyboard/mouse is needed!
+            // Gate gamepad and keyboard inputs from ImGui when window is unfocused
+            bool is_gamepad_event = (event.type >= SDL_EVENT_GAMEPAD_AXIS_MOTION && event.type <= SDL_EVENT_GAMEPAD_BUTTON_UP);
+            bool is_key_event = (event.type >= SDL_EVENT_KEY_DOWN && event.type <= SDL_EVENT_KEY_UP);
             bool modal_open = show_pin_modal_ || show_login_pin_modal_ || show_controller_test_modal_ || show_browser_fallback_modal_;
-            if (current_screen_ != Screen::Streaming || modal_open ||
-                (event.type >= SDL_EVENT_MOUSE_MOTION && event.type <= SDL_EVENT_MOUSE_WHEEL) ||
-                event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_QUIT) {
-                ImGui_ImplSDL3_ProcessEvent(&event);
+
+            if (!window_focused_ && (is_gamepad_event || is_key_event)) {
+                // Ignore completely when unfocused to prevent background navigation
+            } else {
+                if (current_screen_ != Screen::Streaming || modal_open ||
+                    (event.type >= SDL_EVENT_MOUSE_MOTION && event.type <= SDL_EVENT_MOUSE_WHEEL) ||
+                    event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_QUIT) {
+                    ImGui_ImplSDL3_ProcessEvent(&event);
+                }
             }
 
             switch (event.type) {
                 case SDL_EVENT_QUIT:
                     spdlog::warn("SDL_EVENT_QUIT received!");
                     running_ = false;
+                    break;
+
+                case SDL_EVENT_WINDOW_FOCUS_GAINED:
+                case SDL_EVENT_WINDOW_FOCUS_LOST:
                     break;
 
                 case SDL_EVENT_WINDOW_RESIZED:
@@ -494,6 +520,7 @@ void App::run() {
                     break;
 
                 case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+                    if (!window_focused_) break;
                     // When streaming, NEVER intercept gamepad buttons for UI navigation
                     if (current_screen_ != Screen::Streaming && !modal_open) {
                         if (event.gbutton.button == SDL_GAMEPAD_BUTTON_LEFT_SHOULDER) {
@@ -1864,9 +1891,9 @@ bool App::begin_frame() {
 }
 
 void App::render_ui() {
-    // Dynamically toggle ImGui navigation: disabled during streaming to prevent button hijacking
+    // Dynamically toggle ImGui navigation: disabled during streaming or when window is unfocused
     ImGuiIO& io = ImGui::GetIO();
-    if (current_screen_ == Screen::Streaming) {
+    if (current_screen_ == Screen::Streaming || !window_focused_) {
         io.ConfigFlags &= ~(ImGuiConfigFlags_NavEnableGamepad | ImGuiConfigFlags_NavEnableKeyboard);
     } else {
         io.ConfigFlags |= (ImGuiConfigFlags_NavEnableGamepad | ImGuiConfigFlags_NavEnableKeyboard);

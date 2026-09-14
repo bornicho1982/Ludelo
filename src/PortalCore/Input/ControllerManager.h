@@ -56,6 +56,9 @@ public:
     void set_enable_gyro(bool enable);
     bool get_enable_gyro() const;
 
+    void set_window_focused(bool focused);
+    bool is_window_focused() const;
+
 private:
     void check_and_open_controller();
     void close_controller();
@@ -69,6 +72,7 @@ private:
     std::string m_controller_name{"Sin mando"};
     float m_stick_deadzone{0.15f};
     bool m_enable_gyro{false};
+    bool m_window_focused{true};
 };
 
 } // namespace portal::input

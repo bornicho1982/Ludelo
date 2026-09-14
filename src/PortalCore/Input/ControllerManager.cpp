@@ -116,6 +116,10 @@ ControllerState ControllerManager::poll() {
     std::lock_guard<std::mutex> lock(m_mutex);
     ControllerState state{};
 
+    if (!m_window_focused) {
+        return state;
+    }
+
     if (!m_dualsense && !m_sdl_gamepad) {
         check_and_open_controller();
     }
@@ -330,6 +334,16 @@ void ControllerManager::set_enable_gyro(bool enable) {
 bool ControllerManager::get_enable_gyro() const {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_enable_gyro;
+}
+
+void ControllerManager::set_window_focused(bool focused) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_window_focused = focused;
+}
+
+bool ControllerManager::is_window_focused() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_window_focused;
 }
 
 } // namespace portal::input
