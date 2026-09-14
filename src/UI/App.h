@@ -233,6 +233,9 @@ private:
 
     // Browser OAuth Fallback Modal (when WebView2 is not available)
     bool show_browser_fallback_modal_ = false;
+    bool browser_opened_ = false;
+    float last_clipboard_poll_time_ = 0.0f;
+    std::string browser_fallback_extracted_code_;
     char browser_fallback_url_input_[2048] = {'\0'};
 
     // Background probing & Wakeup

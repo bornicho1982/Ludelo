@@ -260,37 +260,24 @@ WebView2LoginResult WebView2Auth::login() {
                                             spdlog::info("WebView2 nav: {}", safe);
                                         }
 
-                                        // Intercept error parameters in URL (e.g. Sony auth failure)
-                                        if (wuri.find(L"error=") != std::wstring::npos ||
-                                            wuri.find(L"error_description=") != std::wstring::npos ||
-                                            wuri.find(L"authentication_error") != std::wstring::npos) {
+                                        // Use classify_auth_url to handle normal signin, final redirect code, or fatal errors
+                                        std::string code;
+                                        std::string err;
+                                        auto classification = classify_auth_url(suri, &code, &err);
+
+                                        if (classification == AuthUrlClassification::Success) {
+                                            g_auth_code = code;
+                                            spdlog::info("WebView2Auth: auth code captured ({} chars)", code.length());
+                                            PostMessage(g_hwnd, WM_CLOSE, 0, 0);
+                                            return S_OK;
+                                        } else if (classification == AuthUrlClassification::FatalError) {
                                             g_sony_error = true;
-                                            g_sony_error_msg = "Sony devolvió un error de autenticación en la URL";
-                                            spdlog::warn("WebView2Auth: detected Sony OAuth error parameter in URL");
+                                            g_sony_error_msg = err.empty() ? "Sony devolvió un error de autenticación en la URL" : err;
+                                            spdlog::warn("WebView2Auth: fatal OAuth error detected in URL: {}", g_sony_error_msg);
                                             PostMessage(g_hwnd, WM_CLOSE, 0, 0);
                                             return S_OK;
                                         }
-
-                                        // Only intercept the exact redirect URI WITH code=
-                                        const std::wstring redirect_prefix = L"https://remoteplay.dl.playstation.net/remoteplay/redirect";
-                                        if (wuri.find(redirect_prefix) == 0 && wuri.find(L"code=") != std::wstring::npos) {
-                                            size_t code_pos = wuri.find(L"code=");
-                                            size_t start = code_pos + 5;
-                                            size_t end = wuri.find(L"&", start);
-                                            std::wstring wcode = (end == std::wstring::npos)
-                                                 ? wuri.substr(start)
-                                                 : wuri.substr(start, end - start);
-
-                                            std::string scode;
-                                            int size_needed = WideCharToMultiByte(CP_UTF8, 0, wcode.c_str(), (int)wcode.length(), NULL, 0, NULL, NULL);
-                                            scode.resize(size_needed);
-                                            WideCharToMultiByte(CP_UTF8, 0, wcode.c_str(), (int)wcode.length(), &scode[0], size_needed, NULL, NULL);
-
-                                            g_auth_code = scode;
-                                            spdlog::info("WebView2Auth: auth code captured ({} chars)", scode.length());
-
-                                            PostMessage(g_hwnd, WM_CLOSE, 0, 0);
-                                        }
+                                        // AuthUrlClassification::Continue: normal OAuth flow, await user interaction
                                         return S_OK;
                                     }).Get(), &nav_token);
 
@@ -318,10 +305,7 @@ WebView2LoginResult WebView2Auth::login() {
                                                             if (sz > 0) {
                                                                 res_utf8.resize(sz - 1);
                                                                 WideCharToMultiByte(CP_UTF8, 0, res_w.c_str(), -1, &res_utf8[0], sz, NULL, NULL);
-                                                                std::string lower = res_utf8;
-                                                                for (auto& c : lower) c = static_cast<char>(std::tolower(c));
-                                                                if (lower.find("something went wrong") != std::string::npos ||
-                                                                    lower.find("an error occurred") != std::string::npos) {
+                                                                if (classify_dom_content(res_utf8)) {
                                                                     spdlog::warn("WebView2Auth: Sony error page detected in DOM: {}", res_utf8);
                                                                     g_sony_error = true;
                                                                     g_sony_error_msg = "Sony reportó 'Something went wrong' en la página";

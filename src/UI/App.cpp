@@ -2086,9 +2086,9 @@ void App::draw_toast_notification() {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(50, 68, 105, 255));
         if (ImGui::Button("Usar navegador##browser_login", ImVec2(130.0f, 30.0f))) {
             login_cancelled_prompt_visible_ = false;
-            std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
-            ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
             memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
+            browser_fallback_extracted_code_.clear();
+            browser_opened_ = false;
             show_browser_fallback_modal_ = true;
         }
         ImGui::PopStyleColor(2);
@@ -3343,15 +3343,15 @@ void App::draw_pin_modal() {
                     login_cancelled_prompt_visible_ = true;
                 } else if (res.status == portal::auth::WebView2LoginStatus::SonyError) {
                     show_toast("Sony devolvio un error de autenticacion. Abriendo navegador...", 5.0f);
-                    std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
-                    ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
                     memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
+                    browser_fallback_extracted_code_.clear();
+                    browser_opened_ = false;
                     show_browser_fallback_modal_ = true;
                 } else {
                     show_toast("WebView2 no disponible. Abriendo navegador web...", 4.0f);
-                    std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
-                    ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
                     memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
+                    browser_fallback_extracted_code_.clear();
+                    browser_opened_ = false;
                     show_browser_fallback_modal_ = true;
                 }
             });
@@ -3671,16 +3671,16 @@ void App::draw_onboarding() {
             } else if (res.status == portal::auth::WebView2LoginStatus::SonyError) {
                 spdlog::warn("WebView2Auth: Sony error reported: {}", res.error_details);
                 show_toast("Sony devolvio un error de autenticacion. Abriendo navegador...", 5.0f);
-                std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
-                ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
                 memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
+                browser_fallback_extracted_code_.clear();
+                browser_opened_ = false;
                 show_browser_fallback_modal_ = true;
             } else {
                 show_toast("WebView2 no disponible. Abriendo el navegador web...", 4.0f);
                 spdlog::warn("WebView2 login unavailable, falling back to system browser");
-                std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
-                ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
                 memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
+                browser_fallback_extracted_code_.clear();
+                browser_opened_ = false;
                 show_browser_fallback_modal_ = true;
             }
         });
@@ -3700,9 +3700,65 @@ void App::draw_onboarding() {
 
 // ─── Modal de Fallback de Navegador para PSN OAuth ─────────
 void App::draw_browser_fallback_modal() {
+    static const std::string kSonyOAuthUrl = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
+
+    // Launch browser ONLY once when the modal is opened
+    if (!browser_opened_) {
+        browser_opened_ = true;
+        ShellExecuteA(nullptr, "open", kSonyOAuthUrl.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    }
+
+    // Auto-read clipboard every 500ms while the modal is open
+    float cur_time = static_cast<float>(ImGui::GetTime());
+    if (cur_time - last_clipboard_poll_time_ >= 0.5f) {
+        last_clipboard_poll_time_ = cur_time;
+        const char* clip = ImGui::GetClipboardText();
+        if (clip && clip[0] != '\0') {
+            std::string sclip(clip);
+            const std::string marker = "remoteplay.dl.playstation.net/remoteplay/redirect?code=";
+            size_t pos = sclip.find(marker);
+            if (pos != std::string::npos) {
+                size_t code_start = pos + marker.length();
+                size_t code_end = sclip.find('&', code_start);
+                std::string code = (code_end == std::string::npos) ? sclip.substr(code_start) : sclip.substr(code_start, code_end - code_start);
+                while (!code.empty() && (code.back() == '\r' || code.back() == '\n' || code.back() == ' ')) code.pop_back();
+                while (!code.empty() && (code.front() == '\r' || code.front() == '\n' || code.front() == ' ')) code.erase(code.begin());
+                if (!code.empty()) {
+                    browser_fallback_extracted_code_ = code;
+                    if (browser_fallback_url_input_[0] == '\0') {
+                        strncpy_s(browser_fallback_url_input_, sclip.c_str(), sizeof(browser_fallback_url_input_) - 1);
+                    }
+                }
+            }
+        }
+    }
+
+    // Determine candidate code from input field or auto-detected clipboard
+    std::string candidate_code = browser_fallback_extracted_code_;
+    std::string input_text = browser_fallback_url_input_;
+    if (!input_text.empty()) {
+        size_t code_pos = input_text.find("code=");
+        if (code_pos != std::string::npos) {
+            size_t start = code_pos + 5;
+            size_t end = input_text.find('&', start);
+            std::string c = (end == std::string::npos) ? input_text.substr(start) : input_text.substr(start, end - start);
+            while (!c.empty() && (c.back() == '\r' || c.back() == '\n' || c.back() == ' ')) c.pop_back();
+            while (!c.empty() && (c.front() == '\r' || c.front() == '\n' || c.front() == ' ')) c.erase(c.begin());
+            if (!c.empty()) candidate_code = c;
+        } else if (input_text.find('=') == std::string::npos && input_text.length() >= 10) {
+            std::string c = input_text;
+            while (!c.empty() && (c.back() == '\r' || c.back() == '\n' || c.back() == ' ')) c.pop_back();
+            while (!c.empty() && (c.front() == '\r' || c.front() == '\n' || c.front() == ' ')) c.erase(c.begin());
+            if (!c.empty()) candidate_code = c;
+        }
+    }
+
+    // Validation: non-empty and no whitespace
+    bool code_valid = !candidate_code.empty() && (candidate_code.find(' ') == std::string::npos);
+
     ImVec2 ws = ImGui::GetIO().DisplaySize;
-    float modal_w = 580.0f;
-    float modal_h = 320.0f;
+    float modal_w = 600.0f;
+    float modal_h = 360.0f;
     ImVec2 modal_pos((ws.x - modal_w) * 0.5f, (ws.y - modal_h) * 0.5f);
     ImVec2 modal_end(modal_pos.x + modal_w, modal_pos.y + modal_h);
 
@@ -3739,43 +3795,54 @@ void App::draw_browser_fallback_modal() {
         "Cuando te salga la página en blanco, copia la URL completa y pégala aquí:");
     if (font_body_) ImGui::PopFont();
 
-    // Input text field
+    // Input text field with hint
     cur_y += 36.0f;
     float input_x = modal_pos.x + 36.0f;
     float input_w = modal_w - 72.0f;
     ImGui::SetCursorScreenPos(ImVec2(input_x, cur_y));
     ImGui::SetNextItemWidth(input_w);
     if (font_body_) ImGui::PushFont(font_body_);
-    ImGui::InputTextWithHint("##browser_fallback_url", "https://remoteplay.dl.playstation.net/remoteplay/redirect?code=...",
+    ImGui::InputTextWithHint("##browser_fallback_url", "https://remoteplay.dl.playstation.net/...",
         browser_fallback_url_input_, sizeof(browser_fallback_url_input_));
     if (font_body_) ImGui::PopFont();
 
+    // Obfuscated code detection feedback
+    cur_y += 38.0f;
+    if (code_valid) {
+        std::string obfuscated;
+        if (candidate_code.length() >= 8) {
+            obfuscated = candidate_code.substr(0, 4) + "****" + candidate_code.substr(candidate_code.length() - 4);
+        } else {
+            obfuscated = candidate_code.substr(0, 2) + "****";
+        }
+        ImGui::SetCursorScreenPos(ImVec2(input_x, cur_y));
+        if (font_small_) ImGui::PushFont(font_small_);
+        ImGui::TextColored(ImVec4(0.0f, 0.96f, 0.83f, 1.0f), "Código detectado: %s (listo para confirmar)", obfuscated.c_str());
+        if (font_small_) ImGui::PopFont();
+    } else {
+        ImGui::SetCursorScreenPos(ImVec2(input_x, cur_y));
+        if (font_small_) ImGui::PushFont(font_small_);
+        ImGui::TextColored(ImVec4(0.65f, 0.70f, 0.80f, 0.8f), "Esperando enlace de PlayStation Network o copia manual...");
+        if (font_small_) ImGui::PopFont();
+    }
+
     // Buttons Row
-    cur_y += 56.0f;
+    cur_y += 34.0f;
     float btn_h = 44.0f;
     float confirm_btn_w = 160.0f;
     float cancel_btn_w = 120.0f;
     float reopen_btn_w = 180.0f;
 
     ImGui::SetCursorScreenPos(ImVec2(input_x, cur_y));
+    ImGui::BeginDisabled(!code_valid);
     ImGui::PushStyleColor(ImGuiCol_Button, colors::kPrimary);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
     if (ImGui::Button("Confirmar##fallback_confirm", ImVec2(confirm_btn_w, btn_h))) {
-        std::string input = browser_fallback_url_input_;
-        std::string extracted_code;
-        size_t code_pos = input.find("code=");
-        if (code_pos != std::string::npos) {
-            size_t start = code_pos + 5;
-            size_t end = input.find("&", start);
-            extracted_code = (end == std::string::npos) ? input.substr(start) : input.substr(start, end - start);
-        } else if (input.length() > 20 && input.find("=") == std::string::npos) {
-            extracted_code = input;
-        }
-
-        if (!extracted_code.empty()) {
-            spdlog::info("Fallback code submitted ({} chars)", extracted_code.length());
-            login_thread_ = std::jthread([this, extracted_code](std::stop_token) {
-                auto result = account_manager_->add_account_from_code(extracted_code);
+        if (code_valid) {
+            std::string code_to_submit = candidate_code;
+            spdlog::info("Fallback code submitted ({} chars)", code_to_submit.length());
+            login_thread_ = std::jthread([this, code_to_submit](std::stop_token) {
+                auto result = account_manager_->add_account_from_code(code_to_submit);
                 if (result.has_value()) {
                     auto acc = account_manager_->get_active_account();
                     if (acc.has_value()) {
@@ -3789,22 +3856,26 @@ void App::draw_browser_fallback_modal() {
                     destroy_texture("avatar");
                     current_screen_ = Screen::Home;
                     show_browser_fallback_modal_ = false;
+                    browser_opened_ = false;
+                    browser_fallback_extracted_code_.clear();
                     memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
                 } else {
                     show_toast("Error al iniciar sesion: " + result.error().message, 5.0f);
                 }
             });
-        } else {
-            show_toast("Por favor pega la URL completa o el código de autorización.", 4.0f);
         }
     }
     ImGui::PopStyleColor(2);
+    ImGui::EndDisabled();
 
     ImGui::SameLine();
     ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(35, 48, 75, 200));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(50, 68, 105, 255));
     if (ImGui::Button("Cancelar##fallback_cancel", ImVec2(cancel_btn_w, btn_h))) {
         show_browser_fallback_modal_ = false;
+        browser_opened_ = false;
+        browser_fallback_extracted_code_.clear();
+        memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
     }
     ImGui::PopStyleColor(2);
 
@@ -3812,8 +3883,7 @@ void App::draw_browser_fallback_modal() {
     ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(20, 30, 50, 160));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(30, 45, 75, 220));
     if (ImGui::Button("Reabrir Navegador##fallback_reopen", ImVec2(reopen_btn_w, btn_h))) {
-        std::string url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize?service_entity=urn:service-entity:psn&response_type=code&client_id=ba495a24-818c-472b-b12d-ff231c1b5745&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect&scope=psn:clientapp%20referenceDataService:countryConfig.read%20pushNotification:webSocket.desktop.connect%20sessionManager:remotePlaySession.system.update&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal";
-        ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        ShellExecuteA(nullptr, "open", kSonyOAuthUrl.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     }
     ImGui::PopStyleColor(2);
 }

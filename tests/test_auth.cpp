@@ -3,6 +3,7 @@
 #include "PortalCore/Common.h"
 #include "PortalCore/Auth/PSNAuth.h"
 #include "PortalCore/Auth/Keychain.h"
+#include "PortalCore/Auth/WebView2Auth.h"
 
 #include <iostream>
 #include <cassert>
@@ -128,6 +129,43 @@ void test_mixed_profile_json_parsing() {
     std::cout << "PASSED\n";
 }
 
+void test_classify_auth_url() {
+    std::cout << "[TEST] PSN Auth URL Classification (classify_auth_url)... ";
+
+    // 1. signin con error=login_required => CONTINUE
+    std::string signin_url = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize"
+                             "?service_entity=urn:service-entity:psn&response_type=code"
+                             "&client_id=ba495a24-818c-472b-b12d-ff231c1b5745"
+                             "&redirect_uri=https%3A%2F%2Fremoteplay.dl.playstation.net%2Fremoteplay%2Fredirect"
+                             "&error=login_required&no_captcha=true";
+    std::string extracted_code;
+    std::string extracted_error;
+    auto res1 = portal::auth::classify_auth_url(signin_url, &extracted_code, &extracted_error);
+    assert(res1 == portal::auth::AuthUrlClassification::Continue);
+    assert(extracted_code.empty());
+    assert(extracted_error.empty());
+
+    // 2. redirect con ?code= => SUCCESS, extrae code
+    std::string redirect_success_url = "https://remoteplay.dl.playstation.net/remoteplay/redirect?code=v1.mock_auth_code_98765&state=xyz";
+    auto res2 = portal::auth::classify_auth_url(redirect_success_url, &extracted_code, &extracted_error);
+    assert(res2 == portal::auth::AuthUrlClassification::Success);
+    assert(extracted_code == "v1.mock_auth_code_98765");
+
+    // 3. redirect con ?error=... => FAIL real
+    std::string redirect_fail_url = "https://remoteplay.dl.playstation.net/remoteplay/redirect?error=access_denied&error_description=User+rejected+login";
+    auto res3 = portal::auth::classify_auth_url(redirect_fail_url, &extracted_code, &extracted_error);
+    assert(res3 == portal::auth::AuthUrlClassification::FatalError);
+    assert(extracted_error == "access_denied");
+
+    // 4. body/title con "Something went wrong" => FAIL real
+    std::string dom_fail_body = "<html><head><title>Error</title></head><body>Something went wrong. Please try again.</body></html>";
+    auto res4 = portal::auth::classify_auth_url(dom_fail_body, &extracted_code, &extracted_error);
+    assert(res4 == portal::auth::AuthUrlClassification::FatalError);
+    assert(portal::auth::classify_dom_content(dom_fail_body) == true);
+
+    std::cout << "PASSED\n";
+}
+
 int main() {
     std::cout << "========================================\n";
     std::cout << "  Ludelo Unit Tests: Auth & Keychain    \n";
@@ -137,6 +175,7 @@ int main() {
         test_jwt_account_id_decoding();
         test_keychain_dpapi();
         test_mixed_profile_json_parsing();
+        test_classify_auth_url();
         std::cout << "\n>>> ALL AUTH TESTS PASSED SUCCESSFULLY! <<<\n";
         return 0;
     } catch (const std::exception& e) {
