@@ -67,8 +67,7 @@ backup*/
 PUBLISH-REPORT.md
 [FAIL]
 [OK]
-docs/notes/*
-!docs/notes/design-streaming-service.md
+docs/notes/
 scratch/
 
 # ─── OS Files ─────────────────────────────────────────────

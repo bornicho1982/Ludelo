@@ -81,5 +81,6 @@
 - [x] C1: Decisión comercial documentada en STATE.md: modelo Store 9,99€ pago único para conveniencia/actualizaciones con base AGPL libre en GitHub y alternativa DLC Supporter Pack.
 - [x] C2: README.md reescrito con enfoque 100% usuario final (guía paso a paso, características clave, FAQ de seguridad/mandos y notas de compilación secundarias).
 - [x] C3: THIRD-PARTY-LICENSES.md actualizado con licencias de Inter Font (OFL-1.1), SDL GameControllerDB (zlib), Lucide Icons (ISC) y Noto Sans CJK (OFL-1.1).
-- [x] C4: Documento de diseño arquitectónico de desacoplamiento de streaming vía IPC (Named Pipes + Shared Memory zero-copy) registrado en docs/notes/design-streaming-service.md.
+- [x] C4: Documento de diseño arquitectónico de streaming IPC preservado de forma privada en notas externas fuera del repo; docs/notes/ completamente ignorado y protegido.
+- [x] Higiene de repo: retirada de docs/notes/design-streaming-service.md del repo y del historial git, archivo resguardado en notes_privados/ y regla de exclusión estricta en DIRECTIVAS.md.
 

@@ -61,4 +61,5 @@ Solo si las Fases 0–7 están cerradas y hay producto vendiendo. Decisión del 
 ## CHECKPOINTS ENTRE FASES
 - Build limpio en máquina limpia, ctest verde, STATE.md actualizado.
 - `strings` del binario: sin datos personales, sin Kamaji (flag off), sin rutas de desarrollo, sin "PortalPC".
+- docs/notes/ y cualquier archivo de diseño comercial está PROHIBIDO en el repo; el agente verifica `git status` antes de cada push.
 - Usuario verifica el criterio; el agente nunca marca su propia fase como completa.
