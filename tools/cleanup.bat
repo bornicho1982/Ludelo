@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ============================================================
-echo   PortalPC - Limpieza Integral y Organizacion del Proyecto
+echo   Ludelo - Limpieza Integral y Organizacion del Proyecto
 echo ============================================================
 echo.
 
@@ -34,7 +34,7 @@ del /f /q "*.obj" 2>nul
 echo        -> Todos los .obj en la raiz eliminados.
 
 echo [5/6] Eliminando ejecutables viejos de pruebas sueltos...
-del /f /q "test_auth.exe" "test_crypto.exe" "test_discovery.exe" "test_dualsense.exe" "test_fec.exe" "test_takion.exe" "PortalPC_LiveDiagnostic.exe" 2>nul
+del /f /q "test_auth.exe" "test_crypto.exe" "test_discovery.exe" "test_dualsense.exe" "test_fec.exe" "test_takion.exe" "Ludelo_LiveDiagnostic.exe" "PortalPC_LiveDiagnostic.exe" "PortalPC.exe" 2>nul
 echo        -> Ejecutables de prueba eliminados.
 
 echo [6/6] Eliminando scripts de prueba, logs temporales y scratch...
@@ -61,6 +61,7 @@ del /f /q "run_all_tests.bat" 2>nul
 del /f /q "out.txt" 2>nul
 del /f /q "test_crypto_out.txt" 2>nul
 del /f /q "vulkan_exp.txt" 2>nul
+del /f /q "ludelo.log" 2>nul
 del /f /q "portalpc.log" 2>nul
 del /f /q "chiaki_help.txt" 2>nul
 del /f /q "chiaki.zip" 2>nul

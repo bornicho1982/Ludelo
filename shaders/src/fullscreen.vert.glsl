@@ -1,5 +1,5 @@
 #version 450
-// PortalPC — Fullscreen quad vertex shader
+// Ludelo — Fullscreen quad vertex shader
 // Generates a fullscreen triangle/quad without a vertex buffer (clip-space only).
 // Two triangles covering NDC [-1,1] generated from vertex index.
 

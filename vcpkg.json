@@ -1,8 +1,8 @@
 {
-  "name": "portalpc",
+  "name": "ludelo",
   "version-string": "0.1.0",
-  "description": "PortalPC — Unified PS Remote Play + Cloud Streaming Client for PC",
-  "homepage": "https://github.com/portalpc/portalpc",
+  "description": "Ludelo — Unified PlayStation Remote Play Client for Windows",
+  "homepage": "https://github.com/bornicho1982/Ludelo",
   "dependencies": [
     "vulkan",
     "vulkan-memory-allocator",

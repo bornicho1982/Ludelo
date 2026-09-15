@@ -86,4 +86,5 @@
 - [x] Hotfix Sesión B1: Salidas múltiples en modal de test de mando (botón X visible, tecla Esc, botón B/Circle del mando y clic en dimmer).
 - [x] Hotfix Sesión B2: Focus-gating total de gamepad e ImGui Nav en SDL_EVENT_WINDOW_FOCUS_GAINED/LOST (verificado: sin procesos Steam Input/mapeo global activos).
 - [x] Hotfix Sesión B3: Parámetros de streaming alineados con chiaki-ng (a_rwnd 4MB, reorder buffer 256, RTT LAN 1ms, drenado de audio progresivo y pacing VSync sin doble sleep).
+- [x] Branding forense (1/2): Eliminación de restos PortalPC en vcpkg.json, tools/capture_ui.ps1, tools/cleanup.bat y cabeceras de shaders.
 

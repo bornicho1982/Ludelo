@@ -1,7 +1,7 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-$proc = Start-Process -FilePath 'bin\PortalPC.exe' -WorkingDirectory 'bin' -PassThru
+$proc = Start-Process -FilePath 'bin\Ludelo.exe' -WorkingDirectory 'bin' -PassThru
 Start-Sleep -Seconds 3
 
 $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
