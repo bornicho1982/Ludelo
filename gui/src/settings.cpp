@@ -170,8 +170,8 @@ static void MigrateControllerMappings(QSettings *settings)
 
 Settings::Settings(const QString &conf, QObject *parent) : QObject(parent),
 	time_format("yyyy-MM-dd HH:mm:ss t"),
-	settings(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + (conf.isEmpty() ? "/pylux.conf" : QString("/pylux-%1.conf").arg(conf)), QSettings::IniFormat),
-	default_settings(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/pylux.conf", QSettings::IniFormat),
+	settings(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + (conf.isEmpty() ? "/Ludelo.conf" : QString("/Ludelo-%1.conf").arg(conf)), QSettings::IniFormat),
+	default_settings(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/Ludelo.conf", QSettings::IniFormat),
 	placebo_settings(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/pl_render_params.conf", QSettings::IniFormat)
 {
 	settings.setFallbacksEnabled(false);
@@ -296,7 +296,7 @@ void Settings::ImportSettings(QString filepath)
 	}
 	else
 	{
-		QSettings profile_settings(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QString("/pylux-%1.conf").arg(profile), QSettings::IniFormat);
+		QSettings profile_settings(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QString("/Ludelo-%1.conf").arg(profile), QSettings::IniFormat);
 		profile_settings.clear();
 		SaveRegisteredHosts(&profile_settings);
 		SaveHiddenHosts(&profile_settings);
@@ -2317,14 +2317,14 @@ void Settings::DeleteProfile(QString profile)
 	QString currentProfile = GetCurrentProfile();
 	bool isDeletingCurrent = (currentProfile == profile);
 	
-	QString pyluxDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-	QString pyluxFile = isDefaultProfile ? (pyluxDir + "/pylux.conf") : (pyluxDir + QString("/pylux-%1.conf").arg(profile));
+	QString LudeloDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+	QString LudeloFile = isDefaultProfile ? (LudeloDir + "/Ludelo.conf") : (LudeloDir + QString("/Ludelo-%1.conf").arg(profile));
 	
-	CHIAKI_LOGI(NULL, "Settings: Clearing data for profile at: %s", pyluxFile.toUtf8().constData());
+	CHIAKI_LOGI(NULL, "Settings: Clearing data for profile at: %s", LudeloFile.toUtf8().constData());
 	
 	// ORIGINAL LOGIC - always clear the data (in separate scope so file gets closed)
 	{
-		QSettings delete_profile(pyluxFile, QSettings::IniFormat);
+		QSettings delete_profile(LudeloFile, QSettings::IniFormat);
 		registered_hosts.clear();
 		manual_hosts.clear();
 		controller_mappings.clear();
@@ -2337,16 +2337,16 @@ void Settings::DeleteProfile(QString profile)
 	
 	// Only delete file and remove from list if NOT default profile
 	if (!isDefaultProfile) {
-		CHIAKI_LOGI(NULL, "Settings: File exists before delete: %s", QFile::exists(pyluxFile) ? "YES" : "NO");
+		CHIAKI_LOGI(NULL, "Settings: File exists before delete: %s", QFile::exists(LudeloFile) ? "YES" : "NO");
 		
-		if (QFile::exists(pyluxFile)) {
-			if (QFile::remove(pyluxFile)) {
-				CHIAKI_LOGI(NULL, "Settings: ✓ Successfully deleted pylux file: %s", pyluxFile.toUtf8().constData());
+		if (QFile::exists(LudeloFile)) {
+			if (QFile::remove(LudeloFile)) {
+				CHIAKI_LOGI(NULL, "Settings: ✓ Successfully deleted Ludelo file: %s", LudeloFile.toUtf8().constData());
 			} else {
-				CHIAKI_LOGE(NULL, "Settings: ✗ Failed to delete pylux file: %s", pyluxFile.toUtf8().constData());
+				CHIAKI_LOGE(NULL, "Settings: ✗ Failed to delete Ludelo file: %s", LudeloFile.toUtf8().constData());
 			}
 		} else {
-			CHIAKI_LOGW(NULL, "Settings: File not found: %s", pyluxFile.toUtf8().constData());
+			CHIAKI_LOGW(NULL, "Settings: File not found: %s", LudeloFile.toUtf8().constData());
 		}
 		
 		profiles.removeOne(profile);
@@ -2726,3 +2726,4 @@ QMap<Qt::Key, int> Settings::GetControllerMappingForDecoding()
 	}
 	return result;
 }
+

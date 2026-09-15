@@ -422,9 +422,9 @@ bool SteamCloudSync::deleteProfileFromCloud(const QString &profileName)
     // Convert profile name to cloud filename
     QString cloudFilename;
     if (profileName.isEmpty() || profileName == "default") {
-        cloudFilename = "pylux.conf";
+        cloudFilename = "Ludelo.conf";
     } else {
-        cloudFilename = QString("pylux-%1.conf").arg(profileName);
+        cloudFilename = QString("Ludelo-%1.conf").arg(profileName);
     }
 
     // Check if file exists in cloud
@@ -560,14 +560,14 @@ QString SteamCloudSync::extractProfileName(const QString &filename) const
     QFileInfo fileInfo(filename);
     QString basename = fileInfo.fileName();
     
-    // pylux.conf -> "default"
-    if (basename == "pylux.conf") {
+    // Ludelo.conf -> "default"
+    if (basename == "Ludelo.conf") {
         return "default";
     }
     
-    // pylux-2333.conf -> "2333"
-    if (basename.startsWith("pylux-") && basename.endsWith(".conf")) {
-        QString profile = basename.mid(6); // Remove "pylux-"
+    // Ludelo-2333.conf -> "2333"
+    if (basename.startsWith("Ludelo-") && basename.endsWith(".conf")) {
+        QString profile = basename.mid(6); // Remove "Ludelo-"
         profile = profile.left(profile.length() - 5); // Remove ".conf"
         return profile;
     }
@@ -627,9 +627,9 @@ QStringList SteamCloudSync::getLocalConfigFiles() const
         return QStringList();
     }
 
-    // Find pylux.conf and pylux-*.conf files
+    // Find Ludelo.conf and Ludelo-*.conf files
     QStringList filters;
-    filters << "pylux.conf" << "pylux-*.conf";
+    filters << "Ludelo.conf" << "Ludelo-*.conf";
     
     QFileInfoList files = configDir.entryInfoList(filters, QDir::Files);
     QStringList paths;
@@ -657,8 +657,8 @@ QStringList SteamCloudSync::getCloudConfigFiles() const
         const char *filename = remoteStorage->GetFileNameAndSize(i, &fileSize);
         
         QString name = QString::fromUtf8(filename);
-        // Only include pylux config files
-        if (name.startsWith("pylux") && name.endsWith(".conf")) {
+        // Only include Ludelo config files
+        if (name.startsWith("Ludelo") && name.endsWith(".conf")) {
             cloudFiles.append(name);
         }
     }
@@ -902,4 +902,5 @@ int SteamCloudSync::compareTimestamps(const QString &localPath, const QString &c
     return -999;
 #endif
 }
+
 

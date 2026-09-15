@@ -15,6 +15,7 @@ extern MunitTest tests_bitstream[];
 extern MunitTest tests_cloudcatalog_merge[];
 extern MunitTest tests_cloudsession_kamaji[];
 extern MunitTest tests_ps_chord[];
+extern MunitTest auth_classifier_tests[];
 
 static MunitSuite suites[] = {
 	{
@@ -104,6 +105,13 @@ static MunitSuite suites[] = {
 	{
 		"/ps_chord",
 		tests_ps_chord,
+		NULL,
+		1,
+		MUNIT_SUITE_OPTION_NONE
+	},
+	{
+		"/auth_classifier",
+		auth_classifier_tests,
 		NULL,
 		1,
 		MUNIT_SUITE_OPTION_NONE

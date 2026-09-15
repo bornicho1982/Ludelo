@@ -285,9 +285,9 @@ void QmlMainWindow::setSettings(Settings *new_settings)
     QString profile = settings->GetCurrentProfile();
     qCCritical(chiakiGui) << "Current Profile: " << profile;
     if(profile.isEmpty())
-        QGuiApplication::setApplicationDisplayName("Pylux");
+        QGuiApplication::setApplicationDisplayName("Ludelo");
     else
-        QGuiApplication::setApplicationDisplayName(QString("Pylux:%1").arg(profile));
+        QGuiApplication::setApplicationDisplayName(QString("Ludelo:%1").arg(profile));
     this->setTitle(QGuiApplication::applicationDisplayName());
 }
 
@@ -1329,3 +1329,4 @@ void QmlMainWindow::startCloudStreaming(const QString &serviceType, const QStrin
     QJSValue emptyCallback;
     cloudBackend->startCompleteCloudSession(serviceType, gameIdentifier, emptyCallback);
 }
+

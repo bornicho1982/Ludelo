@@ -1,0 +1,55 @@
+
+bool QmlBackend::checkWebView2Available() const
+{
+#ifdef Q_OS_WIN
+    QSettings hklm("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}", QSettings::NativeFormat);
+    QString verLM = hklm.value("pv").toString();
+    if (!verLM.isEmpty()) return true;
+    
+    QSettings hkcu("HKEY_CURRENT_USER\\Software\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}", QSettings::NativeFormat);
+    QString verCU = hkcu.value("pv").toString();
+    if (!verCU.isEmpty()) return true;
+
+    return false;
+#else
+    return true;
+#endif
+}
+
+void QmlBackend::installWebView2Runtime()
+{
+#ifdef Q_OS_WIN
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+    QNetworkRequest request(QUrl("https://go.microsoft.com/fwlink/p/?LinkId=2124703"));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    QNetworkReply *reply = manager->get(request);
+    connect(reply, &QNetworkReply::finished, [this, reply, manager]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QString tempPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/MicrosoftEdgeWebview2Setup.exe";
+            QFile file(tempPath);
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(reply->readAll());
+                file.close();
+                
+                QProcess *process = new QProcess(this);
+                connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), [this, process, tempPath](int exitCode, QProcess::ExitStatus exitStatus) {
+                    QFile::remove(tempPath);
+                    bool success = (exitStatus == QProcess::NormalExit && exitCode == 0);
+                    emit webView2InstallFinished(success);
+                    process->deleteLater();
+                });
+                process->start(tempPath, QStringList() << "/silent" << "/install");
+            } else {
+                emit webView2InstallFinished(false);
+            }
+        } else {
+            emit webView2InstallFinished(false);
+        }
+        reply->deleteLater();
+        manager->deleteLater();
+    });
+#else
+    emit webView2InstallFinished(false);
+#endif
+}
+

@@ -170,10 +170,10 @@ void DonationManager::checkDonationStatusAndShow(bool settingsTriggered)
     }
 
     static const QStringList productIds = {
-        QStringLiteral("pylux_support_bronze"),
-        QStringLiteral("pylux_support_silver"),
-        QStringLiteral("pylux_support_gold"),
-        QStringLiteral("pylux_support_platinum"),
+        QStringLiteral("Ludelo_support_bronze"),
+        QStringLiteral("Ludelo_support_silver"),
+        QStringLiteral("Ludelo_support_gold"),
+        QStringLiteral("Ludelo_support_platinum"),
     };
     if (m_iapTiers.isEmpty() && !m_iapLoadFailed)
         m_storeKit->loadProducts(productIds);
@@ -430,10 +430,10 @@ void DonationManager::initStoreKit()
     });
 
     static const QStringList productIds = {
-        QStringLiteral("pylux_support_bronze"),
-        QStringLiteral("pylux_support_silver"),
-        QStringLiteral("pylux_support_gold"),
-        QStringLiteral("pylux_support_platinum"),
+        QStringLiteral("Ludelo_support_bronze"),
+        QStringLiteral("Ludelo_support_silver"),
+        QStringLiteral("Ludelo_support_gold"),
+        QStringLiteral("Ludelo_support_platinum"),
     };
     m_storeKit->loadProducts(productIds);
 
@@ -445,3 +445,4 @@ void DonationManager::initStoreKit()
     });
 }
 #endif
+

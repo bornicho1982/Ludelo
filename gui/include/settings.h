@@ -176,7 +176,7 @@ constexpr qint64  DONATION_MIN_STREAM_MS       = 3600000LL;
 constexpr qint64  DONATION_PROMPT_COOLDOWN_MS  = 3600000LL;
 constexpr int     DONATION_SHOW_DELAY_MS       = 5000;
 constexpr qint64  DONATION_CACHE_TTL_MS        = 24LL * 3600LL * 1000LL;
-#define           DONATION_API_BASE_URL          "https://www.xbgamestream.com/pylux"
+#define           DONATION_API_BASE_URL          "https://www.xbgamestream.com/Ludelo"
 
 class Settings : public QObject
 {
@@ -803,3 +803,4 @@ class Settings : public QObject
 	};
 
 #endif // CHIAKI_SETTINGS_H
+

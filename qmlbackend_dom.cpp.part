@@ -1,0 +1,10 @@
+
+void QmlBackend::handleWebViewDom(const QString &domContent)
+{
+    if (ludelo::auth::classify_dom_content(domContent.toStdString())) {
+        QString errMsg = "Sony reportó 'Something went wrong' en la página";
+        qCWarning(chiakiGui) << "WebView2Auth: fatal OAuth error detected in DOM";
+        emit psnLoginAccountIdError(errMsg);
+    }
+}
+

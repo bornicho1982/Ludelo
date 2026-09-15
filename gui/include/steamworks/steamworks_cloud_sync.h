@@ -10,7 +10,7 @@
 class Settings;
 
 /**
- * Isolated Steam Cloud Sync for pylux config files
+ * Isolated Steam Cloud Sync for Ludelo config files
  * 
  * Handles automatic synchronization of all profile config files with Steam Cloud,
  * including intelligent conflict resolution, backup management, and graceful error handling.
@@ -48,7 +48,7 @@ public:
     int syncAllProfilesFromCloud();
 
     /**
-     * Delete all pylux config files from Steam Cloud
+     * Delete all Ludelo config files from Steam Cloud
      * @return true if deletion successful
      */
     bool clearAllCloudData();
@@ -160,7 +160,7 @@ private:
     int compareTimestamps(const QString &localPath, const QString &cloudFilename) const;
     
     /**
-     * Extract profile name from filename (pylux.conf -> "default", pylux-2333.conf -> "2333")
+     * Extract profile name from filename (Ludelo.conf -> "default", Ludelo-2333.conf -> "2333")
      * @param filename Config filename
      * @return Profile name
      */
@@ -181,5 +181,6 @@ private:
 };
 
 #endif // STEAMWORKS_CLOUD_SYNC_H
+
 
 

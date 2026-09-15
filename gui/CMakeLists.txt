@@ -12,10 +12,7 @@ if(Qt6_VERSION VERSION_GREATER_EQUAL "6.10.0")
 	find_package(Qt6 REQUIRED COMPONENTS GuiPrivate)
 endif()
 
-# CHIAKI_ENABLE_GUI_WEBENGINE: root CMakeLists.txt (OFF on Linux; App Store passes OFF via PYLUX_EXTRA_CMAKE_ARGS)
-if(CHIAKI_ENABLE_GUI_WEBENGINE)
-	find_package(Qt6 COMPONENTS WebEngineQuick)
-endif()
+# CHIAKI_ENABLE_GUI_WEBENGINE controls if we build the webview for login
 find_package(Qt6 COMPONENTS DBus)
 
 if(WIN32)
@@ -134,9 +131,12 @@ if (${Qt6DBus_FOUND} AND NOT WIN32 AND NOT APPLE)
 	target_link_libraries(chiaki Qt::DBus)
 	target_compile_definitions(chiaki PRIVATE CHIAKI_HAVE_DBUS)
 endif()
-if(CHIAKI_ENABLE_GUI_WEBENGINE AND Qt6WebEngineQuick_FOUND)
-	target_link_libraries(chiaki Qt::WebEngineQuick)
-	target_compile_definitions(chiaki PRIVATE CHIAKI_HAVE_WEBENGINE)
+if(CHIAKI_ENABLE_GUI_WEBENGINE)
+	find_package(Qt6 COMPONENTS WebView WebViewQuick)
+	if(Qt6WebView_FOUND AND Qt6WebViewQuick_FOUND)
+		target_link_libraries(chiaki Qt::WebView Qt::WebViewQuick)
+		target_compile_definitions(chiaki PRIVATE CHIAKI_HAVE_WEBVIEW)
+	endif()
 endif()
 target_link_libraries(chiaki SDL2::SDL2)
 if(CHIAKI_ENABLE_SPEEX)
@@ -188,13 +188,14 @@ else()
 endif()
 
 set_target_properties(chiaki PROPERTIES
+		OUTPUT_NAME Ludelo
 		MACOSX_BUNDLE TRUE
 		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/MacOSXBundleInfo.plist.in"
-		MACOSX_BUNDLE_BUNDLE_NAME Pylux
+		MACOSX_BUNDLE_BUNDLE_NAME Ludelo
 		MACOSX_BUNDLE_SHORT_VERSION_STRING "${CHIAKI_VERSION}"
 		MACOSX_BUNDLE_BUNDLE_VERSION "${MACOSX_BUNDLE_BUILD_VERSION}"
 		MACOSX_BUNDLE_COPYRIGHT "thestr4ng3r (AGPLv3)"
-		MACOSX_BUNDLE_GUI_IDENTIFIER "com.pylux.stream"
+		MACOSX_BUNDLE_GUI_IDENTIFIER "com.ludelo.stream"
 		MACOSX_BUNDLE_ICON_FILE chiaking.icns
 		RESOURCE "${RESOURCE_FILES}")
 

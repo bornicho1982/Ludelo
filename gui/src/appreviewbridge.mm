@@ -15,7 +15,7 @@
 
 Q_DECLARE_LOGGING_CATEGORY(chiakiAppReview)
 
-void PyluxAppReview_RequestReview()
+void LudeloAppReview_RequestReview()
 {
     if (@available(macOS 10.14, *)) {
         Class controllerClass = NSClassFromString(@"SKStoreReviewController");
@@ -38,3 +38,4 @@ void PyluxAppReview_RequestReview()
 }
 
 #endif // CHIAKI_IS_MAC_APPSTORE
+

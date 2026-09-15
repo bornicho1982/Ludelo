@@ -25,10 +25,10 @@ BEGIN
             VALUE "CompanyName", "Forward Technologies"
             VALUE "FileDescription", "Remote Play Client"
             VALUE "FileVersion", VER_FILEVERSION_STR
-            VALUE "InternalName", "pylux"
+            VALUE "InternalName", "Ludelo"
             VALUE "LegalCopyright", "AGPLv3 Stret Pea 2022"
-            VALUE "OriginalFilename", "pylux.exe"
-            VALUE "ProductName", "pylux"
+            VALUE "OriginalFilename", "Ludelo.exe"
+            VALUE "ProductName", "Ludelo"
             VALUE "ProductVersion", VER_PRODUCTVERSION_STR
         END
     END
@@ -37,4 +37,4 @@ BEGIN
         VALUE "Translation", 0x809, 1200
     END
 END
-IDI_ICON1 ICON DISCARDABLE "chiaking.ico"
+IDI_ICON1 ICON DISCARDABLE "app.ico"

@@ -34,6 +34,11 @@ int main(int argc, char *argv[]) { return real_main(argc, argv); }
 #include <QtWebEngineQuick>
 #endif
 
+#ifdef CHIAKI_HAVE_WEBVIEW
+#include <QtWebView>
+#include <QStandardPaths>
+#endif
+
 #include <QCommandLineParser>
 #include <QMap>
 #include <QSurfaceFormat>
@@ -77,10 +82,10 @@ int real_main(int argc, char *argv[])
 	qRegisterMetaType<ChiakiRegistEventType>();
 	qRegisterMetaType<ChiakiLogLevel>();
 
-	QGuiApplication::setOrganizationName("pylux");
-	QGuiApplication::setApplicationName("pylux");
+	QGuiApplication::setOrganizationName("Ludelo");
+	QGuiApplication::setApplicationName("Ludelo");
 	QGuiApplication::setApplicationVersion(CHIAKI_VERSION);
-	QGuiApplication::setApplicationDisplayName("Pylux");
+	QGuiApplication::setApplicationDisplayName("Ludelo");
 #if defined(Q_OS_MACOS)
 	qputenv("QT_MTL_NO_TRANSACTION", "1");
 #endif
@@ -89,7 +94,7 @@ int real_main(int argc, char *argv[])
 		QGuiApplication::setDesktopFileName(qEnvironmentVariable("FLATPAK_ID"));
 	else
 #endif
-		QGuiApplication::setDesktopFileName("pylux");
+		QGuiApplication::setDesktopFileName("Ludelo");
 
 #ifdef CHIAKI_HAVE_WEBENGINE
 	QString webengine_flags = "--disable-gpu";
@@ -126,7 +131,7 @@ int real_main(int argc, char *argv[])
 		return 1;
 	}
 
-    SDL_SetHint(SDL_HINT_APP_NAME, "pylux");
+    SDL_SetHint(SDL_HINT_APP_NAME, "Ludelo");
 
 	if(SDL_Init(SDL_INIT_AUDIO) < 0)
 	{
@@ -137,6 +142,14 @@ int real_main(int argc, char *argv[])
 	QGuiApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 #ifdef CHIAKI_HAVE_WEBENGINE
 	QtWebEngineQuick::initialize();
+#endif
+#ifdef CHIAKI_HAVE_WEBVIEW
+#if defined(Q_OS_WIN)
+	// T1: WebView2 UserDataFolder -> %APPDATA%\Ludelo\webview2
+	QString webviewDataFolder = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/webview2";
+	qputenv("WEBVIEW2_USER_DATA_FOLDER", webviewDataFolder.toUtf8());
+#endif
+	QtWebView::initialize();
 #endif
 	QApplication app(argc, argv);
 
@@ -220,7 +233,7 @@ int real_main(int argc, char *argv[])
 		settings.SetCurrentProfile(parser.value(profile_option));
 	Settings alt_settings(parser.isSet(profile_option) ? "" : settings.GetCurrentProfile());
 	if(!settings.GetCurrentProfile().isEmpty())
-		QGuiApplication::setApplicationDisplayName(QString("Pylux:%1").arg(settings.GetCurrentProfile()));
+		QGuiApplication::setApplicationDisplayName(QString("Ludelo:%1").arg(settings.GetCurrentProfile()));
 	bool use_alt_settings = false;
 	if(!parser.isSet(profile_option))
 		use_alt_settings = true;
@@ -524,7 +537,7 @@ int RunMain(QGuiApplication &app, Settings *settings, bool exit_app_on_stream_ex
 	SteamworksWrapper *steamworks = new SteamworksWrapper();
 	if (!steamworks->initialize(3946320, settings)) {
 		QMessageBox::critical(nullptr, "Steam Not Running", 
-			"Steam must be running to use Pylux.\n\nClick OK to exit.");
+			"Steam must be running to use Ludelo.\n\nClick OK to exit.");
 		delete steamworks;
 		return 1;
 	}
@@ -532,17 +545,17 @@ int RunMain(QGuiApplication &app, Settings *settings, bool exit_app_on_stream_ex
 	auto ownership = steamworks->checkOwnership();
 	if (ownership == SteamworksWrapper::NoLicense) {
 		QMessageBox::critical(nullptr, "License Verification Failed", 
-			"You do not own Pylux.\n\nPlease purchase Pylux on Steam to continue.\n\nClick OK to exit.");
+			"You do not own Ludelo.\n\nPlease purchase Ludelo on Steam to continue.\n\nClick OK to exit.");
 		delete steamworks;
 		return 1;
 	} else if (ownership == SteamworksWrapper::NotAuthenticated) {
 		QMessageBox::critical(nullptr, "Authentication Required", 
-			"Steam user not yet authenticated for Pylux.\n\nPlease restart Steam and try again.\n\nClick OK to exit.");
+			"Steam user not yet authenticated for Ludelo.\n\nPlease restart Steam and try again.\n\nClick OK to exit.");
 		delete steamworks;
 		return 1;
 	} else if (ownership == SteamworksWrapper::NotRunning) {
 		QMessageBox::critical(nullptr, "Steam Not Running", 
-			"Steam must be running to use Pylux.\n\nClick OK to exit.");
+			"Steam must be running to use Ludelo.\n\nClick OK to exit.");
 		delete steamworks;
 		return 1;
 	}
@@ -562,7 +575,7 @@ static SteamworksWrapper *InitializeSteamworks(Settings *settings)
 	SteamworksWrapper *steamworks = new SteamworksWrapper();
 	if (!steamworks->initialize(3946320, settings)) {
 		QMessageBox::critical(nullptr, "Steam Not Running", 
-			"Steam must be running to use Pylux.\n\nClick OK to exit.");
+			"Steam must be running to use Ludelo.\n\nClick OK to exit.");
 		delete steamworks;
 		return nullptr;
 	}
@@ -570,17 +583,17 @@ static SteamworksWrapper *InitializeSteamworks(Settings *settings)
 	auto ownership = steamworks->checkOwnership();
 	if (ownership == SteamworksWrapper::NoLicense) {
 		QMessageBox::critical(nullptr, "License Verification Failed", 
-			"You do not own Pylux.\n\nPlease purchase Pylux on Steam to continue.\n\nClick OK to exit.");
+			"You do not own Ludelo.\n\nPlease purchase Ludelo on Steam to continue.\n\nClick OK to exit.");
 		delete steamworks;
 		return nullptr;
 	} else if (ownership == SteamworksWrapper::NotAuthenticated) {
 		QMessageBox::critical(nullptr, "Authentication Required", 
-			"Steam user not yet authenticated for Pylux.\n\nPlease restart Steam and try again.\n\nClick OK to exit.");
+			"Steam user not yet authenticated for Ludelo.\n\nPlease restart Steam and try again.\n\nClick OK to exit.");
 		delete steamworks;
 		return nullptr;
 	} else if (ownership == SteamworksWrapper::NotRunning) {
 		QMessageBox::critical(nullptr, "Steam Not Running", 
-			"Steam must be running to use Pylux.\n\nClick OK to exit.");
+			"Steam must be running to use Ludelo.\n\nClick OK to exit.");
 		delete steamworks;
 		return nullptr;
 	}
@@ -623,3 +636,5 @@ int RunCloudStream(QGuiApplication &app, Settings *settings, const QString &serv
 	main_window.show();
 	return app.exec();
 }
+
+

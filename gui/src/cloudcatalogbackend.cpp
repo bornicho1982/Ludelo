@@ -973,7 +973,7 @@ void CloudCatalogBackend::createCloudSteamShortcut(const QString &gameIdentifier
     // Load fixed assets
     qInfo() << "Loading fixed assets...";
     QPixmap icon(":/icons/game_shortcut_icon.png");
-    // Same Pylux logo the app-level startup shortcut uses (the old game_shortcut_logo.png
+    // Same Ludelo logo the app-level startup shortcut uses (the old game_shortcut_logo.png
     // still carried PS Stream branding)
     QPixmap logo(":/icons/steam_logo.png");
     
@@ -1075,7 +1075,7 @@ void CloudCatalogBackend::createCloudSteamShortcut(const QString &gameIdentifier
         qInfo() << "Running as Flatpak, updated launch options:" << launch_options;
     }
     
-    // If running from extracted pylux directory, use launch.sh instead of direct executable
+    // If running from extracted Ludelo directory, use launch.sh instead of direct executable
     if (executable != "flatpak" && !executable.endsWith(".AppImage"))
     {
         QFileInfo exeInfo(executable);
@@ -1176,5 +1176,6 @@ void CloudCatalogBackend::createCloudSteamShortcut(const QString &gameIdentifier
 
 #endif // CHIAKI_GUI_ENABLE_STEAM_SHORTCUT
 }
+
 
 

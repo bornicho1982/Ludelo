@@ -93,7 +93,21 @@ void PSNAccountIDV3::handleAuthorizationResponse() {
     }
 
     QString finalUrlString = finalUrl.toString();
-    qCInfo(chiakiGui) << "PSNAccountIDV3: Authorization redirect URL:" << finalUrlString;
+    QString logUrlString = finalUrlString;
+    // Obfuscate code if present
+    QRegularExpression obfuscateRegex("(code=)([^&]+)");
+    auto obfuscateMatch = obfuscateRegex.match(logUrlString);
+    if (obfuscateMatch.hasMatch()) {
+        QString code = obfuscateMatch.captured(2);
+        QString obfs = code;
+        if (code.length() > 8) {
+            obfs = code.left(4) + "****" + code.right(4);
+        } else {
+            obfs = "****";
+        }
+        logUrlString.replace(obfuscateMatch.captured(0), "code=" + obfs);
+    }
+    qCInfo(chiakiGui) << "PSNAccountIDV3: Authorization redirect URL:" << logUrlString;
 
     // Extract authorization code from redirect URL
     // Reference: research_docs/oauth/remote_play_token_manager.py lines 95-109

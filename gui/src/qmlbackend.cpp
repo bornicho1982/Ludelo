@@ -34,9 +34,20 @@
 #include <QWebEngineCookieStore>
 #endif
 #include <QUrlQuery>
+
+#include "auth_classifier.h"
+
 #include <QtGlobal>
 #include <QGuiApplication>
 #include <QClipboard>
+#include <QDir>
+#include <QEventLoop>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QProcess>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QTemporaryFile>
 #include <QMessageBox>
 #include <QPixmap>
 #include <QImageReader>
@@ -215,7 +226,7 @@ QmlBackend::QmlBackend(Settings *settings, QmlMainWindow *window, SteamworksWrap
         // Connect session quit handler
         connect(session, &StreamSession::SessionQuit, this, [this](ChiakiQuitReason reason, const QString &reason_str) {
             if (chiaki_quit_reason_is_error(reason)) {
-                QString m = tr("Pylux Session has quit") + ":\n" + chiaki_quit_reason_string(reason);
+                QString m = tr("Ludelo Session has quit") + ":\n" + chiaki_quit_reason_string(reason);
                 if (!reason_str.isEmpty())
                     m += "\n" + tr("Reason") + ": \"" + reason_str + "\"";
                 emit sessionError(tr("Session has quit"), m);
@@ -1203,7 +1214,7 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
 
     connect(session, &StreamSession::SessionQuit, this, [this](ChiakiQuitReason reason, const QString &reason_str) {
         if (chiaki_quit_reason_is_error(reason)) {
-            QString m = tr("Pylux Session has quit") + ":\n" + chiaki_quit_reason_string(reason);
+            QString m = tr("Ludelo Session has quit") + ":\n" + chiaki_quit_reason_string(reason);
             if (!reason_str.isEmpty())
                 m += "\n" + tr("Reason") + ": \"" + reason_str + "\"";
             emit sessionError(tr("Session has quit"), m);
@@ -1775,13 +1786,22 @@ QUrl QmlBackend::psnLoginUrl() const
 
 bool QmlBackend::handlePsnLoginRedirect(const QUrl &url)
 {
-    if (!url.toString().startsWith(QString::fromStdString(PSNAuth::REDIRECT_PAGE)))
-    {
-        emit psnLoginAccountIdError(QString("Redirect URL invalid does not start with:\n") + QString::fromStdString(PSNAuth::REDIRECT_PAGE));
+    std::string out_code;
+    std::string out_error;
+    auto classification = ludelo::auth::classify_auth_url(url.toString().toStdString(), &out_code, &out_error);
+
+    if (classification == ludelo::auth::AuthUrlClassification::Continue) {
+        return false; // Still waiting for user
+    }
+
+    if (classification == ludelo::auth::AuthUrlClassification::FatalError) {
+        QString errMsg = out_error.empty() ? "Sony devolvió un error de autenticación en la URL" : QString::fromStdString(out_error);
+        qCWarning(chiakiGui) << "fatal OAuth error detected:" << errMsg;
+        emit psnLoginAccountIdError(errMsg);
         return false;
     }
 
-    const QString code = QUrlQuery(url).queryItemValue("code");
+    const QString code = QString::fromStdString(out_code);
     if (code.isEmpty()) {
         qCWarning(chiakiGui) << "Invalid code from redirect url";
         emit psnLoginAccountIdError("Redirect URL invalid");
@@ -2654,12 +2674,12 @@ void QmlBackend::configureSteamControllerLayout()
         return;
     }
     
-    // Configure the controller layout for pylux (first time for this user)
+    // Configure the controller layout for Ludelo (first time for this user)
     QString controller_layout_workshop_id = "3049833406";
-    qCInfo(chiakiGui) << "Configuring Steam Deck controller for pylux (first time for Steam user" << steam_user_id << ")";
+    qCInfo(chiakiGui) << "Configuring Steam Deck controller for Ludelo (first time for Steam user" << steam_user_id << ")";
     qCInfo(chiakiGui) << "Applying workshop ID:" << controller_layout_workshop_id;
     
-    // Pass "pylux" - it will be lowercased to "pylux" internally by updateControllerConfig
+    // Pass "Ludelo" - it will be lowercased to "Ludelo" internally by updateControllerConfig
     try {
         steam_tools->updateControllerConfig("3946320", controller_layout_workshop_id);
     } catch (const std::exception& e) {
@@ -2676,7 +2696,7 @@ void QmlBackend::configureSteamControllerLayout()
 #endif
 }
 
-void QmlBackend::ensurePyluxSteamShortcut(const QJSValue &callback)
+void QmlBackend::ensureLudeloSteamShortcut(const QJSValue &callback)
 {
     QJSValue cb = callback;
     auto done = [cb](bool created) mutable {
@@ -2685,8 +2705,8 @@ void QmlBackend::ensurePyluxSteamShortcut(const QJSValue &callback)
     };
 
     const QString profile = settings->GetCurrentProfile();
-    const QString name = profile.isEmpty() ? QStringLiteral("Pylux")
-                                           : QStringLiteral("Pylux %1").arg(profile);
+    const QString name = profile.isEmpty() ? QStringLiteral("Ludelo")
+                                           : QStringLiteral("Ludelo %1").arg(profile);
     const QString launchOptions = profile.isEmpty() ? QString()
                                                     : QStringLiteral("--profile=%1").arg(profile);
 
@@ -2699,7 +2719,7 @@ void QmlBackend::ensurePyluxSteamShortcut(const QJSValue &callback)
 
     QVector<SteamShortcutEntry> shortcuts = steam.parseShortcuts();
     for (auto &entry : shortcuts) {
-        if (entry.getAppName().contains(QStringLiteral("Pylux"), Qt::CaseInsensitive)) {
+        if (entry.getAppName().contains(QStringLiteral("Ludelo"), Qt::CaseInsensitive)) {
             done(false);
             return;
         }
@@ -3446,19 +3466,19 @@ QString QmlBackend::generateQRCode()
     return code;
 }
 
-QString QmlBackend::getPyluxURL()
+QString QmlBackend::getLudeloURL()
 {
-    return QString(PYLUX_URL);
+    return QString(Ludelo_URL);
 }
 
-void QmlBackend::createPyluxCode(const QString &code, const QJSValue &callback)
+void QmlBackend::createLudeloCode(const QString &code, const QJSValue &callback)
 {
     // Create network access manager
     QNetworkAccessManager *manager = new QNetworkAccessManager(this);
     
     // Prepare the request
     QNetworkRequest request;
-    request.setUrl(QUrl(QString(PYLUX_URL) + "/psstream/create-code"));
+    request.setUrl(QUrl(QString(Ludelo_URL) + "/psstream/create-code"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     
     // Prepare the JSON payload
@@ -3501,7 +3521,7 @@ void QmlBackend::createPyluxCode(const QString &code, const QJSValue &callback)
             QString responseBody = QString::fromUtf8(responseData);
             
             // Log detailed error information for debugging
-            qDebug() << "Network error creating pylux code:" << reply->errorString();
+            qDebug() << "Network error creating Ludelo code:" << reply->errorString();
             qDebug() << "HTTP status code:" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
             qDebug() << "Response body:" << responseBody;
             
@@ -3530,14 +3550,14 @@ void QmlBackend::createPyluxCode(const QString &code, const QJSValue &callback)
     });
 }
 
-void QmlBackend::checkPyluxStatus(const QString &code, const QJSValue &callback)
+void QmlBackend::checkLudeloStatus(const QString &code, const QJSValue &callback)
 {
     // Create network access manager
     QNetworkAccessManager *manager = new QNetworkAccessManager(this);
     
     // Prepare the request
     QNetworkRequest request;
-    request.setUrl(QUrl(QString(PYLUX_URL) + "/psstream/get-tokens"));
+    request.setUrl(QUrl(QString(Ludelo_URL) + "/psstream/get-tokens"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     
     // Prepare the JSON payload
@@ -3729,3 +3749,69 @@ void PsnConnectionWorker::ConnectPsnConnection(StreamSession *session, const QSt
     ChiakiErrorCode result = session->ConnectPsnConnection(duid, ps5);
     emit resultReady(result);
 }
+
+
+bool QmlBackend::checkWebView2Available() const
+{
+#ifdef Q_OS_WIN
+    QSettings hklm("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}", QSettings::NativeFormat);
+    QString verLM = hklm.value("pv").toString();
+    if (!verLM.isEmpty()) return true;
+    
+    QSettings hkcu("HKEY_CURRENT_USER\\Software\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}", QSettings::NativeFormat);
+    QString verCU = hkcu.value("pv").toString();
+    if (!verCU.isEmpty()) return true;
+
+    return false;
+#else
+    return true;
+#endif
+}
+
+void QmlBackend::installWebView2Runtime()
+{
+#ifdef Q_OS_WIN
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+    QNetworkRequest request(QUrl("https://go.microsoft.com/fwlink/p/?LinkId=2124703"));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    QNetworkReply *reply = manager->get(request);
+    connect(reply, &QNetworkReply::finished, [this, reply, manager]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QString tempPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/MicrosoftEdgeWebview2Setup.exe";
+            QFile file(tempPath);
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(reply->readAll());
+                file.close();
+                
+                QProcess *process = new QProcess(this);
+                connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), [this, process, tempPath](int exitCode, QProcess::ExitStatus exitStatus) {
+                    QFile::remove(tempPath);
+                    bool success = (exitStatus == QProcess::NormalExit && exitCode == 0);
+                    emit webView2InstallFinished(success);
+                    process->deleteLater();
+                });
+                process->start(tempPath, QStringList() << "/silent" << "/install");
+            } else {
+                emit webView2InstallFinished(false);
+            }
+        } else {
+            emit webView2InstallFinished(false);
+        }
+        reply->deleteLater();
+        manager->deleteLater();
+    });
+#else
+    emit webView2InstallFinished(false);
+#endif
+}
+
+
+void QmlBackend::handleWebViewDom(const QString &domContent)
+{
+    if (ludelo::auth::classify_dom_content(domContent.toStdString())) {
+        QString errMsg = "Sony reportó 'Something went wrong' en la página";
+        qCWarning(chiakiGui) << "WebView2Auth: fatal OAuth error detected in DOM";
+        emit psnLoginAccountIdError(errMsg);
+    }
+}
+

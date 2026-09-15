@@ -11,7 +11,7 @@ class SteamCloudSync;
 class Settings;
 
 /**
- * Isolated Steamworks API wrapper for pylux
+ * Isolated Steamworks API wrapper for Ludelo
  * 
  * This class provides a minimal interface to Steamworks SDK functionality
  * while keeping Steam integration completely separate from the main codebase.
@@ -96,6 +96,7 @@ private:
 };
 
 #endif // STEAMWORKS_WRAPPER_H
+
 
 
 

@@ -18,8 +18,8 @@
 class QNetworkAccessManager;
 class QmlGamesBackend;
 
-// pylux Configuration
-#define PYLUX_URL "https://www.xbgamestream.com"
+// Ludelo Configuration
+#define Ludelo_URL "https://www.xbgamestream.com"
 
 #ifdef CHIAKI_HAVE_WEBENGINE
 #include <QQuickWebEngineProfile>
@@ -222,6 +222,9 @@ public:
     Q_INVOKABLE QUrl psnLoginUrl() const;
     Q_INVOKABLE bool checkPsnRedirectURL(const QUrl &url) const;
     Q_INVOKABLE bool handlePsnLoginRedirect(const QUrl &url);
+    Q_INVOKABLE void handleWebViewDom(const QString &domContent);
+    Q_INVOKABLE bool checkWebView2Available() const;
+    Q_INVOKABLE void installWebView2Runtime();
     Q_INVOKABLE void stopAutoConnect();
     Q_INVOKABLE void setConsolePin(int index, QString console_pin);
     Q_INVOKABLE QString openPsnLink();
@@ -245,14 +248,14 @@ public:
     Q_INVOKABLE void controllerMappingApply();
     Q_INVOKABLE void autoRegister();
     Q_INVOKABLE QString generateQRCode();
-    Q_INVOKABLE QString getPyluxURL();
-    Q_INVOKABLE void createPyluxCode(const QString &code, const QJSValue &callback);
-    Q_INVOKABLE void checkPyluxStatus(const QString &code, const QJSValue &callback);
+    Q_INVOKABLE QString getLudeloURL();
+    Q_INVOKABLE void createLudeloCode(const QString &code, const QJSValue &callback);
+    Q_INVOKABLE void checkLudeloStatus(const QString &code, const QJSValue &callback);
 #if CHIAKI_GUI_ENABLE_STEAM_SHORTCUT
     Q_INVOKABLE QString getSteamBaseDir();
     QString getSteamUserId();
 	Q_INVOKABLE void configureSteamControllerLayout();
-	Q_INVOKABLE void ensurePyluxSteamShortcut(const QJSValue &callback);
+	Q_INVOKABLE void ensureLudeloSteamShortcut(const QJSValue &callback);
 	Q_INVOKABLE void createSteamShortcut(QString shortcutName, QString launchOptions, const QJSValue &callback, QString steamDir);
 #endif
 
@@ -296,6 +299,7 @@ signals:
     void psnGamesSynced(int newGamesCount);
     void psnGamesCleared(int gamesCount);
     void autoConnectChanged();
+    void webView2InstallFinished(bool success);
     void wakeupStartInitiated();
     void wakeupStartFailed();
     void windowTypeUpdated(WindowType type);

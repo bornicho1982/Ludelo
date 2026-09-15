@@ -5,6 +5,8 @@ import QtQuick.Controls.Material
 
 import org.streetpea.chiaking
 
+import QtWebView
+
 import "controls" as C
 
 DialogView {
@@ -22,11 +24,45 @@ DialogView {
         submitting = true;
         Chiaki.handlePsnLoginRedirect(url.text.trim());
     }
+    Connections {
+        target: Chiaki
+        function onWebView2InstallFinished(success) {
+            if (success) {
+                // Try again after install
+                webView.visible = true;
+                webView.url = Chiaki.psnLoginUrl();
+            } else {
+                // Fallback to manual flow
+                extBrowserButton.clicked();
+            }
+        }
+        function onPsnLoginAccountIdError(error) {
+            submitting = false;
+        }
+        function onPsnLoginAccountIdDone(accountId) {
+            submitting = false;
+            root.closeDialog();
+        }
+    }
+
     StackView.onActivated: {
         if(login)
         {
             nativeLoginForm.visible = true;
             nativeLoginForm.forceActiveFocus(Qt.TabFocusReason);
+            if (Qt.platform.os === "windows") {
+                if (Chiaki.checkWebView2Available()) {
+                    webView.visible = true;
+                    webView.url = Chiaki.psnLoginUrl();
+                } else {
+                    // Show installing UI or just call install silently
+                    webView.visible = false;
+                    Chiaki.installWebView2Runtime();
+                }
+            } else {
+                webView.visible = true;
+                webView.url = Chiaki.psnLoginUrl();
+            }
         }
         else
         {
@@ -37,13 +73,18 @@ DialogView {
         }
     }
     function close() {
-        if(webView.web)
+        if(webView.visible)
         {
             dialog.closing = true;
             if(Chiaki.settings.remotePlayAsk)
                 reloadTimer.start();
             else
                 cacheClearTimer.start();
+            
+            root.closeDialog();
+            root.showConfirmDialog("Login no completado", "¿Deseas reintentar el proceso?", function() {
+                Chiaki.psnConnector();
+            });
         }
         else
             root.closeDialog();
@@ -309,9 +350,11 @@ DialogView {
                     Layout.leftMargin: 20
                 }
             }
-            Item {
+            WebView {
                 id: webView
-                property Item web: null
+                // Map web property to itself so existing code like webView.web doesn't break entirely,
+                // although we might need to adjust them.
+                property var web: webView
                 anchors {
                     top: parent.top
                     bottom: psnLoginToolbar.top
@@ -320,9 +363,18 @@ DialogView {
                     leftMargin: 10
                     rightMargin: 10
                 }
-                Component.onCompleted: {
-                    // Always use external browser - don't create WebEngine view
-                    extBrowserButton.clicked();
+                
+                onLoadingChanged: function(loadRequest) {
+                    if (loadRequest.status === WebView.LoadStartedStatus || loadRequest.status === WebView.LoadSucceededStatus) {
+                        Chiaki.handlePsnLoginRedirect(loadRequest.url.toString());
+                    }
+                    if (loadRequest.status === WebView.LoadSucceededStatus) {
+                        webView.runJavaScript("document.title + ' ' + (document.body ? document.body.innerText.substring(0, 300) : '')", function(result) {
+                            if (result) {
+                                Chiaki.handleWebViewDom(result.toString());
+                            }
+                        });
+                    }
                 }
             }
         }

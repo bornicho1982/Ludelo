@@ -7,19 +7,19 @@
 #include <QTimer>
 
 static NSString *tierDisplayName(NSString *productID) {
-    if ([productID isEqualToString:@"pylux_support_bronze"])   return @"Bronze donation";
-    if ([productID isEqualToString:@"pylux_support_silver"])   return @"Silver donation";
-    if ([productID isEqualToString:@"pylux_support_gold"])     return @"Gold donation";
-    if ([productID isEqualToString:@"pylux_support_platinum"]) return @"Platinum donation";
+    if ([productID isEqualToString:@"Ludelo_support_bronze"])   return @"Bronze donation";
+    if ([productID isEqualToString:@"Ludelo_support_silver"])   return @"Silver donation";
+    if ([productID isEqualToString:@"Ludelo_support_gold"])     return @"Gold donation";
+    if ([productID isEqualToString:@"Ludelo_support_platinum"]) return @"Platinum donation";
     return productID;
 }
 
 static NSString *tierBlurb(NSString *productID) {
-    if ([productID isEqualToString:@"pylux_support_bronze"])   return @"Every donation counts.";
-    if ([productID isEqualToString:@"pylux_support_silver"])   return @"A bit more support.";
-    if ([productID isEqualToString:@"pylux_support_gold"])     return @"When you want to give more.";
-    if ([productID isEqualToString:@"pylux_support_platinum"]) return @"If you want to give the most.";
-    return @"Thank you for supporting Pylux.";
+    if ([productID isEqualToString:@"Ludelo_support_bronze"])   return @"Every donation counts.";
+    if ([productID isEqualToString:@"Ludelo_support_silver"])   return @"A bit more support.";
+    if ([productID isEqualToString:@"Ludelo_support_gold"])     return @"When you want to give more.";
+    if ([productID isEqualToString:@"Ludelo_support_platinum"]) return @"If you want to give the most.";
+    return @"Thank you for supporting Ludelo.";
 }
 
 @interface MacStoreKitImpl : NSObject <SKProductsRequestDelegate, SKPaymentTransactionObserver>
@@ -218,3 +218,4 @@ void MacStoreKit::checkOwnership()
     NSSet *idSet = [NSSet setWithArray:impl.orderedProductIds ?: @[]];
     [impl checkOwnershipForProductIds:idSet];
 }
+
