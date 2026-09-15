@@ -9,7 +9,7 @@ namespace portal::stream {
         SenkushaResult result;
         result.mtu_in = 1454;
         result.mtu_out = 1454;
-        result.rtt_us = 50000; // default 50ms
+        result.rtt_us = 1000; // default 1ms (aligned with Chiaki LAN session fallback)
         
         spdlog::get("portal")->info("Running Senkusha QoS negotiation to {}:{}", remote_addr, remote_port);
 

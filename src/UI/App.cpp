@@ -233,10 +233,14 @@ VoidResult App::init() {
 
     session_manager_->on_audio_frame = [this](portal::stream::AudioFrame& audio) {
         if (audio_stream_ && !audio.samples.empty()) {
-            // Anti-drift guard: keep queued audio under ~40ms (7680 bytes)
             int queued = SDL_GetAudioStreamQueued(audio_stream_);
-            if (queued > 7680) {
+            // Progressive audio drain policy (target latency ~40ms / 7680 bytes):
+            // Catastrophic backlog (>150ms / 28800 bytes): hard-flush to resync
+            if (queued > 28800) {
                 SDL_ClearAudioStream(audio_stream_);
+            } else if (queued > 7680) {
+                // Progressive drain: skip writing this packet to let the audio device catch up naturally
+                return;
             }
             SDL_PutAudioStreamData(audio_stream_, audio.samples.data(),
                 static_cast<int>(audio.samples.size() * sizeof(int16_t)));
@@ -630,17 +634,33 @@ void App::run() {
         }
 
         // Frame pacing limiter
-        auto target_duration = std::chrono::duration<double>(1.0 / target_fps);
-        auto frame_end = std::chrono::steady_clock::now();
-        auto elapsed = frame_end - frame_start;
-        if (elapsed < target_duration) {
-            auto remaining = target_duration - elapsed;
-            auto sleep_ms = std::chrono::duration_cast<std::chrono::milliseconds>(remaining);
-            if (sleep_ms.count() > 1) {
-                std::this_thread::sleep_for(sleep_ms - std::chrono::milliseconds(1));
+        if (current_screen_ != Screen::Streaming) {
+            // Menu mode: sleep throttle to keep CPU/GPU cool
+            auto target_duration = std::chrono::duration<double>(1.0 / target_fps);
+            auto frame_end = std::chrono::steady_clock::now();
+            auto elapsed = frame_end - frame_start;
+            if (elapsed < target_duration) {
+                auto remaining = target_duration - elapsed;
+                auto sleep_ms = std::chrono::duration_cast<std::chrono::milliseconds>(remaining);
+                if (sleep_ms.count() > 1) {
+                    std::this_thread::sleep_for(sleep_ms - std::chrono::milliseconds(1));
+                }
+                while (std::chrono::steady_clock::now() - frame_start < target_duration) {
+                    std::this_thread::yield();
+                }
             }
-            while (std::chrono::steady_clock::now() - frame_start < target_duration) {
-                std::this_thread::yield();
+        } else {
+            // Streaming mode: Vulkan FIFO swapchain already provides hardware VSync pacing (59.94/60Hz).
+            // For high refresh displays (>60Hz), cap pacing with a margin to prevent VSync jitter.
+            auto target_duration = std::chrono::duration<double>(1.0 / (target_fps + 3.0));
+            auto frame_end = std::chrono::steady_clock::now();
+            auto elapsed = frame_end - frame_start;
+            if (elapsed < target_duration) {
+                auto remaining = target_duration - elapsed;
+                auto sleep_ms = std::chrono::duration_cast<std::chrono::milliseconds>(remaining);
+                if (sleep_ms.count() > 1) {
+                    std::this_thread::sleep_for(sleep_ms - std::chrono::milliseconds(1));
+                }
             }
         }
     }

@@ -277,6 +277,7 @@ VoidResult SessionManager::connect_local(const portal::discovery::RegisteredCons
     connect_info.video_profile_auto_downgrade = true;
     connect_info.enable_dualsense = true;
     connect_info.enable_keyboard = true;
+    connect_info.packet_loss_max = 1.0; // Aligned with chiaki-ng ChiakiSettings (allow full congestion reporting)
 
     spdlog::info("[SessionManager] Connecting to {} ({}) with resolution {}x{}, bitrate {} kbps, codec {}",
         host, connect_info.ps5 ? "PS5" : "PS4",

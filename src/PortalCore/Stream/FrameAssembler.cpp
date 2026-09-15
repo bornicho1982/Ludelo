@@ -71,8 +71,8 @@ namespace portal::stream {
             return assembled;
         }
 
-        // Prune old frames and request IDR if we get too far behind
-        if (m_reorder_buffer.size() > 10) {
+        // Prune old frames and request IDR if we get too far behind (aligned with chiaki-ng TAKION_REORDER_QUEUE_SIZE_EXP=8 => 256)
+        if (m_reorder_buffer.size() > 256) {
             m_reorder_buffer.clear();
             if (m_on_request_idr) {
                 m_on_request_idr();

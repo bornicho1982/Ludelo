@@ -116,7 +116,7 @@ namespace portal::stream {
         uint32_t m_tag_local{0};
         uint32_t m_tag_remote{0};
         uint32_t m_seq_local{0};
-        uint32_t m_a_rwnd{0x19000};
+        uint32_t m_a_rwnd{0x400000}; // 4 MB aligned with Chiaki TAKION_A_RWND
         
         std::array<uint8_t, 16> m_handshake_key{};
         std::array<uint8_t, 16> m_key_remote{};
