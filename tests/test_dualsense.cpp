@@ -1,7 +1,7 @@
 // Archivo: tests/test_dualsense.cpp
 // Test de Periféricos DualSense (Reportes HID, Gatillos Adaptativos, CRC32 Bluetooth)
-#include "PortalCore/Common.h"
-#include "PortalCore/Input/DualSenseHID.h"
+#include "LudeloCore/Common.h"
+#include "LudeloCore/Input/DualSenseHID.h"
 
 #include <iostream>
 #include <cassert>
@@ -46,35 +46,35 @@ void test_adaptive_trigger_effects() {
     std::cout << "[TEST] DualSense Adaptive Trigger Profiles... ";
 
     // Perfil Feedback (Resistencia en posición 2 con fuerza 6)
-    portal::input::TriggerEffect feedback{};
-    feedback.mode = portal::input::TriggerMode::Feedback;
+    ludelo::input::TriggerEffect feedback{};
+    feedback.mode = ludelo::input::TriggerMode::Feedback;
     feedback.params[0] = 0x02; // Posición de inicio de resistencia
     feedback.params[1] = 0x06; // Fuerza de resistencia aplicada
 
-    assert(feedback.mode == portal::input::TriggerMode::Feedback);
+    assert(feedback.mode == ludelo::input::TriggerMode::Feedback);
     assert(feedback.params[0] == 2);
     assert(feedback.params[1] == 6);
 
     // Perfil Weapon (Tope en posición 3, ruptura en 7, fuerza 8)
-    portal::input::TriggerEffect weapon{};
-    weapon.mode = portal::input::TriggerMode::Weapon;
+    ludelo::input::TriggerEffect weapon{};
+    weapon.mode = ludelo::input::TriggerMode::Weapon;
     weapon.params[0] = 0x03; // Start
     weapon.params[1] = 0x07; // Break point
     weapon.params[2] = 0x08; // Retaining force
 
-    assert(weapon.mode == portal::input::TriggerMode::Weapon);
+    assert(weapon.mode == ludelo::input::TriggerMode::Weapon);
     assert(weapon.params[0] == 3);
     assert(weapon.params[1] == 7);
     assert(weapon.params[2] == 8);
 
     // Perfil Vibration (Vibración ametralladora en posición 1, frec 15Hz, amplitud 7)
-    portal::input::TriggerEffect vibration{};
-    vibration.mode = portal::input::TriggerMode::Vibration;
+    ludelo::input::TriggerEffect vibration{};
+    vibration.mode = ludelo::input::TriggerMode::Vibration;
     vibration.params[0] = 0x01; // Start
     vibration.params[1] = 0x0F; // Frequency
     vibration.params[2] = 0x07; // Amplitude
 
-    assert(vibration.mode == portal::input::TriggerMode::Vibration);
+    assert(vibration.mode == ludelo::input::TriggerMode::Vibration);
     assert(vibration.params[0] == 1);
     assert(vibration.params[1] == 15);
     assert(vibration.params[2] == 7);
@@ -85,7 +85,7 @@ void test_adaptive_trigger_effects() {
 void test_controller_state_normalization() {
     std::cout << "[TEST] DualSense State Normalization... ";
 
-    portal::input::DualSenseState state{};
+    ludelo::input::DualSenseState state{};
     state.left_stick_x = 128; // Center
     state.left_stick_y = 128; // Center
     state.l2 = 255;           // Full press

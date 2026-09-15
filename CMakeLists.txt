@@ -56,8 +56,8 @@ endif()
 
 # ─── LudeloCore static library ────────────────────────────
 file(GLOB_RECURSE CORE_SOURCES
-    "src/PortalCore/*.cpp"
-    "src/PortalCore/*.h"
+    "src/LudeloCore/*.cpp"
+    "src/LudeloCore/*.h"
 )
 
 add_library(LudeloCore STATIC
@@ -65,7 +65,6 @@ add_library(LudeloCore STATIC
     ${PROTO_SRCS}
     ${PROTO_HDRS}
 )
-add_library(PortalCore ALIAS LudeloCore)
 
 target_include_directories(LudeloCore PUBLIC
     "${CMAKE_SOURCE_DIR}/src"
@@ -104,8 +103,8 @@ target_link_libraries(LudeloCore PUBLIC
 )
 
 target_compile_definitions(LudeloCore PUBLIC
-    PORTAL_VERSION="${PROJECT_VERSION}"
-    PORTAL_USER_AGENT="Ludelo/${PROJECT_VERSION}"
+    LUDELO_VERSION="${PROJECT_VERSION}"
+    LUDELO_USER_AGENT="Ludelo/${PROJECT_VERSION}"
     VK_USE_PLATFORM_WIN32_KHR
 )
 
@@ -148,8 +147,8 @@ add_custom_command(TARGET Ludelo POST_BUILD
 )
 
 # ─── Tests ────────────────────────────────────────────────
-option(PORTAL_BUILD_TESTS "Build unit tests" ON)
-if(PORTAL_BUILD_TESTS)
+option(LUDELO_BUILD_TESTS "Build unit tests" ON)
+if(LUDELO_BUILD_TESTS)
     enable_testing()
     file(GLOB TEST_SOURCES "tests/*.cpp")
     foreach(TEST_SRC ${TEST_SOURCES})

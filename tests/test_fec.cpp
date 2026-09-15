@@ -1,7 +1,7 @@
 // Archivo: tests/test_fec.cpp
 // Test de Forward Error Correction (FEC XOR Recovery)
-#include "PortalCore/Common.h"
-#include "PortalCore/Stream/FECDecoder.h"
+#include "LudeloCore/Common.h"
+#include "LudeloCore/Stream/FECDecoder.h"
 
 #include <iostream>
 #include <cassert>
@@ -12,7 +12,7 @@ void test_fec_recovery() {
 
     const size_t k = 3;
     const size_t m = 1;
-    portal::stream::FECDecoder decoder(k, m);
+    ludelo::stream::FECDecoder decoder(k, m);
 
     // 3 paquetes de datos de prueba (payloads de video simulados)
     std::vector<uint8_t> d0 = {0x10, 0x20, 0x30, 0x40, 0x50};
@@ -50,7 +50,7 @@ void test_fec_recovery() {
 void test_fec_already_complete() {
     std::cout << "[TEST] FEC Already Complete (No Loss)... ";
 
-    portal::stream::FECDecoder decoder(2, 1);
+    ludelo::stream::FECDecoder decoder(2, 1);
     std::vector<uint8_t> d0 = {0x01, 0x02};
     std::vector<uint8_t> d1 = {0x03, 0x04};
 

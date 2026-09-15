@@ -1,8 +1,8 @@
 // Archivo: tools/Ludelo_LiveDiagnostic.cpp
 // Herramienta de Diagnostico en Vivo: Deteccion de PS5 en Red y Mando DualSense HID
-#include "PortalCore/Common.h"
-#include "PortalCore/Discovery/DDPDiscovery.h"
-#include "PortalCore/Input/DualSenseHID.h"
+#include "LudeloCore/Common.h"
+#include "LudeloCore/Discovery/DDPDiscovery.h"
+#include "LudeloCore/Input/DualSenseHID.h"
 
 #include <iostream>
 #include <iomanip>
@@ -11,9 +11,9 @@
 #include <filesystem>
 #include <fstream>
 
-using namespace portal;
-using namespace portal::discovery;
-using namespace portal::input;
+using namespace ludelo;
+using namespace ludelo::discovery;
+using namespace ludelo::input;
 
 void print_banner() {
     std::cout << "\n";
@@ -248,7 +248,7 @@ int main(int argc, char** argv) {
             return 0;
         }
 
-        portal::init_logging(spdlog::level::warn);
+        ludelo::init_logging(spdlog::level::warn);
         print_banner();
 
         // 1. Escaneo de red para PS5

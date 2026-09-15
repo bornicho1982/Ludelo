@@ -1,7 +1,7 @@
 // Archivo: src/main.cpp
 // Ludelo — Entry Point (Windows WinMain)
 
-#include "PortalCore/Common.h"
+#include "LudeloCore/Common.h"
 #include "UI/App.h"
 #include "Platform/WindowsWindow.h"
 
@@ -9,8 +9,8 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include "PortalCore/Stream/SessionManager.h"
-#include "PortalCore/Discovery/ConsoleRegistry.h"
+#include "LudeloCore/Stream/SessionManager.h"
+#include "LudeloCore/Discovery/ConsoleRegistry.h"
 
 #include <cstdlib>
 #include <filesystem>
@@ -84,12 +84,12 @@ int main(int argc, char* argv[]) {
     ensure_directories(app_data);
 
     // ── Initialize logging ────────────────────────────────
-    portal::init_logging(spdlog::level::debug, (app_data / "logs" / "ludelo.log").string());
+    ludelo::init_logging(spdlog::level::debug, (app_data / "logs" / "ludelo.log").string());
     if (!std::filesystem::exists(app_data / "logs" / "ludelo.log")) {
         // Will show error in UI later, for now just try our best.
     }
     spdlog::info("╔══════════════════════════════════════════╗");
-    spdlog::info("║  Ludelo v{}                         ║", portal::kVersion);
+    spdlog::info("║  Ludelo v{}                         ║", ludelo::kVersion);
     spdlog::info("║  PlayStation Remote Play Client          ║");
     spdlog::info("╚══════════════════════════════════════════╝");
     spdlog::info("Data directory: {}", app_data.string());
@@ -105,11 +105,11 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--test-stream" || std::string(argv[i]) == "--stream") {
             spdlog::info("Running in headless stream test mode...");
-            auto sm = std::make_shared<portal::stream::SessionManager>();
+            auto sm = std::make_shared<ludelo::stream::SessionManager>();
 
             // Load the first registered console from disk — no hardcoded IPs
-            auto reg = std::make_shared<portal::discovery::ConsoleRegistry>();
-            portal::discovery::RegisteredConsole console;
+            auto reg = std::make_shared<ludelo::discovery::ConsoleRegistry>();
+            ludelo::discovery::RegisteredConsole console;
             bool console_found = false;
             if (reg->load_from_disk()) {
                 auto all = reg->get_all_consoles();
@@ -117,7 +117,7 @@ int main(int argc, char* argv[]) {
                     console = all.front();
                     console_found = true;
                     spdlog::info("Loaded registered console: {} @ {} (rp_auth={}, rp_key={})",
-                        console.host_name, console.address, portal::mask_secret(console.rp_auth), portal::mask_secret(console.rp_key));
+                        console.host_name, console.address, ludelo::mask_secret(console.rp_auth), ludelo::mask_secret(console.rp_key));
                 }
             }
             if (!console_found) {
@@ -130,20 +130,20 @@ int main(int argc, char* argv[]) {
             std::atomic<int> video_frames{0};
             std::atomic<int> audio_frames{0};
 
-            sm->on_state_change = [&](portal::stream::SessionState state) {
+            sm->on_state_change = [&](ludelo::stream::SessionState state) {
                 spdlog::info("[TEST] SessionState changed: state={}", static_cast<int>(state));
-                if (state == portal::stream::SessionState::Streaming) {
+                if (state == ludelo::stream::SessionState::Streaming) {
                     connected = true;
                 }
             };
-            sm->on_video_frame = [&](portal::stream::DecodedFrame& frame) {
+            sm->on_video_frame = [&](ludelo::stream::DecodedFrame& frame) {
                 int count = ++video_frames;
                 if (count == 1 || count % 30 == 0) {
                     spdlog::info("[TEST] Received Decoded Video Frame #{}: {}x{}", 
                         count, frame.width, frame.height);
                 }
             };
-            sm->on_audio_frame = [&](portal::stream::AudioFrame& audio) {
+            sm->on_audio_frame = [&](ludelo::stream::AudioFrame& audio) {
                 int count = ++audio_frames;
                 if (count == 1 || count % 100 == 0) {
                     spdlog::info("[TEST] Received Decoded Audio Frame #{}: {} samples, {} Hz, {} ch", 
@@ -151,10 +151,10 @@ int main(int argc, char* argv[]) {
                 }
             };
 
-            portal::StreamConfig cfg;
-            cfg.resolution = portal::Resolution::R1080p;
-            cfg.fps = portal::FrameRate::FPS60;
-            cfg.codec = portal::VideoCodec::H265;
+            ludelo::StreamConfig cfg;
+            cfg.resolution = ludelo::Resolution::R1080p;
+            cfg.fps = ludelo::FrameRate::FPS60;
+            cfg.codec = ludelo::VideoCodec::H265;
             cfg.hdr = false;
 
             auto res = sm->connect_local(console, cfg);
@@ -185,7 +185,7 @@ int main(int argc, char* argv[]) {
 
     // ── Create and run the application ────────────────────
     try {
-        portal::ui::AppConfig config{
+        ludelo::ui::AppConfig config{
             .app_data_dir = app_data,
             .window_title = "Ludelo — PlayStation Remote Play",
             .window_width = 1280,
@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
             .vsync = true,
         };
 
-        portal::ui::App app(config);
+        ludelo::ui::App app(config);
 
         auto init_result = app.init();
         if (!init_result) {

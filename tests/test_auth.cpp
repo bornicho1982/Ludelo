@@ -1,9 +1,9 @@
 // Archivo: tests/test_auth.cpp
 // Test de Autenticación PSN (JWT decoding, AccountManager y Keychain DPAPI)
-#include "PortalCore/Common.h"
-#include "PortalCore/Auth/PSNAuth.h"
-#include "PortalCore/Auth/Keychain.h"
-#include "PortalCore/Auth/WebView2Auth.h"
+#include "LudeloCore/Common.h"
+#include "LudeloCore/Auth/PSNAuth.h"
+#include "LudeloCore/Auth/Keychain.h"
+#include "LudeloCore/Auth/WebView2Auth.h"
 
 #include <iostream>
 #include <cassert>
@@ -24,13 +24,13 @@ void test_jwt_account_id_decoding() {
     std::cout << "[TEST] PSN JWT Account ID Decoding... ";
 
     std::string mock_token = create_mock_jwt("");
-    auto res = portal::auth::PSNAuth::decode_account_id_from_jwt(mock_token);
+    auto res = ludelo::auth::PSNAuth::decode_account_id_from_jwt(mock_token);
 
     assert(res.has_value());
     assert(res.value() == 1234567890123456ULL);
 
     // Test de token malformado (sin puntos)
-    auto bad_token = portal::auth::PSNAuth::decode_account_id_from_jwt("invalid_token_without_dots");
+    auto bad_token = ludelo::auth::PSNAuth::decode_account_id_from_jwt("invalid_token_without_dots");
     assert(!bad_token.has_value());
 
     std::cout << "PASSED (Decoded Account ID: " << res.value() << ")\n";
@@ -39,9 +39,9 @@ void test_jwt_account_id_decoding() {
 void test_keychain_dpapi() {
     std::cout << "[TEST] Windows DPAPI Keychain Storage... ";
 
-    portal::auth::Keychain keychain;
+    ludelo::auth::Keychain keychain;
     std::string test_secret = "TEST_CREDENTIAL_NOT_REAL";
-    portal::ByteBuffer secret_bytes(test_secret.begin(), test_secret.end());
+    ludelo::ByteBuffer secret_bytes(test_secret.begin(), test_secret.end());
 
     // Cifrado DPAPI
     auto enc_res = keychain.encrypt(secret_bytes);
@@ -81,7 +81,7 @@ void test_mixed_profile_json_parsing() {
         }
     })";
 
-    auto prof = portal::auth::PSNAuth::parse_profile_json(sony_json);
+    auto prof = ludelo::auth::PSNAuth::parse_profile_json(sony_json);
     assert(prof.online_id == "player_one");
     assert(prof.account_id == 123456789012345678ULL);
     assert(!prof.account_id_b64.empty());
@@ -97,7 +97,7 @@ void test_mixed_profile_json_parsing() {
             "avatarUrl": "https://example.com/direct_avatar.png"
         }
     })";
-    auto prof2 = portal::auth::PSNAuth::parse_profile_json(sony_json2);
+    auto prof2 = ludelo::auth::PSNAuth::parse_profile_json(sony_json2);
     assert(prof2.online_id == "player_two");
     assert(prof2.account_id == 987654321098765432ULL);
     assert(!prof2.account_id_b64.empty());
@@ -113,7 +113,7 @@ void test_mixed_profile_json_parsing() {
             { "avatarUrl": "https://example.com/flat_avatar.png" }
         ]
     })";
-    auto prof_flat = portal::auth::PSNAuth::parse_profile_json(flat_json);
+    auto prof_flat = ludelo::auth::PSNAuth::parse_profile_json(flat_json);
     assert(prof_flat.online_id == "player_three");
     assert(prof_flat.account_id == 1122334455667788ULL);
     assert(!prof_flat.account_id_b64.empty());
@@ -122,7 +122,7 @@ void test_mixed_profile_json_parsing() {
 
     // Robustness test: completely malformed or missing fields should NOT crash
     std::string malformed = "{ \"profile\": \"not_an_object\" }";
-    auto prof3 = portal::auth::PSNAuth::parse_profile_json(malformed, 55555ULL, "b64test==");
+    auto prof3 = ludelo::auth::PSNAuth::parse_profile_json(malformed, 55555ULL, "b64test==");
     assert(prof3.account_id == 55555ULL);
     assert(prof3.account_id_b64 == "b64test==");
 
@@ -140,28 +140,28 @@ void test_classify_auth_url() {
                              "&error=login_required&no_captcha=true";
     std::string extracted_code;
     std::string extracted_error;
-    auto res1 = portal::auth::classify_auth_url(signin_url, &extracted_code, &extracted_error);
-    assert(res1 == portal::auth::AuthUrlClassification::Continue);
+    auto res1 = ludelo::auth::classify_auth_url(signin_url, &extracted_code, &extracted_error);
+    assert(res1 == ludelo::auth::AuthUrlClassification::Continue);
     assert(extracted_code.empty());
     assert(extracted_error.empty());
 
     // 2. redirect con ?code= => SUCCESS, extrae code
     std::string redirect_success_url = "https://remoteplay.dl.playstation.net/remoteplay/redirect?code=v1.mock_auth_code_98765&state=xyz";
-    auto res2 = portal::auth::classify_auth_url(redirect_success_url, &extracted_code, &extracted_error);
-    assert(res2 == portal::auth::AuthUrlClassification::Success);
+    auto res2 = ludelo::auth::classify_auth_url(redirect_success_url, &extracted_code, &extracted_error);
+    assert(res2 == ludelo::auth::AuthUrlClassification::Success);
     assert(extracted_code == "v1.mock_auth_code_98765");
 
     // 3. redirect con ?error=... => FAIL real
     std::string redirect_fail_url = "https://remoteplay.dl.playstation.net/remoteplay/redirect?error=access_denied&error_description=User+rejected+login";
-    auto res3 = portal::auth::classify_auth_url(redirect_fail_url, &extracted_code, &extracted_error);
-    assert(res3 == portal::auth::AuthUrlClassification::FatalError);
+    auto res3 = ludelo::auth::classify_auth_url(redirect_fail_url, &extracted_code, &extracted_error);
+    assert(res3 == ludelo::auth::AuthUrlClassification::FatalError);
     assert(extracted_error == "access_denied");
 
     // 4. body/title con "Something went wrong" => FAIL real
     std::string dom_fail_body = "<html><head><title>Error</title></head><body>Something went wrong. Please try again.</body></html>";
-    auto res4 = portal::auth::classify_auth_url(dom_fail_body, &extracted_code, &extracted_error);
-    assert(res4 == portal::auth::AuthUrlClassification::FatalError);
-    assert(portal::auth::classify_dom_content(dom_fail_body) == true);
+    auto res4 = ludelo::auth::classify_auth_url(dom_fail_body, &extracted_code, &extracted_error);
+    assert(res4 == ludelo::auth::AuthUrlClassification::FatalError);
+    assert(ludelo::auth::classify_dom_content(dom_fail_body) == true);
 
     std::cout << "PASSED\n";
 }

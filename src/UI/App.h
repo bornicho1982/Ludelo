@@ -2,7 +2,7 @@
 // Ludelo — Main Application (ImGui + Vulkan)
 #pragma once
 
-#include "PortalCore/Common.h"
+#include "LudeloCore/Common.h"
 
 #include <vulkan/vulkan.h>
 #include <SDL3/SDL.h>
@@ -16,13 +16,13 @@
 #include <vector>
 #include <unordered_map>
 
-#include "PortalCore/Auth/AccountManager.h"
-#include "PortalCore/Discovery/ConsoleRegistry.h"
-#include "PortalCore/Input/ControllerManager.h"
-#include "PortalCore/Stream/SessionManager.h"
-#include "PortalCore/Config/AppSettings.h"
+#include "LudeloCore/Auth/AccountManager.h"
+#include "LudeloCore/Discovery/ConsoleRegistry.h"
+#include "LudeloCore/Input/ControllerManager.h"
+#include "LudeloCore/Stream/SessionManager.h"
+#include "LudeloCore/Config/AppSettings.h"
 
-namespace portal::ui {
+namespace ludelo::ui {
 
 struct AppConfig {
     std::filesystem::path app_data_dir;
@@ -112,8 +112,8 @@ private:
     void show_toast(const std::string& message, float duration = 3.5f);
 
     void probe_consoles_background();
-    void wake_and_connect(const portal::discovery::RegisteredConsole& console);
-    void wake_console_only(const portal::discovery::RegisteredConsole& console);
+    void wake_and_connect(const ludelo::discovery::RegisteredConsole& console);
+    void wake_console_only(const ludelo::discovery::RegisteredConsole& console);
     void draw_controller_test_modal();
 
     // Cleanup
@@ -160,10 +160,10 @@ private:
     bool swapchain_needs_rebuild_ = false;
 
     // Backend Managers
-    std::shared_ptr<portal::auth::AccountManager> account_manager_;
-    std::shared_ptr<portal::discovery::ConsoleRegistry> console_registry_;
-    std::shared_ptr<portal::input::ControllerManager> controller_manager_;
-    std::shared_ptr<portal::stream::SessionManager> session_manager_;
+    std::shared_ptr<ludelo::auth::AccountManager> account_manager_;
+    std::shared_ptr<ludelo::discovery::ConsoleRegistry> console_registry_;
+    std::shared_ptr<ludelo::input::ControllerManager> controller_manager_;
+    std::shared_ptr<ludelo::stream::SessionManager> session_manager_;
 
     // Vulkan texture management
     struct VulkanTexture {
@@ -245,7 +245,7 @@ private:
     std::string waking_status_text_;
     int waking_attempt_ = 1;
     bool wake_hint_visible_ = false;
-    std::vector<portal::discovery::DiscoveredConsole> unbound_consoles_;
+    std::vector<ludelo::discovery::DiscoveredConsole> unbound_consoles_;
 
     // PIN registration options
     bool no_pin_needed_ = false;
@@ -269,7 +269,7 @@ private:
     bool mica_active_ = false;
 
     // Persistent application settings (loaded from disk at startup)
-    portal::config::AppSettings settings_;
+    ludelo::config::AppSettings settings_;
     std::filesystem::path settings_path_;
 
     // Background managed threads (jthread ensures clean join upon reassignment or exit)
@@ -284,4 +284,4 @@ private:
     std::jthread cloud_thread_;
 };
 
-}  // namespace portal::ui
+}  // namespace ludelo::ui

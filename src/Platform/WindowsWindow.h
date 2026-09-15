@@ -1,10 +1,10 @@
 // Archivo: src/Platform/WindowsWindow.h
 #pragma once
 
-#include "PortalCore/Common.h"
+#include "LudeloCore/Common.h"
 #include <string>
 
-namespace portal::platform {
+namespace ludelo::platform {
 
 /// Platform-specific window utilities for Windows
 class WindowsWindow {
@@ -39,4 +39,4 @@ public:
     static void remove_mica_backdrop(void* hwnd);
 };
 
-}  // namespace portal::platform
+}  // namespace ludelo::platform

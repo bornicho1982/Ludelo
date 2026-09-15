@@ -201,10 +201,10 @@ set INCLUDES=/I "%PROJECT_ROOT%\src" ^
  /I "%PROJECT_ROOT%\third_party\spdlog\include" ^
  /I "%PROJECT_ROOT%\third_party\json\single_include" ^
  /I "%PROJECT_ROOT%\third_party\ffmpeg\include" ^
- /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\include" ^
- /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\nanopb" ^
- /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\jerasure\include" ^
- /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\gf-complete\include" ^
+ /I "%PROJECT_ROOT%\src\LudeloCore\Chiaki\include" ^
+ /I "%PROJECT_ROOT%\src\LudeloCore\Chiaki\nanopb" ^
+ /I "%PROJECT_ROOT%\src\LudeloCore\Chiaki\jerasure\include" ^
+ /I "%PROJECT_ROOT%\src\LudeloCore\Chiaki\gf-complete\include" ^
  /I "%PROJECT_ROOT%\third_party\webview2\build\native\include" ^
  !OPENSSL_INC!
 
@@ -222,14 +222,14 @@ cl !CFLAGS! !INCLUDES! /c /Fo"%OBJ_DIR%/" ^
    "%PROJECT_ROOT%\src\main.cpp" ^
    "%PROJECT_ROOT%\src\UI\App.cpp" ^
    "%PROJECT_ROOT%\src\Platform\WindowsWindow.cpp" ^
-   "%PROJECT_ROOT%\src\PortalCore\Auth\*.cpp" ^
-   "%PROJECT_ROOT%\src\PortalCore\Cloud\*.cpp" ^
-   "%PROJECT_ROOT%\src\PortalCore\Config\*.cpp" ^
-   "%PROJECT_ROOT%\src\PortalCore\Crypto\*.cpp" ^
-   "%PROJECT_ROOT%\src\PortalCore\Discovery\*.cpp" ^
-   "%PROJECT_ROOT%\src\PortalCore\Input\*.cpp" ^
-   "%PROJECT_ROOT%\src\PortalCore\Net\*.cpp" ^
-   "%PROJECT_ROOT%\src\PortalCore\Stream\*.cpp" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Auth\*.cpp" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Cloud\*.cpp" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Config\*.cpp" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Crypto\*.cpp" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Discovery\*.cpp" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Input\*.cpp" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Net\*.cpp" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Stream\*.cpp" ^
    "%PROJECT_ROOT%\third_party\imgui\imgui.cpp" ^
    "%PROJECT_ROOT%\third_party\imgui\imgui_draw.cpp" ^
    "%PROJECT_ROOT%\third_party\imgui\imgui_tables.cpp" ^
@@ -339,7 +339,7 @@ set INCLUDES=/I "%PROJECT_ROOT%\src" ^
  /I "%PROJECT_ROOT%\build\proto_gen" ^
  /I "%PROJECT_ROOT%\third_party\spdlog\include" ^
  /I "%PROJECT_ROOT%\third_party\json\single_include" ^
- /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\include" ^
+ /I "%PROJECT_ROOT%\src\LudeloCore\Chiaki\include" ^
  !OPENSSL_INC!
 
 if not exist "%BUILD_DIR%\chiaki.lib" (
@@ -360,11 +360,11 @@ for %%T in (test_fec test_discovery test_dualsense test_takion test_auth test_cr
     if exist "%PROJECT_ROOT%\tests\%%T.cpp" (
         echo [TEST BUILD] Compilando %%T.exe...
         set "EXTRA_SRCS="
-        if "%%T"=="test_auth"      set "EXTRA_SRCS="%PROJECT_ROOT%\src\PortalCore\Auth\PSNAuth.cpp" "%PROJECT_ROOT%\src\PortalCore\Auth\Keychain.cpp" "%PROJECT_ROOT%\src\PortalCore\Net\HttpClient.cpp" "%PROJECT_ROOT%\src\PortalCore\Net\TLSSocket.cpp" "%PROJECT_ROOT%\src\PortalCore\Net\TCPSocket.cpp""
-        if "%%T"=="test_crypto"    set "EXTRA_SRCS="%PROJECT_ROOT%\src\PortalCore\Crypto\ECDHKeyExchange.cpp" "%PROJECT_ROOT%\src\PortalCore\Crypto\RPCrypt.cpp" "%PROJECT_ROOT%\src\PortalCore\Crypto\SecureRandom.cpp""
-        if "%%T"=="test_discovery" set "EXTRA_SRCS="%PROJECT_ROOT%\src\PortalCore\Discovery\DDPDiscovery.cpp" "%PROJECT_ROOT%\src\PortalCore\Discovery\ConsoleRegistry.cpp" "%PROJECT_ROOT%\src\PortalCore\Auth\Keychain.cpp" "%PROJECT_ROOT%\src\PortalCore\Net\UDPSocket.cpp""
-        if "%%T"=="test_dualsense" set "EXTRA_SRCS="%PROJECT_ROOT%\src\PortalCore\Input\DualSenseHID.cpp""
-        if "%%T"=="test_fec"       set "EXTRA_SRCS="%PROJECT_ROOT%\src\PortalCore\Stream\FECDecoder.cpp""
+        if "%%T"=="test_auth"      set "EXTRA_SRCS="%PROJECT_ROOT%\src\LudeloCore\Auth\PSNAuth.cpp" "%PROJECT_ROOT%\src\LudeloCore\Auth\Keychain.cpp" "%PROJECT_ROOT%\src\LudeloCore\Net\HttpClient.cpp" "%PROJECT_ROOT%\src\LudeloCore\Net\TLSSocket.cpp" "%PROJECT_ROOT%\src\LudeloCore\Net\TCPSocket.cpp""
+        if "%%T"=="test_crypto"    set "EXTRA_SRCS="%PROJECT_ROOT%\src\LudeloCore\Crypto\ECDHKeyExchange.cpp" "%PROJECT_ROOT%\src\LudeloCore\Crypto\RPCrypt.cpp" "%PROJECT_ROOT%\src\LudeloCore\Crypto\SecureRandom.cpp""
+        if "%%T"=="test_discovery" set "EXTRA_SRCS="%PROJECT_ROOT%\src\LudeloCore\Discovery\DDPDiscovery.cpp" "%PROJECT_ROOT%\src\LudeloCore\Discovery\ConsoleRegistry.cpp" "%PROJECT_ROOT%\src\LudeloCore\Auth\Keychain.cpp" "%PROJECT_ROOT%\src\LudeloCore\Net\UDPSocket.cpp""
+        if "%%T"=="test_dualsense" set "EXTRA_SRCS="%PROJECT_ROOT%\src\LudeloCore\Input\DualSenseHID.cpp""
+        if "%%T"=="test_fec"       set "EXTRA_SRCS="%PROJECT_ROOT%\src\LudeloCore\Stream\FECDecoder.cpp""
         if "%%T"=="test_takion"    set "EXTRA_SRCS="
 
         cl !CFLAGS! !INCLUDES! /Fo"!TESTS_OBJ_DIR!/" /Fe"%TESTS_BIN_DIR%\%%T.exe" ^
@@ -508,7 +508,7 @@ if not exist "%BUILD_DIR%\chiaki.lib" (
 set "DIAG_OBJ_DIR=%BUILD_DIR%\obj_diag"
 if not exist "!DIAG_OBJ_DIR!" mkdir "!DIAG_OBJ_DIR!"
 
-set "DIAG_INC=/I "%PROJECT_ROOT%\src" /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\include" /I "%PROJECT_ROOT%\third_party\spdlog\include" /I "%PROJECT_ROOT%\third_party\json\single_include" /I "%PROJECT_ROOT%\third_party\webview2\build\native\include""
+set "DIAG_INC=/I "%PROJECT_ROOT%\src" /I "%PROJECT_ROOT%\src\LudeloCore\Chiaki\include" /I "%PROJECT_ROOT%\third_party\spdlog\include" /I "%PROJECT_ROOT%\third_party\json\single_include" /I "%PROJECT_ROOT%\third_party\webview2\build\native\include""
 if defined OPENSSL_INC set "DIAG_INC=!DIAG_INC! !OPENSSL_INC!"
 set "DIAG_LIBPATHS=/LIBPATH:"%BUILD_DIR%""
 if defined OPENSSL_LIB set "DIAG_LIBPATHS=!DIAG_LIBPATHS! !OPENSSL_LIB!"
@@ -518,9 +518,9 @@ cl /nologo /std:c++latest /EHsc /utf-8 /O2 ^
    /Fo"!DIAG_OBJ_DIR!/" ^
    /Fe"%BIN_DIR%\Ludelo_LiveDiagnostic.exe" ^
    "%PROJECT_ROOT%\tools\Ludelo_LiveDiagnostic.cpp" ^
-   "%PROJECT_ROOT%\src\PortalCore\Discovery\DDPDiscovery.cpp" ^
-   "%PROJECT_ROOT%\src\PortalCore\Net\UDPSocket.cpp" ^
-   "%PROJECT_ROOT%\src\PortalCore\Input\DualSenseHID.cpp" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Discovery\DDPDiscovery.cpp" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Net\UDPSocket.cpp" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Input\DualSenseHID.cpp" ^
    /link !DIAG_LIBPATHS! chiaki.lib libcrypto.lib libssl.lib crypt32.lib shell32.lib bcrypt.lib ws2_32.lib hid.lib setupapi.lib iphlpapi.lib
 
 if !ERRORLEVEL! equ 0 (
@@ -538,16 +538,16 @@ set "CHIAKI_OBJ_DIR=%BUILD_DIR%\obj_chiaki"
 if not exist "!CHIAKI_OBJ_DIR!" mkdir "!CHIAKI_OBJ_DIR!"
 
 echo [CHIAKI] Compilando motor Chiaki Core (nanopb + gf-complete + jerasure + chiaki C)...
-set CHIAKI_INCLUDES=/I "%PROJECT_ROOT%\src\PortalCore\Chiaki\include" /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\nanopb" /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\jerasure\include" /I "%PROJECT_ROOT%\src\PortalCore\Chiaki\gf-complete\include" /I "%PROJECT_ROOT%\third_party\ffmpeg\include"
+set CHIAKI_INCLUDES=/I "%PROJECT_ROOT%\src\LudeloCore\Chiaki\include" /I "%PROJECT_ROOT%\src\LudeloCore\Chiaki\nanopb" /I "%PROJECT_ROOT%\src\LudeloCore\Chiaki\jerasure\include" /I "%PROJECT_ROOT%\src\LudeloCore\Chiaki\gf-complete\include" /I "%PROJECT_ROOT%\third_party\ffmpeg\include"
 
 set "CHIAKI_CFLAGS=/nologo /TC /O2 /MP /W3 /D_CRT_SECURE_NO_WARNINGS /D_WIN32 /DWIN32_LEAN_AND_MEAN /DPB_C99_STATIC_ASSERT /wd4244 /wd4267 /wd4018 /wd4133 /wd4090"
 
 cl !CHIAKI_CFLAGS! !CHIAKI_INCLUDES! !OPENSSL_INC! /c /Fo"!CHIAKI_OBJ_DIR!/" ^
-   "%PROJECT_ROOT%\src\PortalCore\Chiaki\nanopb\*.c" ^
-   "%PROJECT_ROOT%\src\PortalCore\Chiaki\gf-complete\src\*.c" ^
-   "%PROJECT_ROOT%\src\PortalCore\Chiaki\jerasure\src\*.c" ^
-   "%PROJECT_ROOT%\src\PortalCore\Chiaki\src\*.c" ^
-   "%PROJECT_ROOT%\src\PortalCore\Chiaki\src\remote\remote_stubs.c"
+   "%PROJECT_ROOT%\src\LudeloCore\Chiaki\nanopb\*.c" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Chiaki\gf-complete\src\*.c" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Chiaki\jerasure\src\*.c" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Chiaki\src\*.c" ^
+   "%PROJECT_ROOT%\src\LudeloCore\Chiaki\src\remote\remote_stubs.c"
 
 if !ERRORLEVEL! neq 0 (
     echo [ERROR] Fallo la compilacion de objetos Chiaki Core.

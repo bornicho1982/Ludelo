@@ -15,14 +15,14 @@
 #include <format>
 #include <cmath>
 #include <openssl/evp.h>
-#include "PortalCore/Auth/WebView2Auth.h"
+#include "LudeloCore/Auth/WebView2Auth.h"
 #include <regex>
 #include <shellapi.h>
-#include "PortalCore/Discovery/DDPDiscovery.h"
-#include "PortalCore/Net/HttpClient.h"
-#include "PortalCore/Crypto/PS5Protocol.h"
+#include "LudeloCore/Discovery/DDPDiscovery.h"
+#include "LudeloCore/Net/HttpClient.h"
+#include "LudeloCore/Crypto/PS5Protocol.h"
 #include "Platform/WindowsWindow.h"
-#include "PortalCore/Config/AppSettings.h"
+#include "LudeloCore/Config/AppSettings.h"
 #include "UI/Theme.h"
 
 #ifdef _WIN32
@@ -30,12 +30,12 @@
 #pragma comment(lib, "winmm.lib")
 #endif
 
-namespace portal::ui {
+namespace ludelo::ui {
 
 // ─── Ludelo Design System: Central Theme Tokens ───────────
-namespace colors = portal::ui::theme::colors;
-namespace metrics = portal::ui::theme::metrics;
-using portal::ui::theme::draw_elevation;
+namespace colors = ludelo::ui::theme::colors;
+namespace metrics = ludelo::ui::theme::metrics;
+using ludelo::ui::theme::draw_elevation;
 
 // ─── Constructor / Destructor ─────────────────────────────
 
@@ -121,13 +121,13 @@ VoidResult App::init() {
     }
 
     // Initialize Backend Managers
-    account_manager_ = std::make_shared<portal::auth::AccountManager>();
-    console_registry_ = std::make_shared<portal::discovery::ConsoleRegistry>();
-    controller_manager_ = std::make_shared<portal::input::ControllerManager>();
-    session_manager_ = std::make_shared<portal::stream::SessionManager>();
+    account_manager_ = std::make_shared<ludelo::auth::AccountManager>();
+    console_registry_ = std::make_shared<ludelo::discovery::ConsoleRegistry>();
+    controller_manager_ = std::make_shared<ludelo::input::ControllerManager>();
+    session_manager_ = std::make_shared<ludelo::stream::SessionManager>();
 
     // Load persistent settings
-    settings_path_ = portal::config::AppSettings::default_path(config_.app_data_dir);
+    settings_path_ = ludelo::config::AppSettings::default_path(config_.app_data_dir);
     (void)settings_.load(settings_path_);
     spdlog::info("[App] Settings loaded: resolution={}, fps={}, bitrate={} kbps",
         static_cast<int>(settings_.resolution),
@@ -160,10 +160,10 @@ VoidResult App::init() {
     probe_consoles_background();
 
     // High-frequency (250Hz) Gamepad and Keyboard Input Poller
-    session_manager_->set_input_poll_callback([this]() -> portal::stream::ControllerState {
+    session_manager_->set_input_poll_callback([this]() -> ludelo::stream::ControllerState {
         if (!window_focused_ || !controller_manager_) return {};
         auto in = controller_manager_->poll();
-        portal::stream::ControllerState out{};
+        ludelo::stream::ControllerState out{};
         if (in.cross)        out.buttons |= (1 << 0);  // CROSS
         if (in.circle)       out.buttons |= (1 << 1);  // MOON / CIRCLE
         if (in.square)       out.buttons |= (1 << 2);  // BOX / SQUARE
@@ -195,7 +195,7 @@ VoidResult App::init() {
     // Video stream frame handler — RGBA directo desde VideoDecoder (FFmpeg swscale, AVX2/SSSE3)
     // El VideoDecoder siempre entrega rgba_data tras la conversión NV12→RGBA en GPU/CPU.
     // No existe fallback scalar: si swscale no produce RGBA el frame se descarta con un warning.
-    session_manager_->on_video_frame = [this](portal::stream::DecodedFrame& frame) {
+    session_manager_->on_video_frame = [this](ludelo::stream::DecodedFrame& frame) {
         if (frame.width <= 0 || frame.height <= 0) return;
 
         const size_t expected_bytes = static_cast<size_t>(frame.width) * frame.height * sizeof(uint32_t);
@@ -231,7 +231,7 @@ VoidResult App::init() {
         spdlog::warn("SDL_OpenAudioDeviceStream failed: {}", SDL_GetError());
     }
 
-    session_manager_->on_audio_frame = [this](portal::stream::AudioFrame& audio) {
+    session_manager_->on_audio_frame = [this](ludelo::stream::AudioFrame& audio) {
         if (audio_stream_ && !audio.samples.empty()) {
             int queued = SDL_GetAudioStreamQueued(audio_stream_);
             // Progressive audio drain policy (target latency ~40ms / 7680 bytes):
@@ -279,7 +279,7 @@ VoidResult App::init() {
 
         // ── Apply Windows 11 Mica backdrop ────────────────────
         // Must be called after the window is shown and composited.
-        mica_active_ = portal::platform::WindowsWindow::apply_mica_backdrop(hwnd);
+        mica_active_ = ludelo::platform::WindowsWindow::apply_mica_backdrop(hwnd);
         if (mica_active_) {
             spdlog::info("Mica backdrop active — background will be rendered transparently");
             // Re-apply ImGui style now that we know Mica is active
@@ -614,9 +614,9 @@ void App::run() {
         double target_fps = 60.0;
         if (current_screen_ == Screen::Streaming) {
             // Streaming: cap to stream frame rate (30, 60, or 120 FPS)
-            if (settings_.fps == portal::FrameRate::FPS30) {
+            if (settings_.fps == ludelo::FrameRate::FPS30) {
                 target_fps = 30.0;
-            } else if (settings_.fps == portal::FrameRate::FPS120) {
+            } else if (settings_.fps == ludelo::FrameRate::FPS120) {
                 target_fps = 120.0;
             } else {
                 target_fps = 60.0;
@@ -2116,8 +2116,8 @@ void App::draw_toast_notification() {
         if (ImGui::Button("Reintentar##retry_login", ImVec2(90.0f, 30.0f))) {
             login_cancelled_prompt_visible_ = false;
             login_thread_ = std::jthread([this](std::stop_token) {
-                auto res = portal::auth::WebView2Auth::login();
-                if (res.status == portal::auth::WebView2LoginStatus::Success) {
+                auto res = ludelo::auth::WebView2Auth::login();
+                if (res.status == ludelo::auth::WebView2LoginStatus::Success) {
                     auto result = account_manager_->add_account_from_code(res.code);
                     if (result.has_value()) {
                         auto acc = account_manager_->get_active_account();
@@ -2127,7 +2127,7 @@ void App::draw_toast_notification() {
                         destroy_texture("avatar");
                         current_screen_ = Screen::Home;
                     }
-                } else if (res.status == portal::auth::WebView2LoginStatus::UserCancelled) {
+                } else if (res.status == ludelo::auth::WebView2LoginStatus::UserCancelled) {
                     login_cancelled_prompt_visible_ = true;
                 }
             });
@@ -2188,7 +2188,7 @@ void App::draw_ambient_background() {
     ImVec2 c3(ws.x * 0.80f, ws.y * 0.10f);
     draw->AddCircleFilled(c3, ws.x * 0.35f, IM_COL32(125, 111, 240, 20), 64);
 
-    // Animated Ludelo Portal Wave ribbons
+    // Animated Ludelo Wave ribbons
     for (int w = 0; w < 3; w++) {
         float speed = 0.35f + w * 0.15f;
         float amp = 24.0f + w * 14.0f;
@@ -2376,7 +2376,7 @@ void App::draw_top_navigation_bar() {
         if (act && !act->profile.avatar_url.empty() && !avatar_thread_.joinable()) {
             std::string url = act->profile.avatar_url;
             avatar_thread_ = std::jthread([this, url, avatar_file_path](std::stop_token) {
-                portal::net::HttpClient client;
+                ludelo::net::HttpClient client;
                 auto res = client.get(url);
                 if (res && !res.value().body.empty()) {
                     std::ofstream file(avatar_file_path, std::ios::binary);
@@ -2444,14 +2444,14 @@ void App::probe_consoles_background() {
         for (const auto& c : list) {
             if (st.stop_requested()) break;
             if (c.address.empty()) continue;
-            auto state = portal::discovery::DDPDiscovery::probe_console(c.address, c.port, 350);
+            auto state = ludelo::discovery::DDPDiscovery::probe_console(c.address, c.port, 350);
             reg->update_console_state(c.host_id, state, c.address);
         }
         is_probing_ = false;
     });
 }
 
-void App::wake_console_only(const portal::discovery::RegisteredConsole& console) {
+void App::wake_console_only(const ludelo::discovery::RegisteredConsole& console) {
     if (is_waking_.load()) return;
     is_waking_ = true;
     waking_attempt_ = 1;
@@ -2466,7 +2466,7 @@ void App::wake_console_only(const portal::discovery::RegisteredConsole& console)
         bool is_ps5 = (console_copy.host_type == "PS5" || console_copy.host_type.find("5") != std::string::npos);
         
         // Initial wake packet
-        (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
+        (void)ludelo::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
 
         auto start = std::chrono::steady_clock::now();
         bool awake = false;
@@ -2481,17 +2481,17 @@ void App::wake_console_only(const portal::discovery::RegisteredConsole& console)
                 current_attempt = 3;
                 waking_attempt_ = 3;
                 waking_status_text_ = std::format("Despertando {}... (intento 3/3)", console_copy.host_name);
-                (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
+                (void)ludelo::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
             } else if (elapsed_sec >= 10 && current_attempt < 2) {
                 current_attempt = 2;
                 waking_attempt_ = 2;
                 waking_status_text_ = std::format("Despertando {}... (intento 2/3)", console_copy.host_name);
-                (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
+                (void)ludelo::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            auto state = portal::discovery::DDPDiscovery::probe_console(console_copy.address, console_copy.port, 400);
-            if (state == portal::ConsoleState::Awake) {
+            auto state = ludelo::discovery::DDPDiscovery::probe_console(console_copy.address, console_copy.port, 400);
+            if (state == ludelo::ConsoleState::Awake) {
                 awake = true;
                 reg->update_console_state(console_copy.host_id, state, console_copy.address);
                 break;
@@ -2509,7 +2509,7 @@ void App::wake_console_only(const portal::discovery::RegisteredConsole& console)
     });
 }
 
-void App::wake_and_connect(const portal::discovery::RegisteredConsole& console) {
+void App::wake_and_connect(const ludelo::discovery::RegisteredConsole& console) {
     if (is_waking_.load()) return;
     is_waking_ = true;
     waking_attempt_ = 1;
@@ -2531,7 +2531,7 @@ void App::wake_and_connect(const portal::discovery::RegisteredConsole& console) 
         bool is_ps5 = (console_copy.host_type == "PS5" || console_copy.host_type.find("5") != std::string::npos);
         
         // Initial wake packet
-        (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
+        (void)ludelo::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
 
         auto start = std::chrono::steady_clock::now();
         bool awake = false;
@@ -2546,17 +2546,17 @@ void App::wake_and_connect(const portal::discovery::RegisteredConsole& console) 
                 current_attempt = 3;
                 waking_attempt_ = 3;
                 waking_status_text_ = std::format("Despertando {}... (intento 3/3)", console_copy.host_name);
-                (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
+                (void)ludelo::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
             } else if (elapsed_sec >= 10 && current_attempt < 2) {
                 current_attempt = 2;
                 waking_attempt_ = 2;
                 waking_status_text_ = std::format("Despertando {}... (intento 2/3)", console_copy.host_name);
-                (void)portal::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
+                (void)ludelo::discovery::DDPDiscovery::wake(console_copy.address, console_copy.rp_auth, is_ps5);
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            auto state = portal::discovery::DDPDiscovery::probe_console(console_copy.address, console_copy.port, 400);
-            if (state == portal::ConsoleState::Awake) {
+            auto state = ludelo::discovery::DDPDiscovery::probe_console(console_copy.address, console_copy.port, 400);
+            if (state == ludelo::ConsoleState::Awake) {
                 awake = true;
                 reg->update_console_state(console_copy.host_id, state, console_copy.address);
                 break;
@@ -2574,10 +2574,10 @@ void App::wake_and_connect(const portal::discovery::RegisteredConsole& console) 
         wake_hint_visible_ = false;
 
         // Step 3: Connect
-        portal::StreamConfig cfg;
-        cfg.resolution = portal::Resolution::R1080p;
-        cfg.fps = portal::FrameRate::FPS60;
-        cfg.codec = is_ps5 ? portal::VideoCodec::H265 : portal::VideoCodec::H264;
+        ludelo::StreamConfig cfg;
+        cfg.resolution = ludelo::Resolution::R1080p;
+        cfg.fps = ludelo::FrameRate::FPS60;
+        cfg.codec = is_ps5 ? ludelo::VideoCodec::H265 : ludelo::VideoCodec::H264;
         cfg.bitrate_kbps = settings_.bitrate_kbps;
         cfg.hdr = false;
 
@@ -2707,8 +2707,8 @@ void App::draw_home_screen() {
         float pulse = 0.5f + 0.5f * sinf(static_cast<float>(ImGui::GetTime()) * 4.0f);
         ImVec2 dot_pos(pos.x + 26.0f, pos.y + 60.0f);
 
-        bool is_awake = (c.state == portal::ConsoleState::Awake);
-        bool is_standby = (c.state == portal::ConsoleState::Standby);
+        bool is_awake = (c.state == ludelo::ConsoleState::Awake);
+        bool is_standby = (c.state == ludelo::ConsoleState::Standby);
 
         if (is_awake) {
             draw->AddCircleFilled(dot_pos, 7.0f + pulse * 2.0f, IM_COL32(0, 245, 212, static_cast<int>(60 * pulse)));
@@ -2775,10 +2775,10 @@ void App::draw_home_screen() {
                 target_login_console_host_id_ = c.host_id;
                 show_toast(std::format("Iniciando conexion Remote Play con {}...", c.host_name), 4.0f);
                 
-                portal::StreamConfig cfg;
-                cfg.resolution = portal::Resolution::R1080p;
-                cfg.fps = portal::FrameRate::FPS60;
-                cfg.codec = is_ps5 ? portal::VideoCodec::H265 : portal::VideoCodec::H264;
+                ludelo::StreamConfig cfg;
+                cfg.resolution = ludelo::Resolution::R1080p;
+                cfg.fps = ludelo::FrameRate::FPS60;
+                cfg.codec = is_ps5 ? ludelo::VideoCodec::H265 : ludelo::VideoCodec::H264;
                 cfg.bitrate_kbps = settings_.bitrate_kbps;
                 cfg.hdr = false;
                 
@@ -2973,7 +2973,7 @@ void App::draw_home_screen() {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kSurfaceHover);
     if (ImGui::Button("##scan_btn", ImVec2(action_btn_w, action_btn_h))) {
         show_toast("Escaneando red local (DDP Broadcast 9295)...", 3.0f);
-        auto result = portal::discovery::DDPDiscovery::search(1200);
+        auto result = ludelo::discovery::DDPDiscovery::search(1200);
         if (result && !result->empty()) {
             show_toast(std::format("Escaneo finalizado: {} consola(s) detectada(s)", result->size()), 4.0f);
             unbound_consoles_.clear();
@@ -3247,13 +3247,13 @@ void App::draw_cloud_games() {
                 if (!token_res) {
                     show_toast("Error al obtener token PSN. Vuelve a iniciar sesión.", 4.0f);
                 } else {
-                    portal::auth::PSNTokens tokens;
+                    ludelo::auth::PSNTokens tokens;
                     tokens.access_token = token_res.value();
 
-                    portal::StreamConfig cfg;
-                    cfg.resolution = portal::Resolution::R1080p;
-                    cfg.fps        = portal::FrameRate::FPS60;
-                    cfg.codec      = portal::VideoCodec::H265;
+                    ludelo::StreamConfig cfg;
+                    cfg.resolution = ludelo::Resolution::R1080p;
+                    cfg.fps        = ludelo::FrameRate::FPS60;
+                    cfg.codec      = ludelo::VideoCodec::H265;
                     cfg.hdr        = false;
                     cfg.bitrate_kbps = settings_.bitrate_kbps;
 
@@ -3376,8 +3376,8 @@ void App::draw_pin_modal() {
             show_toast("PSN Account-ID auto-completado", 3.0f);
         } else {
             login_thread_ = std::jthread([this](std::stop_token) {
-                auto res = portal::auth::WebView2Auth::login();
-                if (res.status == portal::auth::WebView2LoginStatus::Success) {
+                auto res = ludelo::auth::WebView2Auth::login();
+                if (res.status == ludelo::auth::WebView2LoginStatus::Success) {
                     auto result = account_manager_->add_account_from_code(res.code);
                     if (result.has_value()) {
                         auto acc = account_manager_->get_active_account();
@@ -3391,10 +3391,10 @@ void App::draw_pin_modal() {
                     } else {
                         show_toast("Error al iniciar sesion: " + result.error().message, 5.0f);
                     }
-                } else if (res.status == portal::auth::WebView2LoginStatus::UserCancelled) {
+                } else if (res.status == ludelo::auth::WebView2LoginStatus::UserCancelled) {
                     show_toast("Inicio de sesion cancelado", 3.5f);
                     login_cancelled_prompt_visible_ = true;
-                } else if (res.status == portal::auth::WebView2LoginStatus::SonyError) {
+                } else if (res.status == ludelo::auth::WebView2LoginStatus::SonyError) {
                     show_toast("Sony devolvio un error de autenticacion. Abriendo navegador...", 5.0f);
                     memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
                     browser_fallback_extracted_code_.clear();
@@ -3593,7 +3593,7 @@ void App::draw_pin_modal() {
         std::string name = register_name_;
         std::string acc_id = account_id_b64_;
         register_thread_ = std::jthread([this, ip, name, pin_num, acc_id](std::stop_token) {
-            auto res = portal::crypto::PS5Protocol::register_with_pin(ip, 9295, pin_num, acc_id);
+            auto res = ludelo::crypto::PS5Protocol::register_with_pin(ip, 9295, pin_num, acc_id);
             if (res.has_value()) {
                 std::string host_id = res->host_id;
                 if (host_id.empty()) {
@@ -3611,13 +3611,13 @@ void App::draw_pin_modal() {
 
                 std::string console_name = !name.empty() ? name : (!res->host_name.empty() ? res->host_name : "PlayStation 5");
 
-                portal::discovery::DiscoveredConsole dc {
+                ludelo::discovery::DiscoveredConsole dc {
                     console_name,
                     host_id,
                     "PS5",
                     ip,
                     9295,
-                    portal::ConsoleState::Awake,
+                    ludelo::ConsoleState::Awake,
                     "13600007"
                 };
                 (void)console_registry_->register_console(dc, res->rp_key, res->regist_key);
@@ -3698,8 +3698,8 @@ void App::draw_onboarding() {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors::kPrimaryHover);
     if (ImGui::Button("Iniciar Sesion con PlayStation Network##onboard_login", ImVec2(btn_w, btn_h))) {
         login_thread_ = std::jthread([this](std::stop_token) {
-            auto res = portal::auth::WebView2Auth::login();
-            if (res.status == portal::auth::WebView2LoginStatus::Success) {
+            auto res = ludelo::auth::WebView2Auth::login();
+            if (res.status == ludelo::auth::WebView2LoginStatus::Success) {
                 auto result = account_manager_->add_account_from_code(res.code);
                 if (result.has_value()) {
                     auto acc = account_manager_->get_active_account();
@@ -3717,11 +3717,11 @@ void App::draw_onboarding() {
                 } else {
                     show_toast("Error al iniciar sesion: " + result.error().message, 5.0f);
                 }
-            } else if (res.status == portal::auth::WebView2LoginStatus::UserCancelled) {
+            } else if (res.status == ludelo::auth::WebView2LoginStatus::UserCancelled) {
                 spdlog::info("WebView2Auth: login window closed by user");
                 show_toast("Inicio de sesion cancelado", 3.5f);
                 login_cancelled_prompt_visible_ = true;
-            } else if (res.status == portal::auth::WebView2LoginStatus::SonyError) {
+            } else if (res.status == ludelo::auth::WebView2LoginStatus::SonyError) {
                 spdlog::warn("WebView2Auth: Sony error reported: {}", res.error_details);
                 show_toast("Sony devolvio un error de autenticacion. Abriendo navegador...", 5.0f);
                 memset(browser_fallback_url_input_, 0, sizeof(browser_fallback_url_input_));
@@ -4641,7 +4641,7 @@ void App::draw_controller_test_modal() {
     bool connected = controller_manager_ ? controller_manager_->is_connected() : false;
     float deadzone = controller_manager_ ? controller_manager_->get_stick_deadzone() : settings_.stick_deadzone;
 
-    portal::input::ControllerState state{};
+    ludelo::input::ControllerState state{};
     if (controller_manager_ && connected) {
         state = controller_manager_->poll();
     }
@@ -4854,4 +4854,4 @@ void App::cleanup_imgui() {
     ImGui::DestroyContext();
 }
 
-}  // namespace portal::ui
+}  // namespace ludelo::ui

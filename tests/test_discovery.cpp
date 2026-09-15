@@ -1,7 +1,7 @@
 // Archivo: tests/test_discovery.cpp
 // Test del protocolo de descubrimiento PlayStation Device Discovery Protocol (DDP)
-#include "PortalCore/Common.h"
-#include "PortalCore/Discovery/DDPDiscovery.h"
+#include "LudeloCore/Common.h"
+#include "LudeloCore/Discovery/DDPDiscovery.h"
 
 #include <iostream>
 #include <cassert>
@@ -19,9 +19,9 @@ void test_parse_ps5_awake_response() {
         "device-discovery-protocol-version: 00030010\r\n"
         "system-version: 08000000\r\n\r\n";
 
-    auto console = portal::discovery::DDPDiscovery::parse_response(mock_response, "127.0.0.1", 9302);
+    auto console = ludelo::discovery::DDPDiscovery::parse_response(mock_response, "127.0.0.1", 9302);
 
-    assert(console.state == portal::ConsoleState::Awake);
+    assert(console.state == ludelo::ConsoleState::Awake);
     assert(console.host_id == "001122334455");
     assert(console.host_type == "PS5");
     assert(console.host_name == "PS5-LivingRoom");
@@ -44,9 +44,9 @@ void test_parse_ps4_standby_response() {
         "device-discovery-protocol-version: 00020020\r\n"
         "system-version: 11000000\r\n\r\n";
 
-    auto console = portal::discovery::DDPDiscovery::parse_response(mock_response, "127.0.0.1", 987);
+    auto console = ludelo::discovery::DDPDiscovery::parse_response(mock_response, "127.0.0.1", 987);
 
-    assert(console.state == portal::ConsoleState::Standby);
+    assert(console.state == ludelo::ConsoleState::Standby);
     assert(console.host_id == "AABBCCDDEEFF");
     assert(console.host_type == "PS4");
     assert(console.host_name == "PS4-Bedroom");

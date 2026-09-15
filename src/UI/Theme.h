@@ -4,7 +4,7 @@
 
 #include <imgui.h>
 
-namespace portal::ui::theme {
+namespace ludelo::ui::theme {
 
 namespace colors {
     // Core Backgrounds
@@ -74,4 +74,4 @@ inline void draw_elevation(ImDrawList* draw, ImVec2 min, ImVec2 max, int level, 
     }
 }
 
-} // namespace portal::ui::theme
+} // namespace ludelo::ui::theme

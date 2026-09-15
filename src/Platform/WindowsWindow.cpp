@@ -37,7 +37,7 @@ enum DWM_SYSTEMBACKDROP_TYPE {
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
 
-namespace portal::platform {
+namespace ludelo::platform {
 
 std::string WindowsWindow::get_exe_directory() {
     char path[MAX_PATH];
@@ -196,4 +196,4 @@ void WindowsWindow::remove_mica_backdrop(void* hwnd_ptr) {
     DwmExtendFrameIntoClientArea(hwnd, &margins);
 }
 
-}  // namespace portal::platform
+}  // namespace ludelo::platform

@@ -1,9 +1,9 @@
 // Archivo: tests/test_crypto.cpp
 // Test de Criptografía (ECDH P-256, AES-128-GCM, HKDF, SecureRandom)
-#include "PortalCore/Common.h"
-#include "PortalCore/Crypto/ECDHKeyExchange.h"
-#include "PortalCore/Crypto/RPCrypt.h"
-#include "PortalCore/Crypto/SecureRandom.h"
+#include "LudeloCore/Common.h"
+#include "LudeloCore/Crypto/ECDHKeyExchange.h"
+#include "LudeloCore/Crypto/RPCrypt.h"
+#include "LudeloCore/Crypto/SecureRandom.h"
 
 #include <iostream>
 #include <cstdio>
@@ -12,8 +12,8 @@
 
 void test_secure_random() {
     printf("[TEST] SecureRandom... "); fflush(stdout);
-    auto res1 = portal::crypto::SecureRandom::random_bytes(32);
-    auto res2 = portal::crypto::SecureRandom::random_bytes(32);
+    auto res1 = ludelo::crypto::SecureRandom::random_bytes(32);
+    auto res2 = ludelo::crypto::SecureRandom::random_bytes(32);
 
     assert(res1.has_value());
     assert(res2.has_value());
@@ -24,8 +24,8 @@ void test_secure_random() {
     assert(bytes2.size() == 32);
     assert(bytes1 != bytes2);
 
-    auto u32_1_res = portal::crypto::SecureRandom::random_uint32();
-    auto u32_2_res = portal::crypto::SecureRandom::random_uint32();
+    auto u32_1_res = ludelo::crypto::SecureRandom::random_uint32();
+    auto u32_2_res = ludelo::crypto::SecureRandom::random_uint32();
     assert(u32_1_res.has_value());
     assert(u32_2_res.has_value());
     uint32_t u32_1 = u32_1_res.value();
@@ -38,7 +38,7 @@ void test_secure_random() {
 void test_ecdh_key_exchange() {
     printf("[TEST] ECDH P-256 Key Exchange... "); fflush(stdout);
     
-    portal::crypto::ECDHKeyExchange alice;
+    ludelo::crypto::ECDHKeyExchange alice;
     auto alice_init = alice.generate_keypair();
     assert(alice_init.has_value());
     auto alice_pub_res = alice.get_public_key();
@@ -46,7 +46,7 @@ void test_ecdh_key_exchange() {
     auto alice_pub = alice_pub_res.value();
     assert(!alice_pub.empty());
 
-    portal::crypto::ECDHKeyExchange bob;
+    ludelo::crypto::ECDHKeyExchange bob;
     auto bob_init = bob.generate_keypair();
     assert(bob_init.has_value());
     auto bob_pub_res = bob.get_public_key();
@@ -67,8 +67,8 @@ void test_ecdh_key_exchange() {
     std::string info_str = "PS5-RemotePlay-Session";
     std::vector<uint8_t> info(info_str.begin(), info_str.end());
 
-    auto alice_session_key = portal::crypto::ECDHKeyExchange::derive_session_keys(alice_secret.value(), salt, info, 16);
-    auto bob_session_key = portal::crypto::ECDHKeyExchange::derive_session_keys(bob_secret.value(), salt, info, 16);
+    auto alice_session_key = ludelo::crypto::ECDHKeyExchange::derive_session_keys(alice_secret.value(), salt, info, 16);
+    auto bob_session_key = ludelo::crypto::ECDHKeyExchange::derive_session_keys(bob_secret.value(), salt, info, 16);
 
     assert(alice_session_key.has_value());
     assert(bob_session_key.has_value());
@@ -81,7 +81,7 @@ void test_ecdh_key_exchange() {
 void test_aes_gcm_rpcrypt() {
     printf("[TEST] RPCrypt (AES-128-GCM)... "); fflush(stdout);
 
-    portal::crypto::RPCrypt crypt;
+    ludelo::crypto::RPCrypt crypt;
     std::vector<uint8_t> key(16, 0x5A);
     std::vector<uint8_t> iv(16, 0x1F);
     auto set_res = crypt.set_keys(key, iv);
@@ -125,19 +125,19 @@ void test_log_masking() {
     fflush(stdout);
 
     // Short secret (<= 8 chars) -> "****"
-    assert(portal::mask_secret("1234") == "****");
-    assert(portal::mask_secret("12345678") == "****");
+    assert(ludelo::mask_secret("1234") == "****");
+    assert(ludelo::mask_secret("12345678") == "****");
 
     // Normal secret (> 8 chars) -> first 4 + "****" + last 4
-    assert(portal::mask_secret("123456789") == "1234****6789");
-    assert(portal::mask_secret("0123456789abcdef") == "0123****cdef");
-    assert(portal::mask_secret("AA:BB:CC:DD:EE:FF") == "AA:B****E:FF");
-    assert(portal::mask_secret("AABBCCDDEEFF") == "AABB****EEFF");
+    assert(ludelo::mask_secret("123456789") == "1234****6789");
+    assert(ludelo::mask_secret("0123456789abcdef") == "0123****cdef");
+    assert(ludelo::mask_secret("AA:BB:CC:DD:EE:FF") == "AA:B****E:FF");
+    assert(ludelo::mask_secret("AABBCCDDEEFF") == "AABB****EEFF");
 
     // Vector of bytes (e.g. 16-byte rp_key = 32 hex chars)
-    portal::ByteBuffer sample_key = {0x12, 0x34, 0x56, 0x78, 0x00, 0x00, 0x00, 0x00,
+    ludelo::ByteBuffer sample_key = {0x12, 0x34, 0x56, 0x78, 0x00, 0x00, 0x00, 0x00,
                                      0x00, 0x00, 0x00, 0x00, 0xab, 0xcd, 0xef, 0x99};
-    std::string masked_hex = portal::mask_secret(sample_key);
+    std::string masked_hex = ludelo::mask_secret(sample_key);
     assert(masked_hex == "1234****ef99");
 
     printf("PASSED\n"); fflush(stdout);

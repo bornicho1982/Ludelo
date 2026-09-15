@@ -1,7 +1,7 @@
 // Archivo: tests/test_takion.cpp
 // Test del protocolo de transporte propietario Takion (Sony PS Remote Play & Cloud)
-#include "PortalCore/Common.h"
-#include "PortalCore/Stream/TakionConnection.h"
+#include "LudeloCore/Common.h"
+#include "LudeloCore/Stream/TakionConnection.h"
 
 #include <iostream>
 #include <cassert>
@@ -59,7 +59,7 @@ void test_takion_packet_header() {
 void test_controller_state_struct() {
     std::cout << "[TEST] Controller State Bitmask and Inputs... ";
 
-    portal::stream::ControllerState ctrl{};
+    ludelo::stream::ControllerState ctrl{};
     ctrl.buttons = 0x01 | 0x10; // Cross + L1
     ctrl.left_stick_x = 128;
     ctrl.left_stick_y = 128;
