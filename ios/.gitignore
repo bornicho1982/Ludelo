@@ -1,8 +1,0 @@
-logs/mcp-ship-stream.log
-logs/pylux.log
-fastlane/report.xml
-build-iphoneos/
-build-iphonesimulator/
-build-derived/
-Pylux.xcframework/
-ios.toolchain.cmake
