@@ -19,8 +19,6 @@ class QNetworkAccessManager;
 class QmlGamesBackend;
 
 // Ludelo Configuration
-#define Ludelo_URL "https://www.xbgamestream.com"
-
 #ifdef CHIAKI_HAVE_WEBENGINE
 #include <QQuickWebEngineProfile>
 #include <QWebEngineUrlRequestInterceptor>
@@ -252,13 +250,6 @@ public:
     Q_INVOKABLE void controllerMappingButtonQuit();
     Q_INVOKABLE void controllerMappingApply();
     Q_INVOKABLE void autoRegister();
-    Q_INVOKABLE QString generateQRCode();
-    Q_INVOKABLE QString getLudeloURL();
-    Q_INVOKABLE QString getPyluxURL() { return getLudeloURL(); }
-    Q_INVOKABLE void createLudeloCode(const QString &code, const QJSValue &callback);
-    Q_INVOKABLE void createPyluxCode(const QString &code, const QJSValue &callback) { createLudeloCode(code, callback); }
-    Q_INVOKABLE void checkLudeloStatus(const QString &code, const QJSValue &callback);
-    Q_INVOKABLE void checkPyluxStatus(const QString &code, const QJSValue &callback) { checkLudeloStatus(code, callback); }
 #if CHIAKI_GUI_ENABLE_STEAM_SHORTCUT
     Q_INVOKABLE QString getSteamBaseDir();
     QString getSteamUserId();

@@ -290,16 +290,11 @@ Item {
     }
 
     function showPSNTokenDialog(psnurl, expired) {
-        // Show QR login dialog first, then fallback to token dialog if needed
-        stack.push("QRLoginDialog.qml", {callback: (id) => {
-            // If QR login succeeds with an account ID, we're done
-            if (id) {
-                console.log("QR login successful, account ID:", id);
-                return;
-            }
-            // If user chooses "Login on This Device" (callback called with null), show the token dialog
+        if (Qt.platform.os === "windows") {
+            Chiaki.startWebView2Login();
+        } else {
             stack.push(psnTokenDialogComponent, {psnurl: psnurl, expired: expired});
-        }});
+        }
     }
 
     function showControllerMappingDialog() {

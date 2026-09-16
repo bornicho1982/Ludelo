@@ -32,6 +32,14 @@ DialogView {
         if(Chiaki.settings.psnAccountId)
             accountId.text = Chiaki.settings.psnAccountId
     }
+    Connections {
+        target: Chiaki
+        function onPsnLoginAccountIdDone(id) {
+            if (id) {
+                accountId.text = id;
+            }
+        }
+    }
     onAccepted: {
         let psnId = onlineId.visible ? onlineId.text.trim() : accountId.text.trim();
         let registerOk = Chiaki.registerHost(hostField.text.trim(), psnId, pin.text.trim(), cpin.text.trim(), hostField.text.trim() == "255.255.255.255", consoleButtons.checkedButton.target, function(msg, ok, done) {
@@ -102,16 +110,11 @@ DialogView {
                     Layout.preferredWidth: 195
                     height: 40
                     onClicked: {
-                        // Use the same pattern as showPSNTokenDialog for consistent behavior
-                        stack.push("QRLoginDialog.qml", {callback: (id) => {
-                            // If QR login succeeds with an account ID, use it
-                            if (id) {
-                                accountId.text = id;
-                                return;
-                            }
-                            // If user chooses "Login on This Device" (callback called with null), show the token dialog
+                        if (Qt.platform.os === "windows") {
+                            Chiaki.startWebView2Login();
+                        } else {
                             stack.push(psnTokenDialogComponent, {psnurl: "", expired: false});
-                        }});
+                        }
                     }
                     Material.roundedScale: Material.MediumScale
                     font.pixelSize: 14

@@ -110,4 +110,5 @@ build-ctrl/
 build-output-appstore-final/
 .playwright-mcp/
 docs/handoff/
-docs/notes/webview2_nuget_unused/
+docs/notes/*
+!docs/notes/README.md
