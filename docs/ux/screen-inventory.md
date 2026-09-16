@@ -2,8 +2,8 @@
 
 | ID | Pantalla | Estado Maqueta | Archivo Maqueta | Implementación QML |
 |---|---|---|---|---|
-| 01 | Onboarding | ✅ Generada | `docs/ux/mockups/01_onboarding.png` | Pendiente de aprobación |
-| 02 | Home / Consolas | ⏳ Pendiente | `docs/ux/mockups/02_home.png` | Pendiente |
+| 01 | Onboarding | ✅ Aprobada | `docs/ux/mockups/01_onboarding.png` | ✅ Implementada |
+| 02 | Home / Consolas | ✅ Aprobada | `docs/ux/mockups/02_home.png` | ✅ Implementada |
 | 03 | Sesión / HUD | ⏳ Pendiente | `docs/ux/mockups/03_hud.png` | Pendiente |
 | 04 | Ajustes | ⏳ Pendiente | `docs/ux/mockups/04_settings.png` | Pendiente |
 | 05 | Cuenta PSN | ⏳ Pendiente | `docs/ux/mockups/05_account.png` | Pendiente |

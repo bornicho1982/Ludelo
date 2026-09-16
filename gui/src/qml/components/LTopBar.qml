@@ -45,7 +45,7 @@ Rectangle {
                     anchors.centerIn: parent
                     width: 20
                     height: 20
-                    source: "qrc:/res/chiaki.svg"
+                    source: "qrc:/icons/logo_square_1024.png"
                     fillMode: Image.PreserveAspectFit
                 }
             }
@@ -110,7 +110,7 @@ Rectangle {
                 anchors.centerIn: parent
                 width: 18
                 height: 18
-                source: "qrc:/res/settings-20px.svg"
+                source: "qrc:/icons/settings-20px.svg"
                 fillMode: Image.PreserveAspectFit
             }
 

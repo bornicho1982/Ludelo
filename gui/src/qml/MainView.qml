@@ -1,81 +1,125 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-import QtQuick.Controls.Material
 import QtQuick.Effects
 
 import org.streetpea.chiaking
-
-import "controls" as C
+import Ludelo 1.0
+import "components"
 
 Pane {
-    padding: 0
     id: consolePane
+    padding: 0
     focus: true
     activeFocusOnTab: true
-    
-    // Clean blue background
-    CleanBlueBackground {
-        anchors.fill: parent
-        z: -2
+
+    // Filter state: "all", "ps5", "ps4"
+    property string activeFilter: "all"
+
+    // Discovered host counts
+    readonly property int allCount: Chiaki.hosts ? Chiaki.hosts.length : 0
+    readonly property int ps5Count: {
+        if (!Chiaki.hosts) return 0;
+        var count = 0;
+        for (var i = 0; i < Chiaki.hosts.length; i++) {
+            if (Chiaki.hosts[i].ps5) count++;
+        }
+        return count;
     }
-    
+    readonly property int ps4Count: {
+        if (!Chiaki.hosts) return 0;
+        var count = 0;
+        for (var i = 0; i < Chiaki.hosts.length; i++) {
+            if (!Chiaki.hosts[i].ps5) count++;
+        }
+        return count;
+    }
+
+    // Filtered model with virtual cards appended
+    property var displayModel: {
+        var raw = Chiaki.hosts || [];
+        var res = [];
+        for (var i = 0; i < raw.length; i++) {
+            var h = Object.assign({}, raw[i]);
+            h.originalIndex = i;
+            h.itemType = "console";
+            if (activeFilter === "all") {
+                res.push(h);
+            } else if (activeFilter === "ps5" && h.ps5) {
+                res.push(h);
+            } else if (activeFilter === "ps4" && !h.ps5) {
+                res.push(h);
+            }
+        }
+        // Always include "+ Add New Console / Manual IP"
+        res.push({
+            itemType: "add_manual",
+            name: qsTr("Add New Console / Manual IP")
+        });
+        // Always include "Hardware Acceleration HUD"
+        res.push({
+            itemType: "telemetry",
+            name: qsTr("Hardware Acceleration HUD")
+        });
+        return res;
+    }
+
+    // Deep Dark Gamer Backdrop
+    Rectangle {
+        anchors.fill: parent
+        color: LudeloTheme.bgBase
+        z: -2
+
+        // Top-left subtle indigo atmospheric aura
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            width: 700
+            height: 500
+            radius: 350
+            color: Qt.rgba(0x6C/255, 0x5C/255, 0xE7/255, 0.08)
+            z: 0
+        }
+
+        // Top-right subtle mint aura
+        Rectangle {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            width: 600
+            height: 450
+            radius: 300
+            color: Qt.rgba(0x00/255, 0xF5/255, 0xD4/255, 0.03)
+            z: 0
+        }
+    }
+
     StackView.onActivated: {
-        // Only set focus if MainView is actually visible (not when settings/other dialogs are open)
-        // Set contextual focus based on current state
         Qt.callLater(() => {
-            // Check if we're actually the active view in the stack
             if (StackView.status !== StackView.Active)
                 return;
-            
-            // Additional check: only set focus if we're the only item in the stack
-            // This prevents stealing focus when dialogs/settings are open on top of MainView
             if (StackView.view && StackView.view.depth > 1)
                 return;
-            
-            // Check which tab is active
+
             if (mainTabBar.currentIndex === 1) {
-                // Cloud Play tab - focus cloud play view
                 if (cloudPlayLoader.active) {
-                    let cloudPlayView = cloudPlayLoader.item;
+                    var cloudPlayView = cloudPlayLoader.item;
                     if (cloudPlayView && cloudPlayView.catalogButtonItem) {
                         cloudPlayView.catalogButtonItem.forceActiveFocus(Qt.TabFocusReason);
                         return;
                     }
                 }
-                // Fallback to cloud play tab button
-                if (mainTabBar) {
-                    mainTabBar.itemAt(1).forceActiveFocus(Qt.TabFocusReason);
-                }
             } else {
-                // Remote Play tab - focus hostsView or buttons
                 if (hostsView.count > 0) {
-                    // Has consoles - focus first console
                     hostsView.currentIndex = 0;
                     hostsView.selectedIndex = 0;
                     hostsView.forceActiveFocus(Qt.TabFocusReason);
-                } else {
-                    // No consoles - focus most relevant dialog button
-                    if (addManuallyButton.visible) {
-                        addManuallyButton.forceActiveFocus(Qt.TabFocusReason);
-                    } else if (enableLocalDiscoveryButton.visible) {
-                        enableLocalDiscoveryButton.forceActiveFocus(Qt.TabFocusReason);
-                    } else {
-                        // Fallback to floating discovery button or tab bar
-                        if (floatingDiscoveryButton.visible) {
-                            floatingDiscoveryButton.forceActiveFocus(Qt.TabFocusReason);
-                        } else if (mainTabBar) {
-                            mainTabBar.itemAt(0).forceActiveFocus(Qt.TabFocusReason);
-                        }
-                    }
                 }
             }
-        })
-        
+        });
+
         if (Chiaki.autoConnect || Chiaki.window.directStream)
             return;
 
-        // First launch: show walkthrough; Steam check runs next time MainView activates (walkthrough close).
         if (!Chiaki.settings.setupGuideShown) {
             Qt.callLater(() => {
                 root.showConsoleSetupWalkthrough();
@@ -84,39 +128,30 @@ Pane {
             return;
         }
 
-        // Add Ludelo to Steam if missing (once per session).
         if (!root.steamShortcutChecked && (typeof Chiaki.ensureLudeloSteamShortcut === "function" || typeof Chiaki.ensurePyluxSteamShortcut === "function")) {
             root.steamShortcutChecked = true;
-            let ensureShortcut = typeof Chiaki.ensureLudeloSteamShortcut === "function" ? Chiaki.ensureLudeloSteamShortcut : Chiaki.ensurePyluxSteamShortcut;
+            var ensureShortcut = typeof Chiaki.ensureLudeloSteamShortcut === "function" ? Chiaki.ensureLudeloSteamShortcut : Chiaki.ensurePyluxSteamShortcut;
             ensureShortcut((created) => {
                 if (created)
                     gamingModeAddedDialog.open();
             });
         }
     }
-    
 
-
-
-
-    Keys.onMenuPressed: settingsButton.clicked()
+    Keys.onMenuPressed: root.showSettingsDialog()
     Keys.onReturnPressed: {
-        // Only handle console connection if hostsView has focus
         if (hostsView.activeFocus && hostsView.currentItem) {
             hostsView.currentItem.connectToHost();
         } else {
-            // Let the focused element handle the key
             event.accepted = false;
         }
     }
-    // Y and N keys are now handled by the GridView directly
     Keys.onEscapePressed: root.showConfirmDialog(qsTr("Quit"), qsTr("Are you sure you want to quit?"), () => Qt.quit(), null, true)
     Keys.onPressed: (event) => {
         if (event.modifiers)
             return;
         switch (event.key) {
         case Qt.Key_PageUp:
-            // L1 button - switch tabs or handle console pin
             if (mainTabBar.currentIndex > 0) {
                 mainTabBar.currentIndex = 0;
                 event.accepted = true;
@@ -126,9 +161,8 @@ Pane {
             }
             break;
         case Qt.Key_PageDown:
-            // R1 button - switch tabs or refresh PSN
-            if (mainTabBar.currentIndex < mainTabBar.count - 1) {
-                mainTabBar.currentIndex = mainTabBar.count - 1;
+            if (mainTabBar.currentIndex < 1) {
+                mainTabBar.currentIndex = 1;
                 event.accepted = true;
             } else if (Chiaki.settings.psnAuthToken) {
                 Chiaki.refreshPsnToken();
@@ -146,10 +180,14 @@ Pane {
             root.showManualHostDialog();
             event.accepted = true;
             break;
+        case Qt.Key_F5:
+            Chiaki.discoveryEnabled = true;
+            event.accepted = true;
+            break;
         }
     }
 
-    // Futuristic Header
+    // Top Bar (Ludelo Premium Gamer Header)
     Rectangle {
         id: headerBar
         anchors {
@@ -157,517 +195,211 @@ Pane {
             left: parent.left
             right: parent.right
         }
-        height: 100
-        
-        gradient: Gradient {
-            orientation: Gradient.Vertical
-            GradientStop { position: 0.0; color: Qt.rgba(0, 212/255, 255/255, 0.15) }
-            GradientStop { position: 1.0; color: Qt.rgba(0, 212/255, 255/255, 0.05) }
-        }
-        
+        height: 64
+        color: Qt.rgba(0x0B/255, 0x0E/255, 0x14/255, 0.95)
+        border.color: LudeloTheme.borderSubtle
+        border.width: 1
+        z: 10
+
+        // Bottom Glow Accent line
         Rectangle {
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+            }
+            height: 1
+            color: LudeloTheme.borderSubtle
+        }
+
+        RowLayout {
             anchors.fill: parent
-            color: Qt.rgba(10/255, 20/255, 38/255, 0.9)
-        }
-        
-        // Glowing border effect
-        Rectangle {
-            anchors {
-                left: parent.left
-                right: parent.right
-                bottom: parent.bottom
-            }
-            height: 2
-            color: "#50d4ff"
-            opacity: 0.7
-            
-            Rectangle {
-                anchors.fill: parent
-                color: "#50d4ff"
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    blurEnabled: true
-                    blurMax: 16
-                    blur: 0.8
-                }
-            }
-        }
+            anchors.leftMargin: 24
+            anchors.rightMargin: 20
+            spacing: 20
 
-        // Logo and title section (left side)
-        RowLayout {
-            anchors {
-                left: parent.left
-                top: parent.top
-                bottom: parent.bottom
-                leftMargin: 25
-                topMargin: 15
-                bottomMargin: 15
-            }
-            spacing: 15
-            
-            Image {
-                Layout.preferredWidth: 60
-                Layout.preferredHeight: 60
-                source: "qrc:icons/logo_square_1024.png"
-                fillMode: Image.PreserveAspectFit
-                smooth: true
-                antialiasing: true
-                mipmap: true
-                sourceSize.width: 120
-                sourceSize.height: 120
-            }
-            
-            Column {
+            // Brand Section (Left)
+            Row {
                 Layout.alignment: Qt.AlignVCenter
-                
-                Label {
-                    text: "LUDELO"
-                    font.pixelSize: 24
-                    font.weight: Font.Bold
-                    font.letterSpacing: 2
-                    color: "#00d4ff"
-                }
-                Label {
-                    text: "Remote Play Client"
-                    font.pixelSize: 12
-                    font.weight: Font.Light
-                    color: Qt.rgba(255, 255, 255, 0.7)
-                    font.letterSpacing: 1
-                }
-            }
-        }
+                spacing: 12
 
-        // Tab bar - centered relative to viewport to align with console cards
-        // Account for ScrollView margins (30px each side) that affect visual centering
-        TabBar {
-            id: mainTabBar
-            anchors {
-                verticalCenter: parent.verticalCenter
-            }
-            // Center relative to the content area (viewport minus ScrollView margins)
-            // ScrollView has margins: 30, so content area is narrower
-            x: (consolePane.width - width) / 2 - 15
-            background: Rectangle { color: "transparent" }
-            
-            // Load saved tab on startup
-            Component.onCompleted: {
-                let savedTab = Chiaki.settings.lastSelectedMainTab;
-                if (savedTab >= 0 && savedTab < count) {
-                    currentIndex = savedTab;
-                }
-            }
-            
-            // Save tab when it changes
-            onCurrentIndexChanged: {
-                Chiaki.settings.lastSelectedMainTab = currentIndex;
-            }
+                Rectangle {
+                    width: 36
+                    height: 36
+                    radius: 8
+                    color: LudeloTheme.bgElevated
+                    border.color: LudeloTheme.borderHover
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
 
-            TabButton {
-                text: qsTr("Remote Play")
-                width: implicitWidth + 24
-                font.pixelSize: 15
-                font.weight: Font.Medium
-                focusPolicy: Qt.StrongFocus
-                
-                // Keyboard navigation
-                KeyNavigation.left: closeButton
-                KeyNavigation.right: mainTabBar.itemAt(1) // Cloud Play tab
-                Keys.onDownPressed: (event) => {
-                    console.log("[Remote Play Tab] Down pressed, currentIndex:", mainTabBar.currentIndex, "cloudPlayLoader.active:", cloudPlayLoader.active);
-                    event.accepted = true;
-                    if (mainTabBar.currentIndex === 1 && cloudPlayLoader.active) {
-                        let cloudPlayView = cloudPlayLoader.item;
-                        let catalogBtn = cloudPlayView ? cloudPlayView.catalogButtonItem : null;
-                        console.log("[Remote Play Tab] Cloud Play view exists:", !!cloudPlayView, "catalogButtonItem exists:", !!catalogBtn);
-                        if (catalogBtn) {
-                            console.log("[Remote Play Tab] Focusing catalogButton");
-                            Qt.callLater(() => {
-                                catalogBtn.forceActiveFocus(Qt.TabFocusReason);
-                                console.log("[Remote Play Tab] After focus, catalogButton.activeFocus:", catalogBtn.activeFocus);
-                            });
-                            return;
-                        }
-                    }
-                    console.log("[Remote Play Tab] Navigating to Remote Play content");
-                    if (hostsView.count > 0) {
-                        hostsView.currentIndex = 0;
-                        hostsView.forceActiveFocus();
-                        console.log("[Remote Play Tab] Focused hostsView");
-                    } else {
-                        if (addManuallyButton.visible) {
-                            addManuallyButton.forceActiveFocus();
-                            console.log("[Remote Play Tab] Focused addManuallyButton");
-                        } else if (enableLocalDiscoveryButton.visible) {
-                            enableLocalDiscoveryButton.forceActiveFocus();
-                            console.log("[Remote Play Tab] Focused enableLocalDiscoveryButton");
-                        } else {
-                            setupGuideButton.forceActiveFocus();
-                            console.log("[Remote Play Tab] Focused setupGuideButton");
-                        }
+                    Image {
+                        anchors.centerIn: parent
+                        width: 22
+                        height: 22
+                        source: "qrc:/icons/logo_square_1024.png"
+                        fillMode: Image.PreserveAspectFit
                     }
                 }
-                
-                Keys.onReturnPressed: {
-                    mainTabBar.currentIndex = 0;
-                    event.accepted = true;
-                }
-                
-                background: Rectangle {
-                    color: parent.activeFocus ? Qt.rgba(0, 212/255, 255/255, 0.15) : "transparent"
-                    border.color: parent.activeFocus ? "#00d4ff" : "transparent"
-                    border.width: parent.activeFocus ? 1 : 0
-                    radius: 4
-                    
-                    // Underline when selected
-                    Rectangle {
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            bottom: parent.bottom
-                        }
-                        height: 3
-                        color: parent.parent.checked ? "#00d4ff" : "transparent"
-                        radius: 1.5
-                        
-                        Behavior on color { ColorAnimation { duration: 200 } }
+
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 1
+
+                    Text {
+                        text: "LUDELO"
+                        font.family: LudeloTheme.fontFamily
+                        font.pixelSize: 16
+                        font.weight: Font.Bold
+                        color: LudeloTheme.textPrimary
+                        font.letterSpacing: 1.5
                     }
-                    
-                    Behavior on color { ColorAnimation { duration: 200 } }
-                    Behavior on border.color { ColorAnimation { duration: 200 } }
-                }
-                
-                contentItem: Text {
-                    text: parent.text
-                    font: parent.font
-                    color: parent.checked ? "#00d4ff" : (parent.activeFocus ? "#00d4ff" : Qt.rgba(255, 255, 255, 0.7))
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+
+                    Text {
+                        text: "REMOTE PLAY CLIENT v2.4"
+                        font.family: LudeloTheme.fontFamilyMono
+                        font.pixelSize: 9
+                        color: LudeloTheme.textDim
+                        font.letterSpacing: 0.8
+                    }
                 }
             }
 
-            TabButton {
-                text: qsTr("Cloud Play")
-                width: implicitWidth + 24
-                font.pixelSize: 15
-                font.weight: Font.Medium
-                focusPolicy: Qt.StrongFocus
-                
-                // Keyboard navigation
-                KeyNavigation.left: mainTabBar.itemAt(0) // Remote Play tab
-                KeyNavigation.right: psnLoginHeaderButton
-                Keys.onDownPressed: (event) => {
-                    console.log("[Cloud Play Tab] Down pressed, currentIndex:", mainTabBar.currentIndex, "cloudPlayLoader.active:", cloudPlayLoader.active);
-                    event.accepted = true;
-                    if (mainTabBar.currentIndex === 1 && cloudPlayLoader.active) {
-                        let cloudPlayView = cloudPlayLoader.item;
-                        let catalogBtn = cloudPlayView ? cloudPlayView.catalogButtonItem : null;
-                        console.log("[Cloud Play Tab] Cloud Play view exists:", !!cloudPlayView, "catalogButtonItem exists:", !!catalogBtn);
-                        if (catalogBtn) {
-                            console.log("[Cloud Play Tab] Focusing catalogButton, visible:", catalogBtn.visible, "enabled:", catalogBtn.enabled, "focusPolicy:", catalogBtn.focusPolicy);
-                            Qt.callLater(() => {
-                                catalogBtn.forceActiveFocus(Qt.TabFocusReason);
-                                console.log("[Cloud Play Tab] After focus, catalogButton.activeFocus:", catalogBtn.activeFocus, "parent visible:", catalogBtn.parent ? catalogBtn.parent.visible : "no parent");
-                            });
-                            return;
-                        }
-                    }
-                    console.log("[Cloud Play Tab] Navigating to Remote Play content");
-                    if (hostsView.count > 0) {
-                        hostsView.currentIndex = 0;
-                        hostsView.forceActiveFocus();
-                        console.log("[Cloud Play Tab] Focused hostsView");
-                    } else {
-                        if (addManuallyButton.visible) {
-                            addManuallyButton.forceActiveFocus();
-                            console.log("[Cloud Play Tab] Focused addManuallyButton");
-                        } else if (enableLocalDiscoveryButton.visible) {
-                            enableLocalDiscoveryButton.forceActiveFocus();
-                            console.log("[Cloud Play Tab] Focused enableLocalDiscoveryButton");
-                        } else {
-                            setupGuideButton.forceActiveFocus();
-                            console.log("[Cloud Play Tab] Focused setupGuideButton");
-                        }
+            Item { Layout.fillWidth: true } // Spacer
+
+            // Center Navigation Tabs
+            Row {
+                id: mainTabBar
+                property int currentIndex: 0
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 8
+
+                Component.onCompleted: {
+                    var savedTab = Chiaki.settings.lastSelectedMainTab;
+                    if (savedTab >= 0 && savedTab <= 1) {
+                        currentIndex = savedTab;
                     }
                 }
-                
-                Keys.onReturnPressed: (event) => {
-                    mainTabBar.currentIndex = 1;
-                    event.accepted = true;
+                onCurrentIndexChanged: {
+                    Chiaki.settings.lastSelectedMainTab = currentIndex;
                 }
-                
-                background: Rectangle {
-                    color: parent.activeFocus ? Qt.rgba(0, 212/255, 255/255, 0.15) : "transparent"
-                    border.color: parent.activeFocus ? "#00d4ff" : "transparent"
-                    border.width: parent.activeFocus ? 1 : 0
-                    radius: 4
-                    
-                    // Underline when selected
-                    Rectangle {
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            bottom: parent.bottom
-                        }
-                        height: 3
-                        color: parent.parent.checked ? "#00d4ff" : "transparent"
-                        radius: 1.5
-                        
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                    }
-                    
-                    Behavior on color { ColorAnimation { duration: 200 } }
-                    Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                LNavTab {
+                    text: qsTr("Consoles")
+                    active: mainTabBar.currentIndex === 0
+                    onClicked: mainTabBar.currentIndex = 0
                 }
-                
-                contentItem: Text {
-                    text: parent.text
-                    font: parent.font
-                    color: parent.checked ? "#00d4ff" : (parent.activeFocus ? "#00d4ff" : Qt.rgba(255, 255, 255, 0.7))
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+
+                LNavTab {
+                    text: qsTr("Cloud Play")
+                    active: mainTabBar.currentIndex === 1
+                    onClicked: mainTabBar.currentIndex = 1
+                }
+
+                LNavTab {
+                    text: qsTr("Settings")
+                    active: false
+                    onClicked: root.showSettingsDialog()
                 }
             }
-        }
 
-        // Action buttons with futuristic styling (right side)
-        RowLayout {
-            anchors {
-                right: parent.right
-                top: parent.top
-                bottom: parent.bottom
-                rightMargin: 25
-                topMargin: 15
-                bottomMargin: 15
-            }
-            spacing: 15
+            Item { Layout.fillWidth: true } // Spacer
 
-            Button {
-                id: psnLoginHeaderButton
-                    Layout.preferredHeight: 48
-                    Layout.preferredWidth: 48
-                    flat: true
-                    icon.source: {
-                        // On cloud play tab, always show login icon
-                        if (mainTabBar.currentIndex === 1) {
-                            return "qrc:/icons/login-24px.svg";
-                        }
-                        // On remote play tab, show refresh if logged in, login if not
-                        return Chiaki.settings.psnAuthToken ? "qrc:/icons/refresh-24px.svg" : "qrc:/icons/login-24px.svg";
-                    }
-                    icon.width: 24
-                    icon.height: 24
-                focusPolicy: Qt.StrongFocus
-                hoverEnabled: true
-                
-                ToolTip.visible: hovered || activeFocus
-                ToolTip.text: {
-                    // On cloud play tab, always show "Update login tokens"
-                    if (mainTabBar.currentIndex === 1) {
-                        return qsTr("Update login tokens");
-                    }
-                    // On remote play tab, show current behavior
-                    return Chiaki.settings.psnAuthToken ? qsTr("Refresh Games") : qsTr("Login");
-                }
-                
-                // Keyboard navigation
-                KeyNavigation.left: mainTabBar.itemAt(1)  // Cloud Play tab
-                KeyNavigation.right: settingsButton
-                KeyNavigation.down: {
-                    if (mainTabBar.currentIndex === 1 && cloudPlayLoader.active) {
-                        let cloudPlayView = cloudPlayLoader.item;
-                        return cloudPlayView ? cloudPlayView.catalogButtonItem : null;
-                    }
-                    // For remote play tab, navigate directly to hostsView or first button
-                    return hostsView.count > 0 ? hostsView : (addManuallyButton.visible ? addManuallyButton : (enableLocalDiscoveryButton.visible ? enableLocalDiscoveryButton : setupGuideButton));
-                }
-                
-                // A button (Key_Return) support
-                Keys.onReturnPressed: {
-                    clicked();
-                    event.accepted = true;
-                }
-                    onClicked: {
-                        // On cloud play tab, always open login dialog
-                        if (mainTabBar.currentIndex === 1) {
-                            root.showPSNTokenDialog("", false);
-                        } else {
-                            // On remote play tab, use current behavior
-                            if (Chiaki.settings.psnAuthToken) {
-                                // Show immediate feedback toast
-                                errorTitleLabel.text = qsTr("Refreshing");
-                                errorTextLabel.text = qsTr("Updating games...");
-                                errorToast.color = "#2196F3";
-                                errorHideTimer.start();
-                                
-                                Chiaki.refreshPsnToken()
-                            } else {
-                                root.showPSNTokenDialog("", false)
-                            }
-                        }
-                    }
-                    // Always visible now
-                    
-                    background: Rectangle {
-                        radius: 8
-                        color: parent.activeFocus ? Qt.rgba(0, 212/255, 255/255, 0.2) : Qt.rgba(255, 255, 255, 0.1)
-                        border.color: parent.activeFocus ? "#ffffff" : "#00d4ff"
-                        border.width: parent.activeFocus ? 2 : 1
-                        
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: "#00d4ff"
-                            opacity: parent.parent.hovered ? 0.3 : 0
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                        }
-                        
-                        // Focus glow effect
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: "transparent"
-                            border.color: "#00d4ff"
-                            border.width: 2
-                            opacity: parent.parent.activeFocus ? 0.6 : 0
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                        }
-                        
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                        Behavior on border.color { ColorAnimation { duration: 200 } }
-                        Behavior on border.width { NumberAnimation { duration: 200 } }
-                    }
-            }
+            // Right Actions & Telemetry Badges
+            Row {
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 12
 
-            Button {
-                id: settingsButton
-                    Layout.preferredHeight: 48
-                    Layout.preferredWidth: 48
-                flat: true
-                    icon.source: "qrc:/icons/settings-20px.svg"
-                    icon.width: 24
-                    icon.height: 24
-                focusPolicy: Qt.StrongFocus
-                hoverEnabled: true
-                onClicked: root.showSettingsDialog()
-                
-                // Keyboard navigation
-                KeyNavigation.left: psnLoginHeaderButton
-                KeyNavigation.right: closeButton
-                KeyNavigation.down: {
-                    if (mainTabBar.currentIndex === 1 && cloudPlayLoader.active) {
-                        let cloudPlayView = cloudPlayLoader.item;
-                        return cloudPlayView ? cloudPlayView.catalogButtonItem : null;
-                    }
-                    // For remote play tab, navigate directly to hostsView or first button
-                    return hostsView.count > 0 ? hostsView : (addManuallyButton.visible ? addManuallyButton : (enableLocalDiscoveryButton.visible ? enableLocalDiscoveryButton : setupGuideButton));
-                }
-                
-                // A button (Key_Return) support
-                Keys.onReturnPressed: {
-                    clicked();
-                    event.accepted = true;
-                }
-                    
-                    background: Rectangle {
-                        radius: 8
-                        color: parent.activeFocus ? Qt.rgba(0, 212/255, 255/255, 0.2) : Qt.rgba(255, 255, 255, 0.1)
-                        border.color: parent.activeFocus ? "#ffffff" : "#00d4ff"
-                        border.width: parent.activeFocus ? 2 : 1
-                        
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: "#00d4ff"
-                            opacity: parent.parent.hovered ? 0.3 : 0
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                        }
-                        
-                        // Focus glow effect
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: "transparent"
-                            border.color: "#00d4ff"
-                            border.width: 2
-                            opacity: parent.parent.activeFocus ? 0.6 : 0
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                        }
-                        
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                        Behavior on border.color { ColorAnimation { duration: 200 } }
-                        Behavior on border.width { NumberAnimation { duration: 200 } }
-                    }
-                    
-                    ToolTip.visible: hovered || activeFocus
-                    ToolTip.text: qsTr("Settings")
+                // Stream Ready / Decoder Pill
+                LPill {
+                    text: qsTr("STREAM READY • %1").arg(Chiaki.settings.decoder ? Chiaki.settings.decoder.toUpperCase() : "D3D11VA")
+                    dotColor: LudeloTheme.accentPrimary
+                    glowColor: LudeloTheme.accentGlow
+                    showDot: true
                 }
 
-                Button {
-                    id: closeButton
-                    Layout.preferredHeight: 48
-                    Layout.preferredWidth: 48
-                    flat: true
-                    icon.source: "qrc:/icons/close-24px.svg"
-                    icon.width: 24
-                    icon.height: 24
-                    focusPolicy: Qt.StrongFocus
+                // PSN Login / Account Status Pill
+                MouseArea {
+                    width: psnPill.implicitWidth
+                    height: psnPill.implicitHeight
+                    cursorShape: Qt.PointingHandCursor
                     hoverEnabled: true
-                    onClicked: Qt.quit()
-                    
-                    ToolTip.visible: hovered || activeFocus
-                    ToolTip.text: qsTr("Exit")
-                    
-                    // Keyboard navigation
-                    KeyNavigation.left: settingsButton
-                    KeyNavigation.down: {
-                        if (mainTabBar.currentIndex === 1 && cloudPlayLoader.active) {
-                            let cloudPlayView = cloudPlayLoader.item;
-                            return cloudPlayView ? cloudPlayView.catalogButtonItem : null;
-                        }
-                        // For remote play tab, navigate directly to hostsView or first button
-                        return hostsView.count > 0 ? hostsView : (addManuallyButton.visible ? addManuallyButton : (enableLocalDiscoveryButton.visible ? enableLocalDiscoveryButton : setupGuideButton));
+
+                    LPill {
+                        id: psnPill
+                        anchors.fill: parent
+                        text: Chiaki.settings.psnAuthToken
+                            ? (Chiaki.settings.psnAccountId ? Chiaki.settings.psnAccountId : qsTr("PSN CONNECTED"))
+                            : qsTr("SIGN IN PSN")
+                        dotColor: Chiaki.settings.psnAuthToken ? LudeloTheme.accentMint : LudeloTheme.warn
+                        glowColor: Chiaki.settings.psnAuthToken ? LudeloTheme.accentMintGlow : Qt.rgba(1, 0.7, 0, 0.4)
+                        pulseDot: Chiaki.settings.psnAuthToken !== ""
+                        showDot: true
                     }
-                    
-                    // A button (Key_Return) support
-                    Keys.onReturnPressed: (event) => {
-                        clicked();
-                        event.accepted = true;
+
+                    onClicked: {
+                        if (Chiaki.settings.psnAuthToken) {
+                            Chiaki.refreshPsnToken();
+                        } else {
+                            root.showPSNTokenDialog("", false);
+                        }
                     }
-                    
-                    background: Rectangle {
-                        radius: 8
-                        color: parent.activeFocus ? Qt.rgba(255, 100/255, 100/255, 0.2) : Qt.rgba(255, 100/255, 100/255, 0.1)
-                        border.color: parent.activeFocus ? "#ffffff" : Qt.rgba(255, 100/255, 100/255, 0.5)
-                        border.width: parent.activeFocus ? 2 : 1
-                        
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: Qt.rgba(255, 100/255, 100/255, 0.3)
-                            opacity: parent.parent.hovered ? 1 : 0
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                        }
-                        
-                        // Focus glow effect
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: "transparent"
-                            border.color: Qt.rgba(255, 100/255, 100/255, 0.8)
-                            border.width: 2
-                            opacity: parent.parent.activeFocus ? 0.6 : 0
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                        }
-                        
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                        Behavior on border.color { ColorAnimation { duration: 200 } }
-                        Behavior on border.width { NumberAnimation { duration: 200 } }
+                }
+
+                // Settings Button
+                Rectangle {
+                    width: 36
+                    height: 36
+                    radius: 8
+                    color: settingsMouse.containsMouse ? LudeloTheme.bgElevated : "transparent"
+                    border.color: settingsMouse.containsMouse ? LudeloTheme.borderHover : "transparent"
+                    border.width: 1
+
+                    Image {
+                        anchors.centerIn: parent
+                        width: 18
+                        height: 18
+                        source: "qrc:/icons/settings-20px.svg"
+                        fillMode: Image.PreserveAspectFit
+                    }
+
+                    MouseArea {
+                        id: settingsMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.showSettingsDialog()
+                    }
+                }
+
+                // Exit Button
+                Rectangle {
+                    width: 36
+                    height: 36
+                    radius: 8
+                    color: closeMouse.containsMouse ? LudeloTheme.error : "transparent"
+                    border.color: closeMouse.containsMouse ? LudeloTheme.error : "transparent"
+                    border.width: 1
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "✕"
+                        font.pixelSize: 14
+                        color: closeMouse.containsMouse ? "#FFFFFF" : LudeloTheme.textSecondary
+                    }
+
+                    MouseArea {
+                        id: closeMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Qt.quit()
                     }
                 }
             }
+        }
     }
 
-    // Tab View Content
+    // Main Tab Stack
     StackLayout {
         id: mainTabView
         anchors {
@@ -677,574 +409,435 @@ Pane {
             bottom: buttonHintsFooter.top
         }
         currentIndex: mainTabBar.currentIndex
-        
-        // Remote Play Tab
+
+        // TAB 0: Remote Play / Consoles Dashboard
         Item {
-            // Console Cards Grid
+            // Sub-header Area (Network Topology & Filters)
+            Item {
+                id: subHeaderArea
+                anchors {
+                    top: parent.top
+                    left: parent.left
+                    right: parent.right
+                    margins: 28
+                    topMargin: 20
+                    bottomMargin: 10
+                }
+                height: 72
+
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: 20
+
+                    // Left Side: Title & Discovery Info
+                    Column {
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: 4
+
+                        Row {
+                            spacing: 8
+                            Text {
+                                text: Chiaki.discoveryEnabled
+                                    ? "NETWORK TOPOLOGY DETECTED • DIRECT P2P READY"
+                                    : "LOCAL DISCOVERY INACTIVE"
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 11
+                                font.weight: Font.Bold
+                                color: Chiaki.discoveryEnabled ? LudeloTheme.accentMint : LudeloTheme.warn
+                                font.letterSpacing: 1
+                            }
+                        }
+
+                        Text {
+                            text: qsTr("Discovered Hardware")
+                            font.family: LudeloTheme.fontFamily
+                            font.pixelSize: 26
+                            font.weight: Font.Bold
+                            color: LudeloTheme.textPrimary
+                        }
+
+                        Text {
+                            text: qsTr("Select a console device to initiate an ultra-low latency direct stream session")
+                            font.family: LudeloTheme.fontFamily
+                            font.pixelSize: 13
+                            color: LudeloTheme.textSecondary
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true } // Spacer
+
+                    // Right Side: Scan Subnet & Real Filter Chips
+                    Column {
+                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                        spacing: 8
+
+                        // Scan Subnet Button
+                        LButton {
+                            anchors.right: parent.right
+                            height: 36
+                            variant: "secondary"
+                            customRadius: 8
+                            text: qsTr("Scan Subnet")
+                            keyHint: "[F5]"
+                            iconSource: "qrc:/icons/discover-24px.svg"
+                            onClicked: Chiaki.discoveryEnabled = true
+                        }
+
+                        // Filter Chips: All, PlayStation 5, PlayStation 4
+                        Row {
+                            anchors.right: parent.right
+                            spacing: 8
+
+                            // All Filter Chip
+                            Rectangle {
+                                height: 26
+                                width: allChipText.implicitWidth + 20
+                                radius: 6
+                                color: consolePane.activeFilter === "all" ? LudeloTheme.accentElevated || Qt.rgba(0x6C/255, 0x5C/255, 0xE7/255, 0.25) : Qt.rgba(1.0, 1.0, 1.0, 0.04)
+                                border.color: consolePane.activeFilter === "all" ? LudeloTheme.accentPrimary : LudeloTheme.borderSubtle
+                                border.width: 1
+
+                                Text {
+                                    id: allChipText
+                                    anchors.centerIn: parent
+                                    text: qsTr("All (%1)").arg(consolePane.allCount)
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 11
+                                    font.weight: consolePane.activeFilter === "all" ? Font.Bold : Font.Normal
+                                    color: consolePane.activeFilter === "all" ? LudeloTheme.textPrimary : LudeloTheme.textSecondary
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: consolePane.activeFilter = "all"
+                                }
+                            }
+
+                            // PlayStation 5 Filter Chip
+                            Rectangle {
+                                height: 26
+                                width: ps5ChipText.implicitWidth + 20
+                                radius: 6
+                                color: consolePane.activeFilter === "ps5" ? Qt.rgba(0x6C/255, 0x5C/255, 0xE7/255, 0.25) : Qt.rgba(1.0, 1.0, 1.0, 0.04)
+                                border.color: consolePane.activeFilter === "ps5" ? LudeloTheme.accentPrimary : LudeloTheme.borderSubtle
+                                border.width: 1
+
+                                Text {
+                                    id: ps5ChipText
+                                    anchors.centerIn: parent
+                                    text: qsTr("PlayStation 5 (%1)").arg(consolePane.ps5Count)
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 11
+                                    font.weight: consolePane.activeFilter === "ps5" ? Font.Bold : Font.Normal
+                                    color: consolePane.activeFilter === "ps5" ? LudeloTheme.textPrimary : LudeloTheme.textSecondary
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: consolePane.activeFilter = "ps5"
+                                }
+                            }
+
+                            // PlayStation 4 Filter Chip
+                            Rectangle {
+                                height: 26
+                                width: ps4ChipText.implicitWidth + 20
+                                radius: 6
+                                color: consolePane.activeFilter === "ps4" ? Qt.rgba(0x6C/255, 0x5C/255, 0xE7/255, 0.25) : Qt.rgba(1.0, 1.0, 1.0, 0.04)
+                                border.color: consolePane.activeFilter === "ps4" ? LudeloTheme.accentPrimary : LudeloTheme.borderSubtle
+                                border.width: 1
+
+                                Text {
+                                    id: ps4ChipText
+                                    anchors.centerIn: parent
+                                    text: qsTr("PlayStation 4 (%1)").arg(consolePane.ps4Count)
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 11
+                                    font.weight: consolePane.activeFilter === "ps4" ? Font.Bold : Font.Normal
+                                    color: consolePane.activeFilter === "ps4" ? LudeloTheme.textPrimary : LudeloTheme.textSecondary
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: consolePane.activeFilter = "ps4"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Scrollable Grid of Consoles & Virtual Cards
             ScrollView {
                 id: scrollView
                 anchors {
-                    fill: parent
-                    margins: 30
-                    topMargin: 20
+                    top: subHeaderArea.bottom
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                    margins: 28
+                    topMargin: 12
                 }
-        
-        clip: true
-        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-        
-        // Custom scrollbar styling
-        ScrollBar.vertical: ScrollBar {
-            width: 8
-            policy: ScrollBar.AsNeeded
-            
-            background: Rectangle {
-                color: Qt.rgba(255, 255, 255, 0.1)
-                radius: 4
-            }
-            
-            contentItem: Rectangle {
-                radius: 4
-                color: "#50d4ff"
-                opacity: 0.7
-            }
-        }
-
-        GridView {
-            id: hostsView
-            keyNavigationWraps: true
-            cellWidth: width / 2
-            cellHeight: 240
-        model: Chiaki.hosts
-            
-            // Custom property to track selected card for highlighting
-            property int selectedIndex: -1
-            
-            // When GridView gets focus, ensure we have a valid current item
-            onActiveFocusChanged: {
-                if (activeFocus && count > 0 && currentIndex < 0) {
-                    currentIndex = 0;
-                    selectedIndex = 0;
-                }
-            }
-            
-            // Handle key navigation for console cards
-            Keys.onLeftPressed: {
-                if (selectedIndex > 0) {
-                    selectedIndex = selectedIndex - 1;
-                    currentIndex = selectedIndex;
-                }
-            }
-            
-            Keys.onRightPressed: {
-                if (selectedIndex < count - 1) {
-                    selectedIndex = selectedIndex + 1;
-                    currentIndex = selectedIndex;
-                }
-            }
-            
-            Keys.onUpPressed: {
-                let itemsPerRow = Math.floor(width / cellWidth);
-                let newIndex = Math.max(0, selectedIndex - itemsPerRow);
-                if (newIndex === selectedIndex) {
-                    // We're in top row, go to header (tab bar)
-                    if (mainTabBar) {
-                        mainTabBar.itemAt(0).forceActiveFocus();
+                clip: true
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                ScrollBar.vertical: ScrollBar {
+                    width: 8
+                    policy: ScrollBar.AsNeeded
+                    background: Rectangle {
+                        color: Qt.rgba(255, 255, 255, 0.04)
+                        radius: 4
                     }
-                    selectedIndex = -1;
-                } else {
-                    selectedIndex = newIndex;
-                    currentIndex = selectedIndex;
+                    contentItem: Rectangle {
+                        radius: 4
+                        color: LudeloTheme.accentPrimary
+                        opacity: 0.7
+                    }
                 }
-            }
-            
-            Keys.onDownPressed: {
-                let itemsPerRow = Math.floor(width / cellWidth);
-                let newIndex = Math.min(count - 1, selectedIndex + itemsPerRow);
-                if (newIndex === selectedIndex) {
-                    // We're in bottom row, check if we're on the last console
-                    let currentRow = Math.floor(selectedIndex / itemsPerRow);
-                    let totalRows = Math.ceil(count / itemsPerRow);
-                    let isLastRow = currentRow === totalRows - 1;
-                    let isLastItem = selectedIndex === count - 1;
-                    
-                    if (isLastRow && isLastItem && floatingDiscoveryButton.visible) {
-                        // On the last console, go to discovery button
-                        floatingDiscoveryButton.forceActiveFocus();
-                        selectedIndex = -1;
-                    } else {
-                        // Can't move down further, stay where we are
+
+                GridView {
+                    id: hostsView
+                    keyNavigationWraps: true
+                    cellWidth: {
+                        if (width >= 1200) return width / 3;
+                        if (width >= 780) return width / 2;
+                        return width;
+                    }
+                    cellHeight: 340
+                    model: consolePane.displayModel
+
+                    property int selectedIndex: -1
+
+                    onActiveFocusChanged: {
+                        if (activeFocus && count > 0 && currentIndex < 0) {
+                            currentIndex = 0;
+                            selectedIndex = 0;
+                        }
+                    }
+
+                    Keys.onLeftPressed: {
+                        if (selectedIndex > 0) {
+                            selectedIndex--;
+                            currentIndex = selectedIndex;
+                        }
+                    }
+                    Keys.onRightPressed: {
+                        if (selectedIndex < count - 1) {
+                            selectedIndex++;
+                            currentIndex = selectedIndex;
+                        }
+                    }
+                    Keys.onUpPressed: {
+                        var itemsPerRow = Math.max(1, Math.floor(width / cellWidth));
+                        var newIndex = Math.max(0, selectedIndex - itemsPerRow);
+                        if (newIndex === selectedIndex) {
+                            if (mainTabBar) mainTabBar.forceActiveFocus();
+                            selectedIndex = -1;
+                        } else {
+                            selectedIndex = newIndex;
+                            currentIndex = selectedIndex;
+                        }
+                    }
+                    Keys.onDownPressed: {
+                        var itemsPerRow = Math.max(1, Math.floor(width / cellWidth));
+                        var newIndex = Math.min(count - 1, selectedIndex + itemsPerRow);
                         selectedIndex = newIndex;
                         currentIndex = selectedIndex;
                     }
-                } else {
-                    selectedIndex = newIndex;
-                    currentIndex = selectedIndex;
-                }
-            }
-            
-            Keys.onReturnPressed: {
-                if (currentItem && currentItem.connectToHost) {
-                    currentItem.connectToHost();
-                }
-            }
-            
-            // Console action shortcuts - perform the action directly (no button click)
-            Keys.onPressed: (event) => {
-                if (event.modifiers)
-                    return;
-                switch (event.key) {
-                // Support both Settings mapping keys (Backslash/C) and QmlController fallbacks (No/Yes)
-                case Qt.Key_Backslash:
-                case Qt.Key_No:
-                    if (currentItem && currentItem.triggerFirstAction && currentItem.triggerFirstAction())
-                        event.accepted = true;
-                    break;
-                case Qt.Key_C:
-                case Qt.Key_Yes:
-                    // Y/Triangle button - prioritize games menu if available
-                    if (currentItem && currentItem.hasGames && currentItem.viewGames) {
-                        currentItem.viewGames();
-                        event.accepted = true;
-                    } else if (currentItem && currentItem.triggerSecondAction && currentItem.triggerSecondAction()) {
-                        event.accepted = true;
+
+                    Keys.onReturnPressed: {
+                        if (currentItem && currentItem.connectToHost) {
+                            currentItem.connectToHost();
+                        }
                     }
-                    break;
-                case Qt.Key_Backspace:
-                    if (currentItem && currentItem.canHide) {
-                        currentItem.deleteHost();
-                        event.accepted = true;
+
+                    // Console action shortcuts
+                    Keys.onPressed: (event) => {
+                        if (event.modifiers)
+                            return;
+                        switch (event.key) {
+                        case Qt.Key_Backslash:
+                        case Qt.Key_No:
+                            if (currentItem && currentItem.triggerFirstAction && currentItem.triggerFirstAction())
+                                event.accepted = true;
+                            break;
+                        case Qt.Key_C:
+                        case Qt.Key_Yes:
+                            if (currentItem && currentItem.hasGames && currentItem.viewGames) {
+                                currentItem.viewGames();
+                                event.accepted = true;
+                            } else if (currentItem && currentItem.triggerSecondAction && currentItem.triggerSecondAction()) {
+                                event.accepted = true;
+                            }
+                            break;
+                        case Qt.Key_Backspace:
+                            if (currentItem && currentItem.canHide) {
+                                currentItem.deleteHost();
+                                event.accepted = true;
+                            }
+                            break;
+                        }
                     }
-                    break;
+
+                    delegate: Loader {
+                        id: delegateLoader
+                        width: hostsView.cellWidth
+                        height: hostsView.cellHeight
+
+                        property var hostData: modelData
+                        property int itemIndex: index
+                        property bool isSelected: hostsView.selectedIndex === index
+
+                        sourceComponent: {
+                            if (modelData.itemType === "add_manual") return addManualCardComponent;
+                            if (modelData.itemType === "telemetry") return telemetryCardComponent;
+                            return consoleCardComponent;
+                        }
+
+                        // Forward properties & actions to child item
+                        property bool canHide: item ? item.canHide : false
+                        property bool canWake: item ? item.canWake : false
+                        property bool canPin: item ? item.canPin : false
+                        property bool hasGames: item ? item.hasGames : false
+
+                        function connectToHost() { if (item && item.connectToHost) item.connectToHost(); }
+                        function wakeUpHost() { if (item && item.wakeUpHost) item.wakeUpHost(); }
+                        function deleteHost() { if (item && item.deleteHost) item.deleteHost(); }
+                        function setConsolePin() { if (item && item.setConsolePin) item.setConsolePin(); }
+                        function viewGames() { if (item && item.viewGames) item.viewGames(); }
+                        function triggerFirstAction() { if (item && item.triggerFirstAction) return item.triggerFirstAction(); return false; }
+                        function triggerSecondAction() { if (item && item.triggerSecondAction) return item.triggerSecondAction(); return false; }
+                    }
                 }
-            }
-            
-            Keys.onEscapePressed: {
-                // Always pass ESC up to parent for quit dialog
-                // Force the main pane to handle quit dialog
-                root.showConfirmDialog(qsTr("Quit"), qsTr("Are you sure you want to quit?"), () => Qt.quit(), null, true);
             }
 
-                                      // Remove GridView highlight - using per-card highlighting instead
-            
-        onCountChanged: {
-            // Only update focus if MainView is actually active (not in settings or other dialogs)
-            if (StackView.status !== StackView.Active)
-                return;
-            
-            // Additional check: only update if we're the only item in the stack
-            // This prevents interfering when dialogs/settings are open on top of MainView
-            if (StackView.view && StackView.view.depth > 1)
-                return;
-                
-            if(!hostsView.currentItem && hostsView.count > 0) {
-                hostsView.currentIndex = 0;
-                hostsView.selectedIndex = 0;
-            }
-            if(!hostsView.currentItem)
-                return;
-            if(!hostsView.currentItem.visible)
-            {
-                for(var i = 0; i < hostsView.count; i++)
-                {
-                    hostsView.currentIndex = (hostsView.currentIndex + 1) % hostsView.count;
-                    if(hostsView.currentItem.visible)
-                    {
-                        break;
+            // Empty State (Shown when 0 consoles found and no search results)
+            Rectangle {
+                id: noConsolesDialog
+                anchors.centerIn: parent
+                width: 520
+                height: 380
+                radius: LudeloTheme.radiusCard
+                color: Qt.rgba(0x15/255, 0x19/255, 0x23/255, 0.95)
+                border.color: LudeloTheme.borderHover
+                border.width: 1
+                visible: consolePane.allCount === 0 && mainTabBar.currentIndex === 0
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    width: 440
+                    spacing: 16
+
+                    // Emblem
+                    Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        width: 54
+                        height: 54
+                        radius: 27
+                        color: LudeloTheme.bgElevated
+                        border.color: LudeloTheme.accentPrimary
+                        border.width: 1
+
+                        Image {
+                            anchors.centerIn: parent
+                            width: 28
+                            height: 28
+                            source: "qrc:/icons/discover-off-24px.svg"
+                            fillMode: Image.PreserveAspectFit
+                        }
+                    }
+
+                    Label {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: qsTr("No Consoles Discovered")
+                        font.family: LudeloTheme.fontFamily
+                        font.pixelSize: 22
+                        font.weight: Font.Bold
+                        color: LudeloTheme.textPrimary
+                    }
+
+                    Label {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
+                        text: qsTr("Make sure Remote Play is enabled on your PS5 / PS4 and both devices are on the same network.")
+                        font.pixelSize: 13
+                        color: LudeloTheme.textSecondary
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                    }
+
+                    // Instruction snippet
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 52
+                        radius: 8
+                        color: Qt.rgba(0, 0, 0, 0.3)
+                        border.color: LudeloTheme.borderSubtle
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 4
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "PS5: Settings → System → Remote Play"
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 11
+                                color: LudeloTheme.accentMint
+                            }
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "PS4: Settings → Remote Play Connection Settings"
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 11
+                                color: LudeloTheme.textSecondary
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.topMargin: 8
+                        spacing: 12
+
+                        LButton {
+                            Layout.preferredWidth: 200
+                            height: 44
+                            variant: "primary"
+                            text: qsTr("Pair with PIN")
+                            keyHint: "[F2]"
+                            onClicked: root.showManualHostDialog()
+                        }
+
+                        LButton {
+                            Layout.preferredWidth: 200
+                            height: 44
+                            variant: "secondary"
+                            text: qsTr("Rescan Network")
+                            keyHint: "[F5]"
+                            onClicked: Chiaki.discoveryEnabled = true
+                        }
                     }
                 }
             }
         }
-            
-            delegate: Item {
-                id: delegateItem
-                width: hostsView.cellWidth
-                height: hostsView.cellHeight
-                
-                // Make the delegate focusable
-                focus: hostsView.selectedIndex === index
-                activeFocusOnTab: true
-                
-                // Expose modelData so footer can access it
-                property var hostData: modelData
-                
-                // Booleans to express availability of actions without exposing buttons
-                property bool canHide: modelData.manual || (modelData.discovered && !modelData.registered)
-                property bool canWake: modelData.registered && !modelData.duid && !modelData.discovered
-                property bool canPin: modelData.registered
-                property bool hasGames: {
-                    if (!modelData.duid) return false
-                    let gamesJson = Chiaki.getPsnInstalledGames()
-                    if (!gamesJson || gamesJson === "{}") return false
-                    try {
-                        let devices = JSON.parse(gamesJson)
-                        let device = devices[modelData.duid]
-                        return device && device.games && device.games.length > 0
-                    } catch (e) {
-                        return false
-                    }
-                }
 
-                // Trigger first/second available actions directly
-                function triggerFirstAction() {
-                    if (canHide) { deleteHost(); return true; }
-                    if (canWake) { wakeUpHost(); return true; }
-                    if (canPin) { setConsolePin(); return true; }
-                    return false;
-                }
-                function triggerSecondAction() {
-                    var seen = 0;
-                    if (canHide) { seen++; if (seen === 2) { deleteHost(); return true; } }
-                    if (canWake) { seen++; if (seen === 2) { wakeUpHost(); return true; } }
-                    if (canPin)  { seen++; if (seen === 2) { setConsolePin(); return true; } }
-                    return false;
-                }
-                
-                // Console Card
-                Rectangle {
-                    id: consoleCard
-                    anchors {
-                        fill: parent
-                        margins: 15
-                    }
-                    radius: 12
-                    color: {
-                        if (hostsView.selectedIndex === index) return Qt.rgba(80/255, 212/255, 255/255, 0.15);
-                        if (mouseArea.containsMouse) return Qt.rgba(80/255, 212/255, 255/255, 0.1);
-                        return Qt.rgba(80/255, 212/255, 255/255, 0.05);
-                    }
-                    border.color: hostsView.selectedIndex === index ? "#50d4ff" : Qt.rgba(255, 255, 255, 0.1)
-                    border.width: hostsView.selectedIndex === index ? 2 : 1
-                    
-                    Behavior on color { ColorAnimation { duration: 200 } }
-                    Behavior on border.color { ColorAnimation { duration: 200 } }
-                    
-                    // removed outer glow to avoid blue rectangle outside card
-                    
-
-                    
-                    MouseArea {
-                        id: mouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: {
-                            hostsView.currentIndex = index;
-                            hostsView.selectedIndex = index;
-                            hostsView.forceActiveFocus();  // Ensure GridView has focus
-                            delegateItem.connectToHost();
-                        }
-                    }
-                    
-                    ColumnLayout {
-                anchors {
-                    fill: parent
-                            margins: 22
-                            bottomMargin: 15
-                        }
-                        spacing: 15
-                        
-                        // Console icon and status with gamepad shortcuts in top right
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 15
-                            
-                            Rectangle {
-                                Layout.preferredWidth: 100
-                                Layout.preferredHeight: 100
-                                radius: 8
-                                color: Qt.rgba(0, 212/255, 255/255, 0.1)
-                                border.color: Qt.rgba(0, 212/255, 255/255, 0.3)
-                                border.width: 1
-
-                Image {
-                                    anchors.centerIn: parent
-                                    width: 80
-                                    height: 80
-                    fillMode: Image.PreserveAspectFit
-                    source: "image://svg/console-ps" + (modelData.ps5 ? "5" : "4") + (modelData.state == "standby" ? "#light_standby" : "#light_on")
-                                    sourceSize: Qt.size(80, 80)
-                                }
-                            }
-                            
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 8
-                                
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: modelData.name || qsTr("Unknown Console")
-                                    font.pixelSize: 24
-                                    font.weight: Font.Bold
-                                    color: "#ffffff"
-                                    elide: Text.ElideRight
-                }
-
-                Label {
-                                    Layout.fillWidth: true
-                    text: {
-                                        let status = "";
-                                        if (modelData.duid) {
-                                            status = modelData.discovered ? qsTr("Auto Registration") : qsTr("Remote");
-                                        } else {
-                                            status = modelData.discovered ? qsTr("Discovered") : qsTr("Manual");
-                                        }
-                                        if (modelData.registered) status += " • " + qsTr("Registered");
-                                        return status;
-                                    }
-                                    font.pixelSize: 16
-                                    color: "#00d4ff"
-                                    elide: Text.ElideRight
-                                }
-                                
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: qsTr("State: %1").arg(modelData.state)
-                                    font.pixelSize: 15
-                                    color: Qt.rgba(255, 255, 255, 0.7)
-                                    elide: Text.ElideRight
-                            }
-                        }
-                        
-                                                        // Gamepad shortcuts indicators (top right corner)
-                            Item {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 32
-                                Layout.alignment: Qt.AlignTop
-                                visible: canHide || canWake || canPin
-                                
-                                // First action indicator (Square/X)
-                                Item {
-                                    id: firstActionIndicator
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 12
-                                    anchors.top: parent.top
-                                    width: firstActionText.width + firstActionImage.width + 6
-                                    height: 20
-                                    visible: canHide || canWake || canPin
-                                    
-                                    Text {
-                                        id: firstActionText
-                                        anchors.right: firstActionImage.left
-                                        anchors.rightMargin: 6
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: canHide ? (modelData.manual ? "Delete" : "Hide") : (canWake ? "Wake" : "Pin")
-                                        font.pixelSize: 14
-                                        font.weight: Font.Medium
-                                        color: Qt.rgba(255, 255, 255, 0.8)
-                                    }
-                                    
-                                    Image {
-                                        id: firstActionImage
-                                        anchors.right: parent.right
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 20
-                                        height: 20
-                                        sourceSize: Qt.size(40, 40)
-                                        source: root.controllerButton("box")
-                                        opacity: 0.85
-                                        smooth: true
-                                        antialiasing: true
-                                    }
-                                    
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            if (canHide) {
-                                                delegateItem.deleteHost();
-                                            } else if (canWake) {
-                                                delegateItem.wakeUpHost();
-                                            } else if (canPin) {
-                                                delegateItem.setConsolePin();
-                                            }
-                                        }
-                                        cursorShape: Qt.PointingHandCursor
-                                        z: 200
-                                        hoverEnabled: true
-                                    }
-                                }
-                                
-                                // Second action indicator (Triangle/Y) - if multiple actions available
-                                Item {
-                                    id: secondActionIndicator
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 12
-                                    anchors.top: firstActionIndicator.bottom
-                                    anchors.topMargin: 4
-                                    width: secondActionText.width + secondActionImage.width + 6
-                                    height: 20
-                                    visible: (canHide?1:0) + (canWake?1:0) + (canPin?1:0) >= 2
-                                    
-                                    Text {
-                                        id: secondActionText
-                                        anchors.right: secondActionImage.left
-                                        anchors.rightMargin: 6
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: (canHide && canWake) ? "Wake" : (canHide && !canWake && canPin) ? "Pin" : (!canHide && canWake && canPin) ? "Pin" : ""
-                                        font.pixelSize: 14
-                                        font.weight: Font.Medium
-                                        color: Qt.rgba(255, 255, 255, 0.8)
-                                    }
-                                    
-                                    Image {
-                                        id: secondActionImage
-                                        anchors.right: parent.right
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 20
-                                        height: 20
-                                        sourceSize: Qt.size(40, 40)
-                                        source: root.controllerButton("pyramid")
-                                        opacity: 0.85
-                                        smooth: true
-                                        antialiasing: true
-                                    }
-                                    
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            var actionCount = 0;
-                                            if (canHide) actionCount++;
-                                            if (canWake) actionCount++;
-                                            if (canPin) actionCount++;
-
-                                            if (actionCount >= 2) {
-                                                if (canHide && canWake) {
-                                                    delegateItem.wakeUpHost();
-                                                } else if (canHide && canPin) {
-                                                    delegateItem.setConsolePin();
-                                                } else if (canWake && canPin) {
-                                                    delegateItem.setConsolePin();
-                                                }
-                                            }
-                                        }
-                                        cursorShape: Qt.PointingHandCursor
-                                        z: 200
-                                        hoverEnabled: true
-                                    }
-                                }
-                                
-                                // Games button (Triangle/Y) - shown if console has games
-                                Item {
-                                    id: gamesButton
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 12
-                                    anchors.top: secondActionIndicator.visible ? secondActionIndicator.bottom : firstActionIndicator.bottom
-                                    anchors.topMargin: 4
-                                    width: gamesText.width + gamesImage.width + 6
-                                    height: 20
-                                    visible: hasGames  // Only show if console actually has games
-                                    
-                                    Text {
-                                        id: gamesText
-                                        anchors.right: gamesImage.left
-                                        anchors.rightMargin: 6
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: "Installed"
-                                        font.pixelSize: 14
-                                        font.weight: Font.Medium
-                                        color: Qt.rgba(255, 255, 255, 0.8)
-                                    }
-                                    
-                                    Image {
-                                        id: gamesImage
-                                        anchors.right: parent.right
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 20
-                                        height: 20
-                                        sourceSize: Qt.size(40, 40)
-                                        source: root.controllerButton("pyramid")
-                                        opacity: 0.85
-                                        smooth: true
-                                        antialiasing: true
-                                    }
-                                    
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            delegateItem.viewGames()
-                                        }
-                                        cursorShape: Qt.PointingHandCursor
-                                        z: 200
-                                        hoverEnabled: true
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Console details (IP only, smaller)
-                        Rectangle {
-                                Layout.fillWidth: true
-                            Layout.preferredHeight: 38
-                            radius: 6
-                            color: Qt.rgba(0, 0, 0, 0.2)
-                            
-                            Label {
-                                anchors {
-                                    fill: parent
-                                    margins: 8
-                                }
-                                    text: modelData.address ? qsTr("IP: %1").arg(Chiaki.settings.streamerMode ? "hidden" : modelData.address) : ""
-                                    font.pixelSize: 14
-                                    color: Qt.rgba(255, 255, 255, 0.7)
-                                    elide: Text.ElideRight
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-                        
-                    }
-                } 
-
-            function connectToHost() {
-                if(modelData.discovered)
-                    Chiaki.connectToHost(index, modelData.name);
-                else
-                    Chiaki.connectToHost(index);
-            }
-
-            function wakeUpHost() {
-                if(!modelData.discovered && !modelData.duid)
-                    Chiaki.wakeUpHost(index);
-            }
-
-            function deleteHost() {
-                if (modelData.manual)
-                    root.showConfirmDialog(qsTr("Delete Console"), qsTr("Are you sure you want to delete this console?"), () => {Chiaki.deleteHost(index)});
-                        
-                else if (modelData.discovered && !modelData.registered)
-                    root.showConfirmDialog(qsTr("Hide Console"), qsTr("Are you sure you want to hide this console?") + "\n\n" + qsTr("Note: You can unhide from the Consoles section of the Settings under Hidden Consoles"), () => Chiaki.hideHost(modelData.mac, modelData.name));
-            }
-
-            function setConsolePin() {
-                root.showConsolePinDialog(index);
-            }
-            
-            function viewGames() {
-                if (modelData.duid) {
-                    root.showGamesView(modelData.duid, modelData.name, index);
-                }
-            }
-        } 
-        }
-            }
-        }
-        
-        // Cloud Play Tab
+        // TAB 1: Cloud Play Tab
         Loader {
             id: cloudPlayLoader
             source: "CloudPlayView.qml"
             active: mainTabBar.currentIndex === 1
             onItemChanged: {
                 if (item) {
-                    item.mainTabBar = mainTabBar
-                    item.settingsButton = settingsButton
-                    item.showConfirmDialogFunc = root.showConfirmDialog
+                    item.mainTabBar = mainTabBar;
+                    item.showConfirmDialogFunc = root.showConfirmDialog;
                 }
             }
             onLoaded: {
                 if (item) {
-                    item.mainTabBar = mainTabBar
-                    item.settingsButton = settingsButton
-                    item.showConfirmDialogFunc = root.showConfirmDialog
-                    // Ensure games are loaded when the loader becomes active.
-                    // Post-unification there is a single combined catalog entry point.
+                    item.mainTabBar = mainTabBar;
+                    item.showConfirmDialogFunc = root.showConfirmDialog;
                     if (mainTabBar.currentIndex === 1) {
                         Qt.callLater(() => {
                             item.loadUnifiedCatalog();
@@ -1255,313 +848,507 @@ Pane {
         }
     }
 
-    // Old footer removed - merged into buttonHintsFooter below
+    // Component: Console Card (Real Data Only - No Fake Stitch Fields)
+    Component {
+        id: consoleCardComponent
 
-    // No consoles state
-    Rectangle {
-        id: noConsolesDialog
-        anchors.centerIn: parent
-        width: Math.max(480, contentColumn.implicitWidth + 60)
-        height: contentColumn.implicitHeight + 60
-        radius: 12
-        color: Qt.rgba(10/255, 15/255, 26/255, 0.9)
-        border.color: Qt.rgba(0, 212/255, 255/255, 0.3)
-        border.width: 1
-        visible: hostsView.count === 0 && mainTabBar.currentIndex === 0  // Only show on Remote Play tab
-        
-        // Focus management for keyboard/gamepad navigation
-        onVisibleChanged: {
-            if (visible) {
-                // Set focus to the most relevant button when dialog appears
-                Qt.callLater(() => {
-                    if (addManuallyButton.visible) {
-                        addManuallyButton.forceActiveFocus()
-                    } else if (enableLocalDiscoveryButton.visible) {
-                        enableLocalDiscoveryButton.forceActiveFocus()
-                    }
-                })
+        Item {
+            id: cardDelegateRoot
+            width: hostsView.cellWidth
+            height: hostsView.cellHeight
+
+            property var hostData: modelData
+            property int hostIndex: modelData.originalIndex !== undefined ? modelData.originalIndex : index
+
+            property bool canHide: modelData.manual || (modelData.discovered && !modelData.registered)
+            property bool canWake: modelData.registered && !modelData.duid && !modelData.discovered
+            property bool canPin: modelData.registered
+            property bool hasGames: {
+                if (!modelData.duid) return false;
+                var gamesJson = Chiaki.getPsnInstalledGames();
+                if (!gamesJson || gamesJson === "{}") return false;
+                try {
+                    var devices = JSON.parse(gamesJson);
+                    var device = devices[modelData.duid];
+                    return device && device.games && device.games.length > 0;
+                } catch (e) {
+                    return false;
+                }
             }
-        }
-        
-        // Update dialog when hosts are added/removed
-        Connections {
-            target: Chiaki
-            function onHostsChanged() {
-                console.log("MainView: Hosts changed, count is now:", hostsView.count);
-                
-                // Don't automatically steal focus when hosts are discovered
-                // Users can navigate to the hosts manually if needed
+
+            function connectToHost() {
+                if (modelData.discovered)
+                    Chiaki.connectToHost(hostIndex, modelData.name);
+                else
+                    Chiaki.connectToHost(hostIndex);
             }
-        }
+
+            function wakeUpHost() {
+                if (!modelData.discovered && !modelData.duid)
+                    Chiaki.wakeUpHost(hostIndex);
+            }
+
+            function deleteHost() {
+                if (modelData.manual)
+                    root.showConfirmDialog(qsTr("Delete Console"), qsTr("Are you sure you want to delete this console?"), () => Chiaki.deleteHost(hostIndex));
+                else if (modelData.discovered && !modelData.registered)
+                    root.showConfirmDialog(qsTr("Hide Console"), qsTr("Are you sure you want to hide this console?") + "\n\n" + qsTr("Note: You can unhide from the Consoles section of the Settings under Hidden Consoles"), () => Chiaki.hideHost(modelData.mac, modelData.name));
+            }
+
+            function setConsolePin() {
+                root.showConsolePinDialog(hostIndex);
+            }
+
+            function viewGames() {
+                if (modelData.duid) {
+                    root.showGamesView(modelData.duid, modelData.name, hostIndex);
+                }
+            }
+
+            function triggerFirstAction() {
+                if (canHide) { deleteHost(); return true; }
+                if (canWake) { wakeUpHost(); return true; }
+                if (canPin) { setConsolePin(); return true; }
+                return false;
+            }
+
+            function triggerSecondAction() {
+                var seen = 0;
+                if (canHide) { seen++; if (seen === 2) { deleteHost(); return true; } }
+                if (canWake) { seen++; if (seen === 2) { wakeUpHost(); return true; } }
+                if (canPin)  { seen++; if (seen === 2) { setConsolePin(); return true; } }
+                return false;
+            }
+
+            LCard {
+                anchors.fill: parent
+                anchors.margins: 10
+                customRadius: 16
+                hoverLift: true
+                cardColor: LudeloTheme.bgCard
+                glowColor: modelData.state === "ready" ? LudeloTheme.accentGlow : (modelData.state === "standby" ? Qt.rgba(1, 0.7, 0, 0.3) : LudeloTheme.accentGlow)
+                borderColor: hostsView.selectedIndex === index ? LudeloTheme.borderFocus : LudeloTheme.borderSubtle
+                onClicked: {
+                    hostsView.currentIndex = index;
+                    hostsView.selectedIndex = index;
+                    hostsView.forceActiveFocus();
+                    cardDelegateRoot.connectToHost();
+                }
 
                 ColumnLayout {
-            id: contentColumn
-            anchors.centerIn: parent
-            width: 450
-            spacing: 20
-            
-            Label {
-                Layout.alignment: Qt.AlignHCenter
-                text: qsTr("No Consoles Found")
-                font.pixelSize: 24
-                font.weight: Font.Bold
-                color: "#00d4ff"
-            }
-            
-            // Main description text
-            Label {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.fillWidth: true
-                Layout.maximumWidth: 420
-                text: qsTr("Make sure Remote Play is enabled on your console and you're connected to the same WiFi network.")
-                font.pixelSize: 13
-                color: Qt.rgba(255, 255, 255, 0.7)
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
-            }
-            
-            // Remote Play Setup Instructions
-            Rectangle {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 420
-                Layout.preferredHeight: instructionsColumn.implicitHeight + 30
-                radius: 8
-                color: Qt.rgba(0, 212/255, 255/255, 0.05)
-                border.color: Qt.rgba(0, 212/255, 255/255, 0.2)
-                border.width: 1
-                
-                Column {
-                    id: instructionsColumn
-                    anchors.centerIn: parent
-                    width: parent.width - 30
-                    spacing: 16
-                    
-                    Label {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: qsTr("Enable Remote Play on your console:")
-                        font.pixelSize: 14
-                        font.weight: Font.Medium
-                        color: "#00d4ff"
+                    anchors.fill: parent
+                    anchors.margins: 20
+                    spacing: 12
+
+                    // Card Header: Console Silhouette + Status Pill
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        // Console Icon
+                        Rectangle {
+                            width: 44
+                            height: 44
+                            radius: 10
+                            color: LudeloTheme.bgElevated
+                            border.color: LudeloTheme.borderSubtle
+                            border.width: 1
+
+                            Image {
+                                anchors.centerIn: parent
+                                width: 28
+                                height: 28
+                                source: "image://svg/console-ps" + (modelData.ps5 ? "5" : "4") + (modelData.state === "standby" ? "#light_standby" : "#light_on")
+                                fillMode: Image.PreserveAspectFit
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true } // Spacer
+
+                        // Status Pill (Online, Standby, Offline)
+                        LPill {
+                            text: {
+                                if (modelData.state === "ready") return qsTr("ONLINE");
+                                if (modelData.state === "standby") return qsTr("STANDBY (REST MODE)");
+                                return qsTr("OFFLINE");
+                            }
+                            dotColor: {
+                                if (modelData.state === "ready") return LudeloTheme.accentMint;
+                                if (modelData.state === "standby") return LudeloTheme.warn;
+                                return LudeloTheme.textDim;
+                            }
+                            glowColor: {
+                                if (modelData.state === "ready") return LudeloTheme.accentMintGlow;
+                                if (modelData.state === "standby") return Qt.rgba(1, 0.7, 0, 0.4);
+                                return "transparent";
+                            }
+                            pulseDot: modelData.state === "ready"
+                            showDot: true
+                        }
                     }
-                    
+
+                    // Console Name & Network Line
                     Column {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: 8
-                        
-                        Label {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: qsTr("PS5: Settings → System → Remote Play")
-                            font.pixelSize: 12
-                            color: Qt.rgba(255, 255, 255, 0.85)
-                            font.family: "monospace"
-                            horizontalAlignment: Text.AlignHCenter
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        Text {
+                            width: parent.width
+                            text: modelData.name || (modelData.ps5 ? "PlayStation 5" : "PlayStation 4")
+                            font.family: LudeloTheme.fontFamily
+                            font.pixelSize: 18
+                            font.weight: Font.Bold
+                            color: LudeloTheme.textPrimary
+                            elide: Text.ElideRight
                         }
-                        
-                        Label {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: qsTr("PS4: Settings → Remote Play Connection Settings")
-                            font.pixelSize: 12
-                            color: Qt.rgba(255, 255, 255, 0.85)
-                            font.family: "monospace"
-                            horizontalAlignment: Text.AlignHCenter
+
+                        Text {
+                            width: parent.width
+                            text: (modelData.address ? (Chiaki.settings.streamerMode ? "IP: hidden" : modelData.address) : "Remote P2P") + (modelData.discovered ? " • Local DDP Subnet" : " • Manual / Remote")
+                            font.family: LudeloTheme.fontFamilyMono
+                            font.pixelSize: 11
+                            color: LudeloTheme.textSecondary
+                            elide: Text.ElideRight
                         }
                     }
-                }
-            }
-            
-            // Button column for console addition options
-            ColumnLayout {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 10
-                spacing: 12
-                
-                // Add Manually Button (Primary option)
-                    Button {
-                    id: addManuallyButton
-                    Layout.preferredWidth: 300
-                    Layout.preferredHeight: 50
-                    text: qsTr("Add Console Manually")
-                    font.pixelSize: 14
-                    font.weight: Font.Medium
-                    onClicked: root.showManualHostDialog()
-                    
-                    // Keyboard navigation
-                    KeyNavigation.up: mainTabBar.itemAt(0)
-                    KeyNavigation.down: enableLocalDiscoveryButton.visible ? enableLocalDiscoveryButton : setupGuideButton
-                    
-                    background: Rectangle {
+
+                    // Real Specs Grid (Only real, verifiable telemetry)
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 74
                         radius: 8
-                        color: parent.activeFocus ? Qt.rgba(0, 212/255, 255/255, 0.2) : Qt.rgba(0, 212/255, 255/255, 0.1)
-                        border.color: parent.activeFocus ? "#ffffff" : "#00d4ff"
-                        border.width: parent.activeFocus ? 2 : 1
-                        
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: "#00d4ff"
-                            opacity: parent.parent.hovered ? 0.2 : 0
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                        }
-                        
-                        // Focus glow effect
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: "transparent"
-                            border.color: "#00d4ff"
-                            border.width: 2
-                            opacity: parent.parent.activeFocus ? 0.5 : 0
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                        }
-                    }
-                    
-                    contentItem: Text {
-                        text: parent.text
-                        font: parent.font
-                        color: parent.activeFocus ? "#ffffff" : "#00d4ff"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                    }
-                }
-                
-                // Description for Add Manually
-                Label {
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.fillWidth: true
-                    Layout.maximumWidth: 300
-                    Layout.topMargin: -12
-                    text: qsTr("Only needed if automatic discovery doesn't work")
-                    font.pixelSize: 12
-                    color: Qt.rgba(255, 255, 255, 0.6)
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                }
-                
-                // Enable Local Discovery Button (Secondary option)
-                Button {
-                    id: enableLocalDiscoveryButton
-                    Layout.preferredWidth: 300
-                    Layout.preferredHeight: 50
-                    text: qsTr("Enable Local Discovery")
-                    font.pixelSize: 14
-                    font.weight: Font.Medium
-                    visible: !Chiaki.discoveryEnabled
-                    onClicked: Chiaki.discoveryEnabled = true
-                    
-                    // Keyboard navigation
-                    KeyNavigation.up: addManuallyButton
-                    KeyNavigation.down: setupGuideButton
-                    
-                    background: Rectangle {
-                        radius: 8
-                        color: parent.activeFocus ? Qt.rgba(0, 212/255, 255/255, 0.2) : Qt.rgba(0, 212/255, 255/255, 0.1)
-                        border.color: parent.activeFocus ? "#ffffff" : "#00d4ff"
-                        border.width: parent.activeFocus ? 2 : 1
-                        
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: "#00d4ff"
-                            opacity: parent.parent.hovered ? 0.2 : 0
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                        }
-                        
-                        // Focus glow effect
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: "transparent"
-                            border.color: "#00d4ff"
-                            border.width: 2
-                            opacity: parent.parent.activeFocus ? 0.5 : 0
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                        }
-                    }
-                    
-                    contentItem: Text {
-                        text: parent.text
-                        font: parent.font
-                        color: parent.activeFocus ? "#ffffff" : "#00d4ff"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                    }
-                }
-                
-                // Description for Local Discovery
-    Label {
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.fillWidth: true
-                    Layout.maximumWidth: 300
-                    Layout.topMargin: -12
-                    text: qsTr("Automatically finds consoles on your local network")
-                    font.pixelSize: 12
-                    color: Qt.rgba(255, 255, 255, 0.6)
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                    visible: !Chiaki.discoveryEnabled
-                }
-                
-                // Setup Guide Button (Tertiary option)
-                Button {
-                    id: setupGuideButton
-                    Layout.preferredWidth: 300
-                    Layout.preferredHeight: 50
-                    text: qsTr("Setup Guide")
-                    font.pixelSize: 14
-                    font.weight: Font.Medium
-                    onClicked: {
-                        console.log("Setup Guide button clicked - calling showConsoleSetupWalkthrough");
-                        root.showConsoleSetupWalkthrough();
-                    }
-                    
-                    // Keyboard navigation
-                    KeyNavigation.up: enableLocalDiscoveryButton.visible ? enableLocalDiscoveryButton : addManuallyButton
-                    KeyNavigation.down: hostsView.count > 0 ? hostsView : (floatingDiscoveryButton.visible ? floatingDiscoveryButton : null)
-                    
-                    background: Rectangle {
-                        radius: 6
-                        color: parent.activeFocus ? Qt.rgba(255, 255, 255, 0.1) : Qt.rgba(255, 255, 255, 0.05)
-                        border.color: parent.activeFocus ? Qt.rgba(255, 255, 255, 0.5) : Qt.rgba(255, 255, 255, 0.2)
+                        color: Qt.rgba(0, 0, 0, 0.3)
+                        border.color: LudeloTheme.borderSubtle
                         border.width: 1
-                        
-                        Rectangle {
+
+                        GridLayout {
                             anchors.fill: parent
-                            radius: parent.radius
-                            color: Qt.rgba(255, 255, 255, 0.1)
-                            opacity: parent.parent.hovered ? 1 : 0
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
+                            anchors.margins: 10
+                            columns: 2
+                            rowSpacing: 4
+                            columnSpacing: 16
+
+                            Text {
+                                text: qsTr("Power State:")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 11
+                                color: LudeloTheme.textDim
+                            }
+                            Text {
+                                text: modelData.state === "ready" ? qsTr("Ready (Online)") : (modelData.state === "standby" ? qsTr("Rest Mode (Sleep)") : modelData.state)
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                                color: modelData.state === "ready" ? LudeloTheme.accentMint : (modelData.state === "standby" ? LudeloTheme.warn : LudeloTheme.textSecondary)
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+
+                            Text {
+                                text: qsTr("Registration:")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 11
+                                color: LudeloTheme.textDim
+                            }
+                            Text {
+                                text: modelData.registered ? qsTr("Paired & Registered") : qsTr("PIN Pairing Required")
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 11
+                                color: modelData.registered ? LudeloTheme.textPrimary : LudeloTheme.warn
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+
+                            Text {
+                                text: qsTr("Active Title:")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 11
+                                color: LudeloTheme.textDim
+                            }
+                            Text {
+                                text: modelData.app ? modelData.app : qsTr("Home Screen / Idle")
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 11
+                                color: modelData.app ? LudeloTheme.accentMint : LudeloTheme.textSecondary
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
                         }
                     }
-                    
-                    contentItem: Text {
-                        text: parent.text
-                        font: parent.font
-                        color: parent.activeFocus ? "#ffffff" : Qt.rgba(255, 255, 255, 0.7)
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        Behavior on color { ColorAnimation { duration: 200 } }
+
+                    // Main Action Button (Connect or Wake)
+                    LButton {
+                        Layout.fillWidth: true
+                        height: 44
+                        variant: modelData.state === "ready" ? "primary" : (modelData.state === "standby" ? "secondary" : (modelData.registered ? "primary" : "mint"))
+                        text: {
+                            if (modelData.state === "ready") return qsTr("CONNECT DIRECT");
+                            if (modelData.state === "standby") return qsTr("WAKE CONSOLE");
+                            if (!modelData.registered) return qsTr("PAIR CONSOLE");
+                            return qsTr("CONNECT");
+                        }
+                        keyHint: modelData.state === "standby" ? "[Y] WAKE" : "[A] CONNECT"
+                        onClicked: {
+                            if (modelData.state === "standby")
+                                cardDelegateRoot.wakeUpHost();
+                            else
+                                cardDelegateRoot.connectToHost();
+                        }
                     }
-                }
-                
-                // Description for Setup Guide
-                Label {
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.fillWidth: true
-                    Layout.maximumWidth: 300
-                    Layout.topMargin: -8
-                    text: qsTr("Complete walkthrough for setting up consoles")
-                    font.pixelSize: 11
-                    color: Qt.rgba(255, 255, 255, 0.5)
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
                 }
             }
         }
     }
-    
-    // Button hints overlay footer
+
+    // Component: Add New Console / Manual IP Card
+    Component {
+        id: addManualCardComponent
+
+        Item {
+            width: hostsView.cellWidth
+            height: hostsView.cellHeight
+
+            LCard {
+                anchors.fill: parent
+                anchors.margins: 10
+                customRadius: 16
+                hoverLift: true
+                cardColor: Qt.rgba(0x15/255, 0x19/255, 0x23/255, 0.45)
+                borderColor: isFocused || isHovered ? LudeloTheme.accentPrimary : LudeloTheme.borderSubtle
+                glowColor: LudeloTheme.accentGlow
+                onClicked: root.showManualHostDialog()
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    width: parent.width - 40
+                    spacing: 14
+
+                    Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        width: 52
+                        height: 52
+                        radius: 26
+                        color: LudeloTheme.bgElevated
+                        border.color: LudeloTheme.borderHover
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "+"
+                            font.pixelSize: 26
+                            font.weight: Font.Light
+                            color: LudeloTheme.textPrimary
+                        }
+                    }
+
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: qsTr("Add New Console / Manual IP")
+                        font.family: LudeloTheme.fontFamily
+                        font.pixelSize: 17
+                        font.weight: Font.Bold
+                        color: LudeloTheme.textPrimary
+                    }
+
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
+                        text: qsTr("Pair via 8-Digit Registration PIN or enter a custom IPv4 address with subnet broadcast")
+                        font.family: LudeloTheme.fontFamily
+                        font.pixelSize: 12
+                        color: LudeloTheme.textSecondary
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                    }
+
+                    LButton {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredWidth: 220
+                        height: 42
+                        variant: "secondary"
+                        text: qsTr("MANUAL PIN PAIRING")
+                        keyHint: "[F2]"
+                        onClicked: root.showManualHostDialog()
+                    }
+                }
+            }
+        }
+    }
+
+    // Component: Hardware Acceleration HUD (Telemetry Card)
+    Component {
+        id: telemetryCardComponent
+
+        Item {
+            width: hostsView.cellWidth
+            height: hostsView.cellHeight
+
+            LCard {
+                anchors.fill: parent
+                anchors.margins: 10
+                customRadius: 16
+                hoverLift: true
+                cardColor: LudeloTheme.bgCard
+                borderColor: isFocused || isHovered ? LudeloTheme.accentMint : LudeloTheme.borderSubtle
+                glowColor: LudeloTheme.accentMintGlow
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 20
+                    spacing: 12
+
+                    // Card Header
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        Column {
+                            Text {
+                                text: "NETWORK INTERFACE"
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 10
+                                color: LudeloTheme.textDim
+                                font.letterSpacing: 1
+                            }
+                            Text {
+                                text: qsTr("Hardware Acceleration HUD")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 16
+                                font.weight: Font.Bold
+                                color: LudeloTheme.textPrimary
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true } // Spacer
+
+                        LPill {
+                            text: "LOW LATENCY"
+                            dotColor: LudeloTheme.accentMint
+                            glowColor: LudeloTheme.accentMintGlow
+                            showDot: true
+                        }
+                    }
+
+                    // Stat Metrics Box
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 52
+                            radius: 8
+                            color: Qt.rgba(0, 0, 0, 0.3)
+                            border.color: LudeloTheme.borderSubtle
+
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 2
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "HW DECODER"
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 9
+                                    color: LudeloTheme.textDim
+                                }
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: Chiaki.settings.decoder ? Chiaki.settings.decoder.toUpperCase() : "D3D11VA"
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 12
+                                    font.weight: Font.Bold
+                                    color: LudeloTheme.accentMint
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 52
+                            radius: 8
+                            color: Qt.rgba(0, 0, 0, 0.3)
+                            border.color: LudeloTheme.borderSubtle
+
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 2
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "TARGET BITRATE"
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 9
+                                    color: LudeloTheme.textDim
+                                }
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: (Chiaki.settings.bitrate / 1000) + " Mbps"
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 12
+                                    font.weight: Font.Bold
+                                    color: LudeloTheme.accentPrimary
+                                }
+                            }
+                        }
+                    }
+
+                    // Real Details
+                    Column {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        RowLayout {
+                            width: parent.width
+                            Text { text: qsTr("Controller:"); font.pixelSize: 11; color: LudeloTheme.textDim }
+                            Item { Layout.fillWidth: true }
+                            Text {
+                                text: Chiaki.controllers.length > 0 ? (Chiaki.controllers[0].dualSense ? "DualSense Wireless" : "Gamepad Connected") : "Keyboard / No Gamepad"
+                                font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textPrimary
+                            }
+                        }
+
+                        RowLayout {
+                            width: parent.width
+                            Text { text: qsTr("Resolution / FPS:"); font.pixelSize: 11; color: LudeloTheme.textDim }
+                            Item { Layout.fillWidth: true }
+                            Text {
+                                text: Chiaki.settings.resolution + "p @ " + Chiaki.settings.fps + " FPS"
+                                font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textPrimary
+                            }
+                        }
+
+                        RowLayout {
+                            width: parent.width
+                            Text { text: qsTr("Audio Buffer:"); font.pixelSize: 11; color: LudeloTheme.textDim }
+                            Item { Layout.fillWidth: true }
+                            Text {
+                                text: Chiaki.settings.audioBufferSize + " frames"
+                                font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary
+                            }
+                        }
+
+                        RowLayout {
+                            width: parent.width
+                            Text { text: qsTr("Stream Engine:"); font.pixelSize: 11; color: LudeloTheme.textDim }
+                            Item { Layout.fillWidth: true }
+                            Text {
+                                text: "Ludelo Low-Latency Core"
+                                font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.accentMint
+                            }
+                        }
+                    }
+
+                    LButton {
+                        Layout.fillWidth: true
+                        height: 40
+                        variant: "ghost"
+                        text: qsTr("STREAMING PREFERENCES")
+                        keyHint: "[START]"
+                        onClicked: root.showSettingsDialog()
+                    }
+                }
+            }
+        }
+    }
+
+    // Button Hints Footer (Xbox / Text Nomenclature ONLY - NO Sony Glyphs)
     Rectangle {
         id: buttonHintsFooter
         anchors {
@@ -1570,325 +1357,91 @@ Pane {
             bottom: parent.bottom
         }
         height: 40
-        color: Qt.rgba(0, 0, 0, 0.6)
-        z: 100  // Ensure it's above other content
-        
+        color: Qt.rgba(0x0B/255, 0x0E/255, 0x14/255, 0.95)
+        border.color: LudeloTheme.borderSubtle
+        border.width: 1
+        z: 100
+
         Item {
             anchors.fill: parent
-            
-            // Left side buttons - Different hints for Remote Play vs Cloud Play
-            RowLayout {
+            anchors.leftMargin: 24
+            anchors.rightMargin: 24
+
+            // Left Side Gamepad Hints
+            Row {
                 anchors.left: parent.left
-                anchors.leftMargin: 15
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 15
-                
-                // Remote Play hints (shown when mainTabBar.currentIndex === 0)
-                // Connect hint
-                RowLayout {
+                spacing: 18
+
+                // [A] SELECT
+                Row {
                     spacing: 6
-                    visible: mainTabBar.currentIndex === 0
-                    Image {
-                        Layout.preferredWidth: 18
-                        Layout.preferredHeight: 18
-                        sourceSize: Qt.size(36, 36)
-                        source: root.controllerButton("cross")
-                        opacity: 0.9
-                        smooth: true
-                        antialiasing: true
+                    Rectangle {
+                        width: 20; height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
+                        Text { anchors.centerIn: parent; text: "A"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
                     }
-                    Label {
-                        text: qsTr("Connect")
-                        font.pixelSize: 13
-                        font.weight: Font.Medium
-                        color: "white"
-                    }
-                }
-                
-                // Games hint (Y button - shown only if console has games)
-                RowLayout {
-                    spacing: 6
-                    visible: mainTabBar.currentIndex === 0 && hostsView.currentItem !== null && hostsView.currentItem.hasGames
-                    Image {
-                        Layout.preferredWidth: 18
-                        Layout.preferredHeight: 18
-                        sourceSize: Qt.size(36, 36)
-                        source: root.controllerButton("pyramid")
-                        opacity: 0.9
-                        smooth: true
-                        antialiasing: true
-                    }
-                    Label {
-                        text: qsTr("Installed")
-                        font.pixelSize: 13
-                        font.weight: Font.Medium
-                        color: "white"
-                    }
-                }
-                
-                // Dynamic action hint (X button - Delete/Hide/Wake/Pin based on selected console)
-                RowLayout {
-                    spacing: 6
-                    visible: mainTabBar.currentIndex === 0 && hostsView.currentItem && hostsView.currentItem.hostData && (hostsView.currentItem.canHide || hostsView.currentItem.canWake || hostsView.currentItem.canPin)
-                    Image {
-                        Layout.preferredWidth: 18
-                        Layout.preferredHeight: 18
-                        sourceSize: Qt.size(36, 36)
-                        source: root.controllerButton("box")
-                        opacity: 0.9
-                        smooth: true
-                        antialiasing: true
-                    }
-                    Label {
-                        text: {
-                            if (!hostsView.currentItem) return ""
-                            var item = hostsView.currentItem
-                            if (!item.hostData) return ""
-                            // Match the exact logic from the console card (line 948)
-                            if (item.canHide) {
-                                return item.hostData.manual ? qsTr("Delete") : qsTr("Hide")
-                            }
-                            if (item.canWake) {
-                                return qsTr("Wake")
-                            }
-                            if (item.canPin) {
-                                return qsTr("Pin")
-                            }
-                            return ""
-                        }
-                        font.pixelSize: 13
-                        font.weight: Font.Medium
-                        color: "white"
-                    }
-                }
-                
-                // Cloud Play hints (shown when mainTabBar.currentIndex === 1)
-                // Stream Game hint (A/Cross button)
-                RowLayout {
-                    spacing: 6
-                    visible: mainTabBar.currentIndex === 1
-                    Image {
-                        Layout.preferredWidth: 18
-                        Layout.preferredHeight: 18
-                        sourceSize: Qt.size(36, 36)
-                        source: root.controllerButton("cross")
-                        opacity: 0.9
-                        smooth: true
-                        antialiasing: true
-                    }
-                    Label {
-                        text: qsTr("Play")
-                        font.pixelSize: 13
-                        font.weight: Font.Medium
-                        color: "white"
-                    }
+                    Text { text: qsTr("SELECT"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }
 
-                // Shortcut hint (X/Square button; only relevant when Steam is installed)
-                RowLayout {
+                // [Y] WAKE
+                Row {
                     spacing: 6
-                    visible: mainTabBar.currentIndex === 1 && Chiaki.cloudSteamShortcutEnabled
-                    Image {
-                        Layout.preferredWidth: 18
-                        Layout.preferredHeight: 18
-                        sourceSize: Qt.size(36, 36)
-                        source: root.controllerButton("box")
-                        opacity: 0.9
-                        smooth: true
-                        antialiasing: true
+                    Rectangle {
+                        width: 20; height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
+                        Text { anchors.centerIn: parent; text: "Y"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.warn }
                     }
-                    Label {
-                        text: qsTr("Add to Steam")
-                        font.pixelSize: 13
-                        font.weight: Font.Medium
-                        color: "white"
+                    Text { text: qsTr("WAKE"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                }
+
+                // [X] DETAILS / GAMES
+                Row {
+                    spacing: 6
+                    Rectangle {
+                        width: 20; height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
+                        Text { anchors.centerIn: parent; text: "X"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentPrimary }
                     }
+                    Text { text: qsTr("DETAILS"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                }
+
+                // [B] BACK / EXIT
+                Row {
+                    spacing: 6
+                    Rectangle {
+                        width: 20; height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
+                        Text { anchors.centerIn: parent; text: "B"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.error }
+                    }
+                    Text { text: qsTr("BACK"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                }
+
+                // [START] SETTINGS
+                Row {
+                    spacing: 6
+                    Rectangle {
+                        width: 38; height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
+                        Text { anchors.centerIn: parent; text: "START"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                    }
+                    Text { text: qsTr("SETTINGS"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }
             }
-            
-            // Center - Version number (absolutely centered)
-            Label {
+
+            // Center Bitrate & Engine Telemetry
+            Text {
                 anchors.centerIn: parent
-                text: Qt.application.version
-                font.pixelSize: 12
-                color: Qt.rgba(255, 255, 255, 0.5)
-                horizontalAlignment: Text.AlignHCenter
+                text: qsTr("BITRATE: %1 Mbps • DECODER: %2").arg(Chiaki.settings.bitrate / 1000).arg(Chiaki.settings.decoder ? Chiaki.settings.decoder.toUpperCase() : "D3D11VA")
+                font.family: LudeloTheme.fontFamilyMono
+                font.pixelSize: 11
+                color: LudeloTheme.textDim
             }
-            
-            // Right side - Exit hint (right-aligned)
-            RowLayout {
+
+            // Right Side Version Info
+            Text {
                 anchors.right: parent.right
-                anchors.rightMargin: 15
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 6
-                Image {
-                    Layout.preferredWidth: 18
-                    Layout.preferredHeight: 18
-                    sourceSize: Qt.size(36, 36)
-                    source: root.controllerButton("moon")
-                    opacity: 0.9
-                    smooth: true
-                    antialiasing: true
-                }
-                Label {
-                    text: qsTr("Exit")
-                    font.pixelSize: 13
-                    font.weight: Font.Medium
-                    color: "white"
-                }
+                text: qsTr("Ludelo Remote Play Client • v%1").arg(Qt.application.version || "2.4")
+                font.family: LudeloTheme.fontFamilyMono
+                font.pixelSize: 11
+                color: LudeloTheme.textDim
             }
         }
-    }
-    
-    // Floating "Console Discovery" button - bottom left corner (Remote Play only)
-    Button {
-        id: floatingDiscoveryButton
-        anchors {
-            left: parent.left
-            bottom: buttonHintsFooter.top
-            leftMargin: 25
-            bottomMargin: 25
-        }
-        width: 56
-        height: 56
-        visible: mainTabBar.currentIndex === 0  // Only visible on Remote Play tab
-        focusPolicy: Qt.StrongFocus
-        checkable: true
-        checked: Chiaki.discoveryEnabled
-        onToggled: Chiaki.discoveryEnabled = !Chiaki.discoveryEnabled
-        hoverEnabled: true
-        
-        ToolTip.visible: hovered || activeFocus
-        ToolTip.text: qsTr("Console Discovery")
-        
-        // Keyboard navigation
-        KeyNavigation.right: floatingAddButton
-        KeyNavigation.up: hostsView.count === 0 ? (setupGuideButton.visible ? setupGuideButton : (addManuallyButton.visible ? addManuallyButton : enableLocalDiscoveryButton)) : (hostsView.count > 0 ? hostsView : null)
-        
-        Keys.onReturnPressed: {
-            toggle();
-            event.accepted = true;
-        }
-        
-        background: Rectangle {
-            radius: width / 2  // Perfect circle
-            color: {
-                if (parent.activeFocus) return Qt.rgba(255, 255, 255, 0.15)
-                else if (parent.checked) return Qt.rgba(0, 212/255, 255/255, 0.2)
-                else return Qt.rgba(255, 255, 255, 0.1)
-            }
-            border.color: parent.activeFocus ? "#00d4ff" : (parent.checked ? "#00d4ff" : Qt.rgba(255, 255, 255, 0.3))
-            border.width: parent.activeFocus ? 2 : 1
-            
-            // Shadow effect
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: -2
-                radius: parent.radius + 2
-                color: Qt.rgba(0, 0, 0, 0.25)
-                z: -1
-            }
-            
-            // Hover effect
-            Rectangle {
-                anchors.fill: parent
-                radius: parent.radius
-                color: "#00d4ff"
-                opacity: parent.parent.hovered ? 0.15 : 0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-            }
-            
-            // Focus glow effect
-            Rectangle {
-                anchors.fill: parent
-                radius: parent.radius
-                color: "transparent"
-                border.color: "#00d4ff"
-                border.width: 2
-                opacity: parent.parent.activeFocus ? 0.6 : 0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-            }
-            
-            Behavior on color { ColorAnimation { duration: 200 } }
-            Behavior on border.color { ColorAnimation { duration: 200 } }
-        }
-        
-        icon.source: "qrc:/icons/discover-" + (checked ? "" : "off-") + "24px.svg"
-        icon.width: 24
-        icon.height: 24
-        icon.color: checked ? "#00d4ff" : Qt.rgba(255, 255, 255, 0.8)
-    }
-    
-    // Floating "Add Console Manually" button - bottom right corner (Remote Play only)
-    Button {
-        id: floatingAddButton
-        anchors {
-            right: parent.right
-            bottom: buttonHintsFooter.top
-            rightMargin: 25
-            bottomMargin: 25
-        }
-        width: 56
-        height: 56
-        visible: mainTabBar.currentIndex === 0  // Only visible on Remote Play tab
-        focusPolicy: Qt.StrongFocus
-        hoverEnabled: true
-        onClicked: root.showManualHostDialog()
-        
-        ToolTip.visible: hovered || activeFocus
-        ToolTip.text: qsTr("Add Console Manually")
-        
-        // Keyboard navigation
-        KeyNavigation.left: floatingDiscoveryButton
-        KeyNavigation.up: hostsView.count > 0 ? hostsView : (addManuallyButton.visible ? addManuallyButton : enableLocalDiscoveryButton.visible ? enableLocalDiscoveryButton : setupGuideButton)
-        
-        Keys.onReturnPressed: {
-            clicked();
-            event.accepted = true;
-        }
-        
-        background: Rectangle {
-            radius: width / 2  // Perfect circle
-            color: parent.activeFocus ? Qt.rgba(255, 255, 255, 0.15) : Qt.rgba(255, 255, 255, 0.1)
-            border.color: parent.activeFocus ? "#00d4ff" : Qt.rgba(255, 255, 255, 0.3)
-            border.width: parent.activeFocus ? 2 : 1
-            
-            // Shadow effect
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: -2
-                radius: parent.radius + 2
-                color: Qt.rgba(0, 0, 0, 0.25)
-                z: -1
-            }
-            
-            // Hover effect
-            Rectangle {
-                anchors.fill: parent
-                radius: parent.radius
-                color: "#00d4ff"
-                opacity: parent.parent.hovered ? 0.15 : 0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-            }
-            
-            // Focus glow effect
-            Rectangle {
-                anchors.fill: parent
-                radius: parent.radius
-                color: "transparent"
-                border.color: "#00d4ff"
-                border.width: 2
-                opacity: parent.parent.activeFocus ? 0.6 : 0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-            }
-            
-            Behavior on color { ColorAnimation { duration: 200 } }
-            Behavior on border.color { ColorAnimation { duration: 200 } }
-        }
-        
-        icon.source: "qrc:/icons/add-24px.svg"
-        icon.width: 24
-        icon.height: 24
-        icon.color: Qt.rgba(255, 255, 255, 0.9)
     }
 }
