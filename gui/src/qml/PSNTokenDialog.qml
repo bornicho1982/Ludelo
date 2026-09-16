@@ -49,27 +49,6 @@ DialogView {
     buttonText: qsTr("Connect")
     buttonEnabled: hasNpssoData
     buttonVisible: false
-    Connections {
-        target: Chiaki
-
-        function onPsnLoginAccountIdDone(accountId) {
-            console.log("PSNTokenDialog: PSN account ID received:", accountId);
-            root.closeDialog();
-            root.showMainView();
-            root.showToast(
-                qsTr("Login Successful!"), 
-                qsTr("Login completed successfully!"),
-                "#4CAF50"
-            );
-        }
-
-        function onPsnLoginAccountIdError(error) {
-            console.error("PSNTokenDialog: PSN account ID error:", error);
-            if (error && error !== "Inicio de sesión cancelado") {
-                root.showMessageDialog(qsTr("Login Error"), error, () => {});
-            }
-        }
-    }
     onAccepted: {
         let npssoTokenValue = npssoToken.text.trim();
         
@@ -131,6 +110,28 @@ DialogView {
     }
 
     Item {
+        Connections {
+            target: Chiaki
+
+            function onPsnLoginAccountIdDone(accountId) {
+                console.log("PSNTokenDialog: PSN account ID received:", accountId);
+                root.closeDialog();
+                root.showMainView();
+                root.showToast(
+                    qsTr("Login Successful!"), 
+                    qsTr("Login completed successfully!"),
+                    "#4CAF50"
+                );
+            }
+
+            function onPsnLoginAccountIdError(error) {
+                console.error("PSNTokenDialog: PSN account ID error:", error);
+                if (error && error !== "Inicio de sesión cancelado") {
+                    root.showMessageDialog(qsTr("Login Error"), error, () => {});
+                }
+            }
+        }
+
         Item {
             id: nativeTokenForm
             visible: false
