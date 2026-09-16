@@ -5,7 +5,12 @@
 - **Toolchain**: MinGW64 / MSYS2 + CMake (Target GUI `Ludelo.exe`).
 - **Tests**: `chiaki-unit` con tests unitarios de `auth_classifier` (100% passed en CTest).
 - **Logging**: `spdlog` file sink en `%APPDATA%\Ludelo\logs\ludelo.log` (INFO global, DEBUG en `qmlbackend`, `auth_classifier`, `psnaccountid`).
-  - Higiene de logs activa: tokens y codes enmascarados, `error_code` en claro.
+- **Seguridad de Logs**:
+  - Redacción estricta en logs de red (`JsonRequester`, `psnaccountid`, `qmlbackend`, `qmlgamesbackend`).
+  - Prohibido y suprimido volcado de "Response Body" y "Request Body".
+  - Ofuscación automática en URLs (query params y paths `/2.0/oauth/token/<token>`) y JSON: `access_token`, `refresh_token`, `code`, `userid`/`user_id`, `useruuid`/`user_uuid` (primeros 4 caracteres + `****`).
+  - Cabecera Authorization Basic pública preservada; cuerpos con tokens eliminados de los logs.
+  - Tests de seguridad (`test_log_security_simulated_login`, `test_log_redaction_*`) en `chiaki-unit` con escaneo de fugas (100% pasando).
 - **Consola Debug**: `run-debug.bat` disponible para ver logs y stderr en vivo.
 - **Implementación**:
   1. Portado `WebView2Auth` nativo Win32 desde `ludelo-legacy` a `gui/src/auth/webview2_login_win32.{h,cpp}` con soporte MinGW-w64 (templates `CallbackImpl`/`CallbackTraits` COM).

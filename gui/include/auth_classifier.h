@@ -3,6 +3,8 @@
 #include <cctype>
 #include <spdlog/spdlog.h>
 
+#include "log_redaction.h"
+
 namespace ludelo::auth {
 
 enum class AuthUrlClassification {
@@ -11,23 +13,11 @@ enum class AuthUrlClassification {
     FatalError
 };
 
-inline std::string mask_secret(const std::string& s) {
-    if (s.size() <= 8) return "****";
-    return s.substr(0, 4) + "****" + s.substr(s.size() - 4);
-}
+using ludelo::log::mask_secret;
+using ludelo::log::mask_url_secrets;
 
 inline std::string mask_url_code(const std::string& url) {
-    std::string s = url;
-    size_t code_pos = s.find("code=");
-    if (code_pos != std::string::npos) {
-        size_t start = code_pos + 5;
-        size_t end = s.find('&', start);
-        size_t len = (end == std::string::npos) ? (s.length() - start) : (end - start);
-        std::string code = s.substr(start, len);
-        std::string masked = mask_secret(code);
-        s.replace(start, len, masked);
-    }
-    return s;
+    return mask_url_secrets(url);
 }
 
 inline AuthUrlClassification classify_auth_url(const std::string& input, std::string* out_code = nullptr, std::string* out_error = nullptr) {

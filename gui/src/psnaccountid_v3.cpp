@@ -1,5 +1,6 @@
 #include "psnaccountid_v3.h"
 #include "jsonrequester.h"
+#include "log_redaction.h"
 
 #include <qjsonobject.h>
 #include <QObject>
@@ -91,22 +92,8 @@ void PSNAccountIDV3::handleAuthorizationResponse() {
             finalUrl = redirectUrl;
         }
     }
-
     QString finalUrlString = finalUrl.toString();
-    QString logUrlString = finalUrlString;
-    // Obfuscate code if present
-    QRegularExpression obfuscateRegex("(code=)([^&]+)");
-    auto obfuscateMatch = obfuscateRegex.match(logUrlString);
-    if (obfuscateMatch.hasMatch()) {
-        QString code = obfuscateMatch.captured(2);
-        QString obfs = code;
-        if (code.length() > 8) {
-            obfs = code.left(4) + "****" + code.right(4);
-        } else {
-            obfs = "****";
-        }
-        logUrlString.replace(obfuscateMatch.captured(0), "code=" + obfs);
-    }
+    QString logUrlString = ludelo::log::sanitize_psn_url(finalUrlString);
     qCInfo(chiakiGui) << "PSNAccountIDV3: Authorization redirect URL:" << logUrlString;
 
     // Extract authorization code from redirect URL
@@ -247,7 +234,7 @@ void PSNAccountIDV3::handleAccountIdResponse(const QString& url, const QJsonDocu
 }
 
 void PSNAccountIDV3::handleErrorResponse(const QString& url, const QString& error, const QNetworkReply::NetworkError& err) {
-    qCWarning(chiakiGui) << "PSNAccountIDV3: Request error:" << url << error << err;
+    qCWarning(chiakiGui) << "PSNAccountIDV3: Request error:" << ludelo::log::sanitize_psn_url(url) << error << err;
     emit AccountIDError(url, error);
     emit Finished();
 }

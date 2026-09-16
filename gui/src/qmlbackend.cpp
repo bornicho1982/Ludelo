@@ -3587,7 +3587,6 @@ void QmlBackend::createLudeloCode(const QString &code, const QJSValue &callback)
             // Log detailed error information for debugging
             qDebug() << "Network error creating Ludelo code:" << reply->errorString();
             qDebug() << "HTTP status code:" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            qDebug() << "Response body:" << responseBody;
             
             // User-friendly error message with server details if available
             QString userErrorMsg = tr("Failed to connect to server to verify QR code. Please check your internet connection and try again.");
