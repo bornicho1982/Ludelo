@@ -83,6 +83,3 @@ void JsonRequester::onRequestFinished(QNetworkReply* reply) {
 
     reply->deleteLater();
 }
-
-    reply->deleteLater();
-}

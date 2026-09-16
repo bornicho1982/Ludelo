@@ -8,6 +8,7 @@ import org.streetpea.chiaking
 import "controls" as C
 
 DialogView {
+    id: registDialog
     property bool ps5: true
     property alias host: hostField.text
 
@@ -66,7 +67,7 @@ DialogView {
                 echoMode: Chiaki.settings.streamerMode ? TextInput.Password : TextInput.Normal
                 Layout.preferredWidth: 400
                 firstInFocusChain: true
-                KeyNavigation.up: root.buttonVisible ? root.okButton : null
+                KeyNavigation.up: registDialog.buttonVisible ? registDialog.okButton : null
                 KeyNavigation.down: pin
             }
 
@@ -234,7 +235,7 @@ DialogView {
                     text: qsTr("PS5")
                     checked: ps5
                     KeyNavigation.up: ps4_8
-                    KeyNavigation.down: root.okButton
+                    KeyNavigation.down: registDialog.okButton
                 }
             }
 

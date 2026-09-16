@@ -12,6 +12,7 @@ Item {
     property alias buttonEnabled: okButton.enabled
     property alias buttonVisible: okButton.visible
     property alias headerButton: okButton
+    property alias okButton: okButton
     property Item restoreFocusItem
     property int toolbarHeight: 80
     default property Item mainItem: null
