@@ -27,4 +27,10 @@
 - **Correcciones Menores (16/09)**:
   1. **RegistDialog QQuickItem binding**: Corregido `RegistDialog.qml` y `DialogView.qml` asociando `okButton` vía `id: registDialog`, eliminando el warning de QML `Unable to assign [undefined] to QQuickItem*`.
   2. **Build de target ejecutable**: Identificado que el target CMake es `chiaki` (genera `build/gui/Ludelo.exe`). Corregida duplicación de cierre en `jsonrequester.cpp` y re-compilado `Ludelo.exe`, asegurando que la build en disco incorpora todas las directivas de redacción de logs de `cd04ae40`.
+- **Alineación QR Login y Branding QML (Pylux -> Ludelo)**:
+  1. **Compatibilidad QML<->C++**: En `gui/include/qmlbackend.h`, añadidos alias `Q_INVOKABLE` de compatibilidad (`getPyluxURL()`, `createPyluxCode()`, `checkPyluxStatus()`, `ensurePyluxSteamShortcut()`) redirigiendo a los métodos canónicos de Ludelo, previniendo crashes por bindings antiguos.
+  2. **QRLoginDialog**: Migrado para invocar canónicamente `createLudeloCode`, `checkLudeloStatus` y `getLudeloURL` en `gui/src/qml/QRLoginDialog.qml`.
+  3. **Auditoría global de branding**: Reemplazo exhaustivo de referencias "Pylux" a "Ludelo" en interfaces y diálogos QML (`MainView.qml`, `DialogView.qml`, `PsnView.qml`, `GamingModeAddedDialog.qml`, `ConsoleSetupWalkthrough.qml`, `ProfileDialog.qml`, `SteamShortcutDialog.qml`, `SettingsDialog.qml`, `DonationPromptDialog.qml`).
+  4. **Tests Unitarios**: Añadido `test_qr_login_url_generation` en `test/auth_classifier_test.cpp`, verificando la URL del código QR y los endpoints de creación/estado de tokens. `munit` configurado con C11 en `test/CMakeLists.txt`. 136/136 tests (100%) pasando en CTest.
+
 

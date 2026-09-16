@@ -1,6 +1,7 @@
 
 add_library(munit "${CMAKE_CURRENT_SOURCE_DIR}/munit/munit.c")
 target_include_directories(munit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/munit")
+set_target_properties(munit PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON)
 
 add_executable(chiaki-unit
 		main.c

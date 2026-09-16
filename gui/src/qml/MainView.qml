@@ -84,10 +84,11 @@ Pane {
             return;
         }
 
-        // Add Pylux to Steam if missing (once per session).
-        if (!root.steamShortcutChecked && typeof Chiaki.ensurePyluxSteamShortcut === "function") {
+        // Add Ludelo to Steam if missing (once per session).
+        if (!root.steamShortcutChecked && (typeof Chiaki.ensureLudeloSteamShortcut === "function" || typeof Chiaki.ensurePyluxSteamShortcut === "function")) {
             root.steamShortcutChecked = true;
-            Chiaki.ensurePyluxSteamShortcut((created) => {
+            let ensureShortcut = typeof Chiaki.ensureLudeloSteamShortcut === "function" ? Chiaki.ensureLudeloSteamShortcut : Chiaki.ensurePyluxSteamShortcut;
+            ensureShortcut((created) => {
                 if (created)
                     gamingModeAddedDialog.open();
             });
@@ -220,7 +221,7 @@ Pane {
                 Layout.alignment: Qt.AlignVCenter
                 
                 Label {
-                    text: "PYLUX"
+                    text: "LUDELO"
                     font.pixelSize: 24
                     font.weight: Font.Bold
                     font.letterSpacing: 2

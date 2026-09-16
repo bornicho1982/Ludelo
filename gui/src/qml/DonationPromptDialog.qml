@@ -9,7 +9,7 @@ import "controls" as C
 
 DialogView {
     id: dialog
-    title: qsTr("Support Pylux")
+    title: qsTr("Support Ludelo")
     buttonVisible: false
 
     property int showCount: DonationManager.promptShowCount
@@ -169,7 +169,7 @@ DialogView {
                 ColumnLayout {
                     spacing: 2
                     Label {
-                        text: qsTr("Keep Pylux alive")
+                        text: qsTr("Keep Ludelo alive")
                         font.pixelSize: 20
                         font.weight: Font.Bold
                         color: "#00d4ff"
@@ -228,7 +228,7 @@ DialogView {
 
                         // Title (always visible, matching iOS)
                         Label {
-                            text: qsTr("Enjoying Pylux?")
+                            text: qsTr("Enjoying Ludelo?")
                             font.pixelSize: 24
                             font.weight: Font.Bold
                             color: "#ffffff"
@@ -238,7 +238,7 @@ DialogView {
                         Label {
                             Layout.fillWidth: true
                             Layout.topMargin: 12
-                            text: qsTr("It\u2019s open source and maintained by the community. Please consider supporting the project. Donations go to the developers who maintain it.")
+                            text: qsTr("It’s open source and maintained by the community. Please consider supporting the project. Donations go to the developers who maintain it.")
                             font.pixelSize: 16
                             color: "#B8C5D6"
                             wrapMode: Text.Wrap
@@ -256,12 +256,12 @@ DialogView {
                             Repeater {
                                 model: DonationManager.isAppStore
                                     ? [
-                                        qsTr("Your donation goes to the people who build and maintain Pylux."),
+                                        qsTr("Your donation goes to the people who build and maintain Ludelo."),
                                         qsTr("Single payment in the App Store. No subscription."),
                                         qsTr("Optional. You get the full app either way.")
                                       ]
                                     : [
-                                        qsTr("Your donation goes to the people who build and maintain Pylux."),
+                                        qsTr("Your donation goes to the people who build and maintain Ludelo."),
                                         qsTr("Single payment via Stripe. No subscription."),
                                         qsTr("Optional. You get the full app either way.")
                                       ]
@@ -334,7 +334,7 @@ DialogView {
                                     Layout.fillWidth: true
                                     text: DonationManager.isAppStore
                                           ? qsTr("One payment in the App Store. No subscription.")
-                                          : qsTr("Secure one-time donation via Stripe. Your payment info never touches Pylux.")
+                                          : qsTr("Secure one-time donation via Stripe. Your payment info never touches Ludelo.")
                                     font.pixelSize: 13
                                     color: Qt.rgba(1, 1, 1, 0.5)
                                     wrapMode: Text.Wrap

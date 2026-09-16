@@ -161,7 +161,7 @@ DialogView {
                 onClicked: {
                     root.showConfirmDialog(
                         qsTr("Clear Steam Cloud Data"),
-                        qsTr("Are you sure you want to delete all Pylux configuration files from Steam Cloud?\n\nThis will permanently delete all synced profiles from the cloud.\n\nLocal files will not be affected."),
+                        qsTr("Are you sure you want to delete all Ludelo configuration files from Steam Cloud?\n\nThis will permanently delete all synced profiles from the cloud.\n\nLocal files will not be affected."),
                         () => Chiaki.clearSteamCloudData()
                     );
                 }

@@ -252,7 +252,7 @@ Rectangle {
             switch(Chiaki.connectState)
             {
                 case Chiaki.PsnConnectState.LinkingConsole:
-                    infoLabel.text = registOnly ? qsTr("Registering PlayStation console with Pylux ...") : qsTr("Linking Pylux with PlayStation console ...")
+                    infoLabel.text = registOnly ? qsTr("Registering PlayStation console with Ludelo ...") : qsTr("Linking Ludelo with PlayStation console ...")
                     view.allowClose = false
                     break
                 case Chiaki.PsnConnectState.RegisteringConsole:

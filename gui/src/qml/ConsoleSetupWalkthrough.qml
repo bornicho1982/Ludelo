@@ -361,7 +361,7 @@ DialogView {
                                                 id: warningText
                                                 anchors.centerIn: parent
                                                 width: parent.width - 20
-                                                text: qsTr("To register your console with Pylux, both your device and console must be connected to the same WiFi network. This is required even if you plan to use remote play away from home later.")
+                                                text: qsTr("To register your console with Ludelo, both your device and console must be connected to the same WiFi network. This is required even if you plan to use remote play away from home later.")
                                                 font.pixelSize: 16
                                                 color: Qt.rgba(1, 1, 1, 0.9)
                                                 horizontalAlignment: Text.AlignHCenter
@@ -372,7 +372,7 @@ DialogView {
                                         Label {
                                             Layout.alignment: Qt.AlignHCenter
                                             Layout.fillWidth: true
-                                            text: qsTr("✓ Make sure both devices are on the same network, then Pylux should automatically discover your console.")
+                                            text: qsTr("✓ Make sure both devices are on the same network, then Ludelo should automatically discover your console.")
                                             font.pixelSize: 14
                                             color: Qt.rgba(1, 1, 1, 0.8)
                                             horizontalAlignment: Text.AlignHCenter

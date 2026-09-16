@@ -50,14 +50,14 @@ DialogView {
     }
 
     function createCodeOnServer() {
-        console.log("Creating pylux code on server:", qrCode);
-        Chiaki.createPyluxCode(qrCode, function(success, errorMsg) {
+        console.log("Creating Ludelo code on server:", qrCode);
+        Chiaki.createLudeloCode(qrCode, function(success, errorMsg) {
             if (success) {
-                console.log("pylux code created successfully on server");
+                console.log("Ludelo code created successfully on server");
                 // Optionally show success message to user
                 // root.showMessageDialog(qsTr("Success"), qsTr("QR code generated successfully. Scan with your mobile device."));
             } else {
-                console.error("Failed to create pylux code:", errorMsg);
+                console.error("Failed to create Ludelo code:", errorMsg);
                 // Show error to user
                 root.showMessageDialog(qsTr("Error"), qsTr("Failed to create login code: %1").arg(errorMsg), () => {});
             }
@@ -67,20 +67,20 @@ DialogView {
     function checkStatus() {
         if (isProcessing || isCheckingStatus) return;
         
-        console.log("Checking pylux status for code:", qrCode);
+        console.log("Checking Ludelo status for code:", qrCode);
         isCheckingStatus = true;
         
         // Show status checking message to user
         statusLabel.text = qsTr("Checking login status...");
         statusLabel.visible = true;
         
-        Chiaki.checkPyluxStatus(qrCode, function(success, errorMsg, npssoToken) {
-            console.log("pylux API response - success:", success, "error:", errorMsg, "npsso:", npssoToken);
+        Chiaki.checkLudeloStatus(qrCode, function(success, errorMsg, npssoToken) {
+            console.log("Ludelo API response - success:", success, "error:", errorMsg, "npsso:", npssoToken);
             
             isCheckingStatus = false;
             
             if (success && npssoToken) {
-                console.log("pylux login successful! Processing npsso token...");
+                console.log("Ludelo login successful! Processing npsso token...");
                 
                 // Check if we got an npsso token (new v3 flow) or redirect URL (old flow for backwards compatibility)
                 if (npssoToken.startsWith("https://remoteplay.dl.playstation.net/remoteplay/redirect")) {
@@ -111,11 +111,11 @@ DialogView {
                             statusLabel.text = msg;
                         } else {
                             if (ok) {
-                                console.log("pylux login completed successfully!");
+                                console.log("Ludelo login completed successfully!");
                                 statusLabel.visible = false;
                                 dialog.accept();
                             } else {
-                                console.error("pylux login failed:", msg);
+                                console.error("Ludelo login failed:", msg);
                                 isProcessing = false;
                                 statusLabel.visible = false;
                                 root.showMessageDialog(qsTr("Login Error"), msg, () => {});
@@ -134,7 +134,7 @@ DialogView {
                     statusLabel.visible = false;
                     root.showMessageDialog(qsTr("Sign-in Pending"), qsTr("Code not found. Please complete the sign-in process on your mobile device first."), () => {});
                 } else {
-                    console.error("Failed to check pylux status:", errorMsg);
+                    console.error("Failed to check Ludelo status:", errorMsg);
                     statusLabel.visible = false;
                     root.showMessageDialog(qsTr("Error"), qsTr("Failed to check login status: %1").arg(errorMsg), () => {});
                 }
@@ -228,7 +228,7 @@ DialogView {
                                 anchors.fill: parent
                                 anchors.margins: 10
                                 readonly property int qrSize: 350
-                                source: "https://api.qrserver.com/v1/create-qr-code/?size=" + qrSize + "x" + qrSize + "&data=" + encodeURIComponent(Chiaki.getPyluxURL() + "/psstream/?psstream_code=" + dialog.qrCode)
+                                source: "https://api.qrserver.com/v1/create-qr-code/?size=" + qrSize + "x" + qrSize + "&data=" + encodeURIComponent(Chiaki.getLudeloURL() + "/psstream/?psstream_code=" + dialog.qrCode)
                                 fillMode: Image.PreserveAspectFit
                                 sourceSize.width: qrSize
                                 sourceSize.height: qrSize

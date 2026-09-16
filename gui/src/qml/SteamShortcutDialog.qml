@@ -67,7 +67,7 @@ DialogView {
             C.TextField {
                 id: name
                 Layout.preferredWidth: 400
-                text: Chiaki.settings.currentProfile ? qsTr("Pylux ") + Chiaki.settings.currentProfile: qsTr("Pylux")
+                text: Chiaki.settings.currentProfile ? qsTr("Ludelo ") + Chiaki.settings.currentProfile: qsTr("Ludelo")
                 firstInFocusChain: true
             }
 

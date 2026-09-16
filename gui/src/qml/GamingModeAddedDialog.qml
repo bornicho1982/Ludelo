@@ -64,7 +64,7 @@ Dialog {
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
-                text: qsTr("Pylux has been added to your Steam library with artwork and a Steam Deck controller layout.\n\nOn Steam Deck, switch to Gaming Mode to play. If Pylux does not appear in your library, restart Steam first.")
+                text: qsTr("Ludelo has been added to your Steam library with artwork and a Steam Deck controller layout.\n\nOn Steam Deck, switch to Gaming Mode to play. If Ludelo does not appear in your library, restart Steam first.")
             }
 
             RowLayout {

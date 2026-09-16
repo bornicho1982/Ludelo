@@ -141,7 +141,7 @@ Item {
 
             Item { Layout.fillWidth: true }
 
-            // pylux logo and branding (right side) - hide when button is visible
+            // ludelo logo and branding (right side) - hide when button is visible
             RowLayout {
                 Layout.alignment: Qt.AlignVCenter
                 Layout.maximumWidth: 300
@@ -154,7 +154,7 @@ Item {
                     
                     Label {
                         width: parent.width
-                        text: "PYLUX"
+                        text: "LUDELO"
                         font.pixelSize: 18
                         font.weight: Font.Bold
                         font.letterSpacing: 1.5

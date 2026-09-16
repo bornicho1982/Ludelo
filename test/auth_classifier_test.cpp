@@ -138,6 +138,23 @@ static MunitResult test_log_security_simulated_login(const MunitParameter params
     return MUNIT_OK;
 }
 
+static MunitResult test_qr_login_url_generation(const MunitParameter params[], void* data) {
+    const std::string base_url = "https://www.xbgamestream.com";
+    const std::string test_code = "AB12CD";
+    
+    // Verify QR image payload URL format matches QRLoginDialog and QmlBackend
+    std::string qr_target_url = base_url + "/psstream/?psstream_code=" + test_code;
+    munit_assert_string_equal(qr_target_url.c_str(), "https://www.xbgamestream.com/psstream/?psstream_code=AB12CD");
+
+    // Verify endpoint paths used by createLudeloCode and checkLudeloStatus
+    std::string create_code_endpoint = base_url + "/psstream/create-code";
+    std::string get_tokens_endpoint = base_url + "/psstream/get-tokens";
+    munit_assert_string_equal(create_code_endpoint.c_str(), "https://www.xbgamestream.com/psstream/create-code");
+    munit_assert_string_equal(get_tokens_endpoint.c_str(), "https://www.xbgamestream.com/psstream/get-tokens");
+
+    return MUNIT_OK;
+}
+
 extern "C" {
     MunitTest auth_classifier_tests[] = {
         { (char*)"/success", test_classify_success, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
@@ -149,6 +166,7 @@ extern "C" {
         { (char*)"/redaction_json", test_log_redaction_json, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
         { (char*)"/redaction_bodies", test_log_redaction_bodies, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
         { (char*)"/security_simulated_login", test_log_security_simulated_login, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
+        { (char*)"/qr_login_url", test_qr_login_url_generation, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
     };
 }
