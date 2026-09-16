@@ -125,6 +125,7 @@ public:
         ConnectFailed,
         ConnectFailedStart,
         ConnectFailedConsoleUnreachable,
+        ConnectFailedForbidden,
     };
     Q_ENUM(PsnConnectState);
     QmlBackend(Settings *settings, QmlMainWindow *window, SteamworksWrapper *steamworks = nullptr);
@@ -218,6 +219,8 @@ public:
     Q_INVOKABLE void connectToHost(int index, QString nickname = QString(), QString gameName = QString(), QString titleId = QString());
     Q_INVOKABLE void stopSession(bool sleep);
     Q_INVOKABLE void sessionGoHome();
+    Q_INVOKABLE QString sessionHost() const { return session_info.host; }
+    Q_INVOKABLE bool sessionIsPs5() const { return chiaki_target_is_ps5(session_info.target); }
     Q_INVOKABLE void enterPin(const QString &pin);
     Q_INVOKABLE QUrl psnLoginUrl() const;
     Q_INVOKABLE bool checkPsnRedirectURL(const QUrl &url) const;

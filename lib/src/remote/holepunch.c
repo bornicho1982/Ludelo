@@ -626,7 +626,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_holepunch_list_devices(
     headers = curl_slist_append(headers, "Accept-Language: jp");
     headers = curl_slist_append(headers, oauth_header);
 
-    CURLcode res = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+    CURLcode res = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L);
     if(res != CURLE_OK)
         CHIAKI_LOGW(log, "chiaki_holepunch_list_devices: CURL setopt CURLOPT_FAILONERROR failed with CURL error %s", curl_easy_strerror(res));
     res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
@@ -647,28 +647,19 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_holepunch_list_devices(
 
     res = curl_easy_perform(curl);
     curl_slist_free_all(headers);
-    if (res != CURLE_OK)
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    if (res != CURLE_OK || (http_code > 0 && http_code != 200))
     {
-        if (res == CURLE_HTTP_RETURNED_ERROR)
+        if (http_code > 0)
         {
-            long http_code = 0;
-            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-            CHIAKI_LOGE(log, "chiaki_holepunch_list_devices: Fetching device list from %s failed with HTTP code %ld", url, http_code);
-            CHIAKI_LOGV(log, "Response Body: %.*s.", (int)response_data.size, response_data.data);
+            CHIAKI_LOGE(log, "chiaki_holepunch_list_devices: Fetching device list from %s failed with HTTP code %ld. Error body: %.*s",
+                        url, http_code, (int)response_data.size, response_data.data ? response_data.data : "");
             err = CHIAKI_ERR_HTTP_NONOK;
         } else {
             CHIAKI_LOGE(log, "chiaki_holepunch_list_devices: Fetching device list from %s failed with CURL error %s", url, curl_easy_strerror(res));
             err = CHIAKI_ERR_NETWORK;
         }
-        goto cleanup;
-    }
-
-    long http_code = 0;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-    if (http_code != 200)
-    {
-        CHIAKI_LOGE(log, "chiaki_holepunch_list_devices: Fetching device list from %s failed with HTTP code %ld", url, http_code);
-        err = CHIAKI_ERR_HTTP_NONOK;
         goto cleanup;
     }
     json_tokener *tok = json_tokener_new();
@@ -2061,7 +2052,7 @@ static ChiakiErrorCode get_websocket_fqdn(Session *session, char **fqdn)
     CURLcode res = curl_easy_setopt(curl, CURLOPT_SHARE, session->curl_share);
     if(res != CURLE_OK)
         CHIAKI_LOGW(session->log, "get_websocket_fqdn: CURL setopt CURLOPT_SHARE failed with CURL error %s", curl_easy_strerror(res));
-    res = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+    res = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L);
     if(res != CURLE_OK)
         CHIAKI_LOGW(session->log, "get_websocket_fqdn: CURL setopt CURLOPT_FAILONERROR failed with CURL error %s", curl_easy_strerror(res));
     res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
@@ -2083,13 +2074,14 @@ static ChiakiErrorCode get_websocket_fqdn(Session *session, char **fqdn)
     res = curl_easy_perform(curl);
     curl_slist_free_all(headers);
     ChiakiErrorCode err = CHIAKI_ERR_SUCCESS;
-    if (res != CURLE_OK)
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    if (res != CURLE_OK || (http_code > 0 && http_code != 200))
     {
-        if (res == CURLE_HTTP_RETURNED_ERROR)
+        if (http_code > 0)
         {
-            long http_code = 0;
-            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-            CHIAKI_LOGE(session->log, "get_websocket_fqdn: Fetching websocket FQDN from %s failed with HTTP code %ld", ws_fqdn_api_url, http_code);
+            CHIAKI_LOGE(session->log, "get_websocket_fqdn: Fetching websocket FQDN from %s failed with HTTP code %ld. Error body: %.*s",
+                        ws_fqdn_api_url, http_code, (int)response_data.size, response_data.data ? response_data.data : "");
             err = CHIAKI_ERR_HTTP_NONOK;
         } else {
             CHIAKI_LOGE(session->log, "get_websocket_fqdn: Fetching websocket FQDN from %s failed with CURL error %s", ws_fqdn_api_url, curl_easy_strerror(res));
@@ -2294,13 +2286,18 @@ static void* websocket_thread_func(void *user) {
     headers = curl_slist_append(headers, "X-PSN-PROTOCOL-VERSION: 2.1");
     headers = curl_slist_append(headers, "X-PSN-RECONNECTION: false");
 
+    HttpResponseData ws_handshake_response = {
+        .data = malloc(0),
+        .size = 0,
+    };
+
     CURLcode res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     if(res != CURLE_OK)
         CHIAKI_LOGW(session->log, "websocket_thread_func: CURL setopt CURLOPT_HTTPHEADER failed with CURL error %s", curl_easy_strerror(res));
     res = curl_easy_setopt(curl, CURLOPT_SHARE, session->curl_share);
     if(res != CURLE_OK)
         CHIAKI_LOGW(session->log, "websocket_thread_func: CURL setopt CURLOPT_SHAREfailed with CURL error %s", curl_easy_strerror(res));
-    res = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+    res = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L);
     if(res != CURLE_OK)
         CHIAKI_LOGW(session->log, "websocket_thread_func: CURL setopt CURLOPT_FAILONERROR failed with CURL error %s", curl_easy_strerror(res));
     // IMPORTANT: Keep total timeout at 0 (infinite) for long-lived websocket connection
@@ -2322,21 +2319,30 @@ static void* websocket_thread_func(void *user) {
     res = curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 2L);
     if(res != CURLE_OK)
         CHIAKI_LOGW(session->log, "websocket_thread_func: CURL setopt CURLOPT_CONNECT_ONLY failed with CURL error %s", curl_easy_strerror(res));
+    res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_cb);
+    if(res != CURLE_OK)
+        CHIAKI_LOGW(session->log, "websocket_thread_func: CURL setopt CURLOPT_WRITEFUNCTION failed with CURL error %s", curl_easy_strerror(res));
+    res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&ws_handshake_response);
+    if(res != CURLE_OK)
+        CHIAKI_LOGW(session->log, "websocket_thread_func: CURL setopt CURLOPT_WRITEDATA failed with CURL error %s", curl_easy_strerror(res));
 
     res = curl_easy_perform(curl);
     curl_slist_free_all(headers);
-    if (res != CURLE_OK)
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    if (res != CURLE_OK || (http_code > 0 && http_code != 101))
     {
-        if (res == CURLE_HTTP_RETURNED_ERROR)
+        if (http_code > 0)
         {
-            long http_code = 0;
-            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-            CHIAKI_LOGE(session->log, "websocket_thread_func: Connecting to push notification WebSocket %s failed with HTTP code %ld", ws_url, http_code);
+            CHIAKI_LOGE(session->log, "websocket_thread_func: Connecting to push notification WebSocket %s failed with HTTP code %ld. Error body: %.*s",
+                        ws_url, http_code, (int)ws_handshake_response.size, ws_handshake_response.data ? ws_handshake_response.data : "");
         } else {
             CHIAKI_LOGE(session->log, "websocket_thread_func: Connecting to push notification WebSocket %s failed with CURL error %s", ws_url, curl_easy_strerror(res));
         }
+        free(ws_handshake_response.data);
         goto cleanup;
     }
+    free(ws_handshake_response.data);
     session->ws_open = true;
     CHIAKI_LOGV(session->log, "websocket_thread_func: Connected to push notification WebSocket %s", ws_url);
     ChiakiErrorCode err = chiaki_mutex_lock(&session->state_mutex);
@@ -3100,7 +3106,7 @@ static ChiakiErrorCode http_create_session(Session *session)
     CURLcode res = curl_easy_setopt(curl, CURLOPT_SHARE, session->curl_share);
     if(res != CURLE_OK)
         CHIAKI_LOGW(session->log, "http_create_session: CURL setopt CURLOPT_SHARE failed with CURL error %s", curl_easy_strerror(res));
-    res = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+    res = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L);
     if(res != CURLE_OK)
         CHIAKI_LOGW(session->log, "http_create_session: CURL setopt CURLOPT_FAILONERROR failed with CURL error %s", curl_easy_strerror(res));
     res = curl_easy_setopt(curl, CURLOPT_URL, session_create_url);
@@ -3125,13 +3131,14 @@ static ChiakiErrorCode http_create_session(Session *session)
     ChiakiErrorCode err = CHIAKI_ERR_SUCCESS;
     res = curl_easy_perform(curl);
     curl_slist_free_all(headers);
-    if (res != CURLE_OK)
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    if (res != CURLE_OK || (http_code > 0 && http_code != 200 && http_code != 201))
     {
-        if (res == CURLE_HTTP_RETURNED_ERROR)
+        if (http_code > 0)
         {
-            long http_code = 0;
-            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-            CHIAKI_LOGE(session->log, "http_create_session: Creating holepunch session failed with HTTP code %ld", http_code);
+            CHIAKI_LOGE(session->log, "http_create_session: Creating holepunch session failed with HTTP code %ld. Error body: %.*s",
+                        http_code, (int)response_data.size, response_data.data ? response_data.data : "");
             err = CHIAKI_ERR_HTTP_NONOK;
         } else {
             CHIAKI_LOGE(session->log, "http_create_session: Creating holepunch session failed with CURL error %s", curl_easy_strerror(res));
@@ -3347,7 +3354,7 @@ static ChiakiErrorCode http_start_session(Session *session)
     CURLcode res = curl_easy_setopt(curl, CURLOPT_SHARE, session->curl_share);
     if(res != CURLE_OK)
         CHIAKI_LOGW(session->log, "http_start_session: CURL setopt CURLOPT_SHARE failed with CURL error %s", curl_easy_strerror(res));
-    res = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+    res = curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L);
     if(res != CURLE_OK)
         CHIAKI_LOGW(session->log, "http_start_session: CURL setopt CURLOPT_FAILONERROR failed with CURL error %s", curl_easy_strerror(res));
     res = curl_easy_setopt(curl, CURLOPT_URL, session_command_url);
@@ -3374,15 +3381,14 @@ static ChiakiErrorCode http_start_session(Session *session)
     res = curl_easy_perform(curl);
     curl_slist_free_all(headers);
     CHIAKI_LOGV(session->log, "http_start_session: Received JSON:\n%.*s", (int)response_data.size, response_data.data);
-    if (res != CURLE_OK)
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    if (res != CURLE_OK || (http_code > 0 && http_code != 200 && http_code != 204))
     {
-        if (res == CURLE_HTTP_RETURNED_ERROR)
+        if (http_code > 0)
         {
-            long http_code = 0;
-            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-            CHIAKI_LOGE(session->log, "http_start_session: Starting holepunch session failed with HTTP code %ld.", http_code);
-            CHIAKI_LOGV(session->log, "Request Body: %s.", envelope_buf);
-            CHIAKI_LOGV(session->log, "Response Body: %.*s.", (int)response_data.size, response_data.data);
+            CHIAKI_LOGE(session->log, "http_start_session: Starting holepunch session failed with HTTP code %ld. Error body: %.*s",
+                        http_code, (int)response_data.size, response_data.data ? response_data.data : "");
             err = CHIAKI_ERR_HTTP_NONOK;
         } else {
             CHIAKI_LOGE(session->log, "http_start_session: Starting holepunch session failed with CURL error %s.", curl_easy_strerror(res));

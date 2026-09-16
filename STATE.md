@@ -20,4 +20,8 @@
   5. Interceptación en `NavigationCompleted` con JavaScript de introspección para detectar errores en el DOM.
   6. Backend QML `startWebView2Login()` ejecuta en worker thread `QThread` y despacha el intercambio OAuth `PSNAccountID::GetPsnAccountId` en el hilo principal de Qt.
   7. Conexiones QML en `QRLoginDialog.qml` ("Login on This Device") y `PSNTokenDialog.qml` actualizadas para disparar WebView2 directamente sin intervención de navegadores externos ni copiar/pegar URLs.
+- **Diagnóstico y Recuperación Holepunch (HTTP 403)**:
+  1. **Instrumentación de error body**: Se deshabilitó `CURLOPT_FAILONERROR` en las llamadas curl de holepunch (`lib/src/remote/holepunch.c`) para capturar el cuerpo de respuesta devuelto por Sony (JSON legible con códigos de error como `unauthorized_client`) antes de retornar error.
+  2. **Refresco proactivo de token**: En `autoRegister` y `connectToHost` (`gui/src/qmlbackend.cpp`), se verifica la antigüedad del `access_token`; si tiene más de 50 minutos de antigüedad (<10 min restantes sobre los 3599s de validez), se refresca automáticamente antes de iniciar la sesión de holepunch, y la lambda mutable vincula el nuevo token a `info.psn_token`.
+  3. **UX Fallback PIN en error 403**: Al detectarse `CHIAKI_ERR_HTTP_NONOK` (HTTP 403/Forbidden), la UI transiciona a `ConnectFailedForbidden` en `PsnView.qml`. Muestra el mensaje ejecutivo `"Sony ha rechazado la conexión remota. Prueba más tarde o registra la consola por PIN (más rápido en casa)"` con botones directos para registrar vía PIN con host resuelto (`root.showRegistDialog`) o volver al menú principal.
 

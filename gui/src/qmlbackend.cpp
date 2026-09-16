@@ -1020,7 +1020,8 @@ bool QmlBackend::autoConnect() const
 
 void QmlBackend::psnCancel(bool stop_thread)
 {
-    session->CancelPsnConnection(stop_thread);
+    if(session)
+        session->CancelPsnConnection(stop_thread);
 }
 
 void QmlBackend::checkPsnConnection(const ChiakiErrorCode &err)
@@ -1045,6 +1046,18 @@ void QmlBackend::checkPsnConnection(const ChiakiErrorCode &err)
             break;
         case CHIAKI_ERR_HOST_UNREACH:
             setConnectState(PsnConnectState::ConnectFailedConsoleUnreachable);
+            if(session)
+            {
+                chiaki_log_mutex.lock();
+                chiaki_log_ctx = nullptr;
+                chiaki_log_mutex.unlock();
+                session->deleteLater();
+                session = nullptr;
+                setDiscoveryEnabled(true);
+            }
+            break;
+        case CHIAKI_ERR_HTTP_NONOK:
+            setConnectState(PsnConnectState::ConnectFailedForbidden);
             if(session)
             {
                 chiaki_log_mutex.lock();
@@ -1523,10 +1536,12 @@ void QmlBackend::autoRegister()
     if(expiry_s.isEmpty() || refresh.isEmpty())
         return;
     QDateTime expiry = QDateTime::fromString(expiry_s, settings->GetTimeFormat());
-    // give 1 minute buffer
-    QDateTime now = QDateTime::currentDateTime().addSecs(60);
-    if(now.secsTo(expiry) < 1)
+    QDateTime now = QDateTime::currentDateTime();
+    qint64 secs_remaining = now.secsTo(expiry);
+    // Refresh token if older than 50 minutes (less than 10 mins / 600s remaining) or already expired
+    if(secs_remaining < 600)
     {
+        qCInfo(chiakiGui) << "PSN access token is older than 50 minutes (" << secs_remaining << "s remaining). Refreshing token before holepunch session...";
         PSNToken *psnToken = new PSNToken(settings, this);
         connect(psnToken, &PSNToken::PSNTokenError, this, [this](const QString &error) {
             qCWarning(chiakiGui) << "Could not refresh token. Automatic PSN Connection Unavailable!" << error;
@@ -1535,7 +1550,8 @@ void QmlBackend::autoRegister()
         connect(psnToken, &PSNToken::PSNTokenSuccess, this, []() {
             qCWarning(chiakiGui) << "PSN Remote Connection Tokens Refreshed.";
         });
-        connect(psnToken, &PSNToken::PSNTokenSuccess, this, [this, info]() {
+        connect(psnToken, &PSNToken::PSNTokenSuccess, this, [this, info]() mutable {
+            info.psn_token = settings->GetPsnAuthToken();
             createSession(info);
         });
         connect(psnToken, &PSNToken::Finished, psnToken, &QObject::deleteLater);
@@ -1710,10 +1726,12 @@ void QmlBackend::connectToHost(int index, QString nickname, QString gameName, QS
         if(expiry_s.isEmpty() || refresh.isEmpty())
             return;
         QDateTime expiry = QDateTime::fromString(expiry_s, settings->GetTimeFormat());
-        // give 1 minute buffer
-        QDateTime now = QDateTime::currentDateTime().addSecs(60);
-        if(now.secsTo(expiry) < 1)
+        QDateTime now = QDateTime::currentDateTime();
+        qint64 secs_remaining = now.secsTo(expiry);
+        // Refresh token if older than 50 minutes (less than 10 mins / 600s remaining) or already expired
+        if(secs_remaining < 600)
         {
+            qCInfo(chiakiGui) << "PSN access token is older than 50 minutes (" << secs_remaining << "s remaining). Refreshing token before holepunch session...";
             PSNToken *psnToken = new PSNToken(settings, this);
             connect(psnToken, &PSNToken::PSNTokenError, this, [this](const QString &error) {
                 qCWarning(chiakiGui) << "Could not refresh token. Automatic PSN Connection Unavailable!" << error;
@@ -1722,10 +1740,11 @@ void QmlBackend::connectToHost(int index, QString nickname, QString gameName, QS
             connect(psnToken, &PSNToken::PSNTokenSuccess, this, []() {
                 qCWarning(chiakiGui) << "PSN Remote Connection Tokens Refreshed.";
             });
-            connect(psnToken, &PSNToken::PSNTokenSuccess, this, [this, info]() {
+            connect(psnToken, &PSNToken::PSNTokenSuccess, this, [this, info]() mutable {
+                info.psn_token = settings->GetPsnAuthToken();
                 createSession(info);
             });
-                connect(psnToken, &PSNToken::Finished, psnToken, &QObject::deleteLater);
+            connect(psnToken, &PSNToken::Finished, psnToken, &QObject::deleteLater);
             QString refresh_token = settings->GetPsnRefreshToken();
             psnToken->RefreshPsnToken(std::move(refresh_token));
         }

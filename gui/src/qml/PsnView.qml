@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Material
 
@@ -10,10 +11,16 @@ Rectangle {
     property bool cancelling: false
     property bool textVisible: true
     property bool registOnly: false
+    property bool isForbiddenError: false
     property list<Item> restoreFocusItems
     color: "black"
 
-    StackView.onActivated: infoLabel.visible = false
+    StackView.onActivated: {
+        infoLabel.visible = false
+        isForbiddenError = false
+        textVisible = true
+        cancelling = false
+    }
 
     function stop() {
         if (!allowClose)
@@ -38,16 +45,26 @@ Rectangle {
             item.forceActiveFocus(Qt.TabFocusReason);
     }
 
-    Keys.onEscapePressed: view.stop()
+    Keys.onEscapePressed: {
+        if (isForbiddenError)
+            root.showMainView();
+        else
+            view.stop();
+    }
 
     Shortcut {
         sequence: "Ctrl+Q"
-        onActivated: view.stop()
+        onActivated: {
+            if (isForbiddenError)
+                root.showMainView();
+            else
+                view.stop();
+        }
     }
 
     MouseArea {
         anchors.fill: parent
-        enabled: view.allowClose
+        enabled: view.allowClose && !isForbiddenError
         acceptedButtons: Qt.RightButton
         onClicked: view.stop()
     }
@@ -55,8 +72,8 @@ Rectangle {
     Label {
         id: infoLabel
         anchors.centerIn: parent
-        opacity: textVisible ? 1.0: 0.0
-        visible: opacity
+        opacity: (textVisible && !isForbiddenError) ? 1.0: 0.0
+        visible: opacity > 0
         text: qsTr("Establishing connection with console...")
         Behavior on opacity { NumberAnimation { duration: 250 } }
     }
@@ -74,6 +91,8 @@ Rectangle {
             anchors.centerIn: parent
             width: 70
             height: width
+            visible: !isForbiddenError
+            running: !isForbiddenError
         }
 
         Label {
@@ -83,8 +102,8 @@ Rectangle {
                 horizontalCenter: spinner.horizontalCenter
                 topMargin: 30
             }
-            opacity: (textVisible && !cancelling) ? 1.0: 0.0
-            visible: opacity
+            opacity: (textVisible && !cancelling && !isForbiddenError) ? 1.0: 0.0
+            visible: opacity > 0
             text: {
                 var typeString = registOnly ? qsTr("automatic registration") : qsTr("remote connection")
                 qsTr("Press %1 to cancel %2").arg(Chiaki.controllers.length ? (root.controllerButton("circle").includes("deck") ? "B" : "Circle") : "escape or right-click").arg(typeString)
@@ -98,7 +117,7 @@ Rectangle {
                 horizontalCenter: spinner.horizontalCenter
             }
             font.pixelSize: 24
-            visible: text
+            visible: text && !isForbiddenError
             onVisibleChanged: {
                 if (visible) {
                     textVisible = false
@@ -116,6 +135,58 @@ Rectangle {
                 top: errorTitleLabel.bottom
                 horizontalCenter: errorTitleLabel.horizontalCenter
                 topMargin: 10
+            }
+            visible: !isForbiddenError
+        }
+    }
+
+    ColumnLayout {
+        id: forbiddenErrorBox
+        visible: isForbiddenError
+        anchors.centerIn: parent
+        width: Math.min(parent.width - 60, 560)
+        spacing: 24
+
+        Label {
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+            font.pixelSize: 20
+            font.bold: true
+            color: "#FF6B6B"
+            text: qsTr("Conexión remota rechazada")
+        }
+
+        Label {
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+            font.pixelSize: 15
+            color: "#E0E0E0"
+            text: qsTr("Sony ha rechazado la conexión remota. Prueba más tarde o registra la consola por PIN (más rápido en casa)")
+        }
+
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 16
+
+            Button {
+                text: qsTr("Registrar por PIN (en casa)")
+                highlighted: true
+                Material.accent: "#6C5CE7"
+                onClicked: {
+                    root.showMainView()
+                    let hostToUse = Chiaki.sessionHost() && Chiaki.sessionHost().length > 0 ? Chiaki.sessionHost() : "255.255.255.255"
+                    root.showRegistDialog(hostToUse, Chiaki.sessionIsPs5())
+                }
+            }
+
+            Button {
+                text: qsTr("Volver")
+                flat: true
+                onClicked: {
+                    root.showMainView()
+                }
             }
         }
     }
@@ -213,6 +284,12 @@ Rectangle {
                         infoLabel.text = qsTr("Couldn't contact PlayStation over established connection, likely unsupported network type")
                     failTimer.running = true
                     break
+                case Chiaki.PsnConnectState.ConnectFailedForbidden:
+                    isForbiddenError = true
+                    textVisible = false
+                    view.allowClose = true
+                    failTimer.stop()
+                    break
                 case Chiaki.PsnConnectState.WaitingForInternet:
                     infoLabel.text = qsTr("Establishing Internet Connection...")
                     break
@@ -222,6 +299,8 @@ Rectangle {
         function onSessionChanged() 
         {
             if (!Chiaki.session) {
+                if (isForbiddenError)
+                    return;
                 if (errorTitleLabel.text)
                     failTimer.start();
                 else if(!failTimer.running)
