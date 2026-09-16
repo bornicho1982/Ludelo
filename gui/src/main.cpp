@@ -39,6 +39,12 @@ int main(int argc, char *argv[]) { return real_main(argc, argv); }
 #include <QStandardPaths>
 #endif
 
+#include "ludelo_logging.h"
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include <QCommandLineParser>
 #include <QMap>
 #include <QSurfaceFormat>
@@ -133,6 +139,15 @@ int real_main(int argc, char *argv[])
 
     SDL_SetHint(SDL_HINT_APP_NAME, "Ludelo");
 
+#ifdef _WIN32
+	if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+		freopen("CONOUT$", "w", stdout);
+		freopen("CONOUT$", "w", stderr);
+	}
+#endif
+
+	ludelo::log::init_logging();
+
 	if(SDL_Init(SDL_INIT_AUDIO) < 0)
 	{
 		fprintf(stderr, "SDL Audio init failed: %s\n", SDL_GetError());
@@ -150,8 +165,18 @@ int real_main(int argc, char *argv[])
 	qputenv("WEBVIEW2_USER_DATA_FOLDER", webviewDataFolder.toUtf8());
 #endif
 	QtWebView::initialize();
+	auto main_logger = spdlog::get("ludelo");
+	if (main_logger) {
+		main_logger->info("QtWebView::initialize() executed");
+	}
 #endif
 	QApplication app(argc, argv);
+	if (main_logger) {
+		main_logger->info("QApplication initialized. Version: {}", qVersion());
+		main_logger->info("Qt Library Paths: {}", QCoreApplication::libraryPaths().join("; ").toStdString());
+		QDir msysWebView("C:/msys64/mingw64/share/qt6/plugins/webview");
+		main_logger->info("MSYS2 plugins/webview exists: {}", msysWebView.exists());
+	}
 
 	// Controller/keyboard navigation moves focus with nextItemInFocusChain().
 	// On macOS the platform default (Full Keyboard Access off) excludes

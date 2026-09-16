@@ -21,7 +21,9 @@ add_executable(chiaki-unit
 		pschord.c
 		auth_classifier_test.cpp)
 
-target_link_libraries(chiaki-unit chiaki-lib munit)
+find_package(spdlog REQUIRED)
+set_target_properties(chiaki-unit PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+target_link_libraries(chiaki-unit chiaki-lib munit spdlog::spdlog)
 if(TARGET PkgConfig::json-c)
 	target_link_libraries(chiaki-unit PkgConfig::json-c)
 endif()

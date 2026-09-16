@@ -24,28 +24,8 @@ DialogView {
         submitting = true;
         Chiaki.handlePsnLoginRedirect(url.text.trim());
     }
-    Connections {
-        target: Chiaki
-        function onWebView2InstallFinished(success) {
-            if (success) {
-                // Try again after install
-                webView.visible = true;
-                webView.url = Chiaki.psnLoginUrl();
-            } else {
-                // Fallback to manual flow
-                extBrowserButton.clicked();
-            }
-        }
-        function onPsnLoginAccountIdError(error) {
-            submitting = false;
-        }
-        function onPsnLoginAccountIdDone(accountId) {
-            submitting = false;
-            root.closeDialog();
-        }
-    }
-
     StackView.onActivated: {
+        console.log("[qmlbackend] PSNLoginDialog activated, login=" + login);
         if(login)
         {
             nativeLoginForm.visible = true;
@@ -91,6 +71,24 @@ DialogView {
     }
 
    Item {
+        Connections {
+            target: Chiaki
+            function onWebView2InstallFinished(success) {
+                if (success) {
+                    webView.visible = true;
+                    webView.url = Chiaki.psnLoginUrl();
+                } else {
+                    extBrowserButton.clicked();
+                }
+            }
+            function onPsnLoginAccountIdError(error) {
+                submitting = false;
+            }
+            function onPsnLoginAccountIdDone(accountId) {
+                submitting = false;
+                root.closeDialog();
+            }
+        }
         Item {
             id: nativeLoginForm
             Keys.onPressed: (event) => {
@@ -350,11 +348,33 @@ DialogView {
                     Layout.leftMargin: 20
                 }
             }
+
+            Rectangle {
+                id: loadingPlaceholder
+                anchors.centerIn: parent
+                width: 320
+                height: 60
+                radius: 8
+                color: "#6C5CE7"
+                z: 5
+                visible: webView.visible
+                Text {
+                    anchors.centerIn: parent
+                    text: "WebView cargando..."
+                    color: "white"
+                    font.bold: true
+                    font.pixelSize: 16
+                }
+            }
+
             WebView {
                 id: webView
                 // Map web property to itself so existing code like webView.web doesn't break entirely,
                 // although we might need to adjust them.
                 property var web: webView
+                Component.onCompleted: {
+                    console.log("[qmlbackend] QtWebView component loaded in PSNLoginDialog");
+                }
                 anchors {
                     top: parent.top
                     bottom: psnLoginToolbar.top
@@ -365,6 +385,7 @@ DialogView {
                 }
                 
                 onLoadingChanged: function(loadRequest) {
+                    console.log("[qmlbackend] WebView onLoadingChanged: status=" + loadRequest.status + " url=" + Chiaki.maskAuthUrl(loadRequest.url.toString()));
                     if (loadRequest.status === WebView.LoadStartedStatus || loadRequest.status === WebView.LoadSucceededStatus) {
                         Chiaki.handlePsnLoginRedirect(loadRequest.url.toString());
                     }

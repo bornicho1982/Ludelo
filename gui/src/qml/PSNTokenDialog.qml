@@ -74,6 +74,7 @@ DialogView {
         });
     }
     StackView.onActivated: {
+        console.log("[qmlbackend] PSNTokenDialog activated (traditional/manual token dialog)");
         Chiaki.settings.remotePlayAsk = true;
         if (linkgridScroll.visible) {
             Qt.callLater(() => {

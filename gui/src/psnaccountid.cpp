@@ -1,5 +1,6 @@
 #include "psnaccountid.h"
 #include "jsonrequester.h"
+#include "ludelo_logging.h"
 
 #include <qjsonobject.h>
 #include <QObject>
@@ -12,6 +13,10 @@ PSNAccountID::PSNAccountID(Settings *settings, QObject *parent)
 }
 
 void PSNAccountID::GetPsnAccountId(QString redirectCode) {
+    auto logger = spdlog::get("psnaccountid");
+    if (logger) {
+        logger->debug("PSNAccountID::GetPsnAccountId requested with code: {}", ludelo::log::mask_secret(redirectCode.toStdString()));
+    }
     QString body = QString("grant_type=authorization_code&code=%1&scope=psn:clientapp referenceDataService:countryConfig.read pushNotification:webSocket.desktop.connect sessionManager:remotePlaySession.system.update&redirect_uri=https://remoteplay.dl.playstation.net/remoteplay/redirect&").arg(redirectCode);
     JsonRequester* requester = new JsonRequester(this);
     connect(requester, &JsonRequester::requestFinished, this, &PSNAccountID::handleAccessTokenResponse);

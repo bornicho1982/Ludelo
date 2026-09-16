@@ -17,6 +17,7 @@ DialogView {
     buttonVisible: false
 
     StackView.onActivated: {
+        console.log("[qmlbackend] QRLoginDialog activated");
         // Reset states
         isProcessing = false;
         isCheckingStatus = false;

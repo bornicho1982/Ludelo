@@ -36,6 +36,7 @@
 #include <QUrlQuery>
 
 #include "auth_classifier.h"
+#include "ludelo_logging.h"
 
 #include <QtGlobal>
 #include <QGuiApplication>
@@ -79,6 +80,8 @@ static QtMessageHandler qt_msg_handler = nullptr;
 
 static void msg_handler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
+    ludelo::log::qt_spdlog_handler(type, context, msg);
+
     QMutexLocker lock(&chiaki_log_mutex);
     
     ChiakiLogLevel chiaki_level;
@@ -1784,8 +1787,18 @@ QUrl QmlBackend::psnLoginUrl() const
     return authUrl;
 }
 
+QString QmlBackend::maskAuthUrl(const QString &url) const
+{
+    return QString::fromStdString(ludelo::auth::mask_url_code(url.toStdString()));
+}
+
 bool QmlBackend::handlePsnLoginRedirect(const QUrl &url)
 {
+    auto qml_logger = spdlog::get("qmlbackend");
+    if (qml_logger) {
+        qml_logger->debug("handlePsnLoginRedirect: navigating URL: {}", ludelo::auth::mask_url_code(url.toString().toStdString()));
+    }
+
     std::string out_code;
     std::string out_error;
     auto classification = ludelo::auth::classify_auth_url(url.toString().toStdString(), &out_code, &out_error);

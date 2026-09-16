@@ -12,8 +12,8 @@ if(Qt6_VERSION VERSION_GREATER_EQUAL "6.10.0")
 	find_package(Qt6 REQUIRED COMPONENTS GuiPrivate)
 endif()
 
-# CHIAKI_ENABLE_GUI_WEBENGINE controls if we build the webview for login
 find_package(Qt6 COMPONENTS DBus)
+find_package(spdlog REQUIRED)
 
 if(WIN32)
 	add_definitions(-DWIN32_LEAN_AND_MEAN)
@@ -139,6 +139,7 @@ if(CHIAKI_ENABLE_GUI_WEBENGINE)
 	endif()
 endif()
 target_link_libraries(chiaki SDL2::SDL2)
+target_link_libraries(chiaki spdlog::spdlog)
 if(CHIAKI_ENABLE_SPEEX)
   target_link_libraries(chiaki PkgConfig::SpeexDSP)
   target_compile_definitions(chiaki PRIVATE CHIAKI_GUI_ENABLE_SPEEX)
