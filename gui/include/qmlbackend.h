@@ -222,6 +222,7 @@ public:
     Q_INVOKABLE QUrl psnLoginUrl() const;
     Q_INVOKABLE bool checkPsnRedirectURL(const QUrl &url) const;
     Q_INVOKABLE bool handlePsnLoginRedirect(const QUrl &url);
+    Q_INVOKABLE void startWebView2Login();
     Q_INVOKABLE QString maskAuthUrl(const QString &url) const;
     Q_INVOKABLE void handleWebViewDom(const QString &domContent);
     Q_INVOKABLE bool checkWebView2Available() const;

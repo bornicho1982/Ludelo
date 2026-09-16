@@ -37,6 +37,9 @@
 
 #include "auth_classifier.h"
 #include "ludelo_logging.h"
+#ifdef _WIN32
+#include "auth/webview2_login_win32.h"
+#endif
 
 #include <QtGlobal>
 #include <QGuiApplication>
@@ -1790,6 +1793,54 @@ QUrl QmlBackend::psnLoginUrl() const
 QString QmlBackend::maskAuthUrl(const QString &url) const
 {
     return QString::fromStdString(ludelo::auth::mask_url_code(url.toStdString()));
+}
+
+void QmlBackend::startWebView2Login()
+{
+#ifdef _WIN32
+    spdlog::info("[auth] startWebView2Login invoked from QML");
+    QThread *loginThread = QThread::create([this]() {
+        auto res = ludelo::auth::WebView2LoginWin32::login();
+        QMetaObject::invokeMethod(this, [this, res]() {
+            if (res.status == ludelo::auth::WebView2LoginStatus::Success) {
+                QString code = QString::fromStdString(res.code);
+                PSNAccountID *psnId = new PSNAccountID(settings, this);
+                connect(psnId, &PSNAccountID::AccountIDResponse, this, [this, psnId](const QString &accountId) {
+                    if (settings_qml) {
+                        try {
+                            settings_qml->setPsnAuthToken(settings->GetPsnAuthToken());
+                            settings_qml->setPsnRefreshToken(settings->GetPsnRefreshToken());
+                            settings_qml->setPsnAuthTokenExpiry(settings->GetPsnAuthTokenExpiry());
+                            settings_qml->setPsnAccountId(settings->GetPsnAccountId());
+                        } catch (...) {}
+                    }
+                    emit psnLoginAccountIdDone(accountId);
+                });
+                connect(psnId, &PSNAccountID::AccountIDResponse, this, &QmlBackend::updatePsnHosts);
+                connect(psnId, &PSNAccountID::AccountIDError, this, [this](const QString &url, const QString &err) {
+                    qCWarning(chiakiGui) << "Could not retrieve psn token or account Id!" << err;
+                    emit psnLoginAccountIdError(err.isEmpty() ? url : err);
+                });
+                connect(psnId, &PSNAccountID::Finished, psnId, &QObject::deleteLater);
+                psnId->GetPsnAccountId(code);
+                emit psnTokenChanged();
+            } else if (res.status == ludelo::auth::WebView2LoginStatus::UserCancelled) {
+                spdlog::info("[auth] Login cancelled by user");
+                emit psnLoginAccountIdError("Inicio de sesión cancelado");
+            } else if (res.status == ludelo::auth::WebView2LoginStatus::SonyError) {
+                spdlog::warn("[auth] Sony error details: {}", res.error_details);
+                emit psnLoginAccountIdError(QString::fromStdString(res.error_details));
+            } else {
+                spdlog::warn("[auth] WebView2 unavailable: {}", res.error_details);
+                emit psnLoginAccountIdError(QString::fromStdString(res.error_details.empty() ? "WebView2 no disponible" : res.error_details));
+            }
+        }, Qt::QueuedConnection);
+    });
+    connect(loginThread, &QThread::finished, loginThread, &QObject::deleteLater);
+    loginThread->start();
+#else
+    emit psnLoginAccountIdError("WebView2 sólo disponible en Windows");
+#endif
 }
 
 bool QmlBackend::handlePsnLoginRedirect(const QUrl &url)

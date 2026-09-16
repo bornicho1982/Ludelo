@@ -107,6 +107,8 @@ elseif(WIN32)
 	list(APPEND SOURCE_FILES
 		include/windowsWakeSleep.h
 		src/windowsWakeSleep.cpp
+		include/auth/webview2_login_win32.h
+		src/auth/webview2_login_win32.cpp
 	)
 endif()
 
@@ -140,6 +142,15 @@ if(CHIAKI_ENABLE_GUI_WEBENGINE)
 endif()
 target_link_libraries(chiaki SDL2::SDL2)
 target_link_libraries(chiaki spdlog::spdlog)
+if(WIN32)
+	target_include_directories(chiaki PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/webview2/build/native/include")
+	target_link_libraries(chiaki ole32 user32 uuid shlwapi)
+	add_custom_command(TARGET chiaki POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+		"${CMAKE_CURRENT_SOURCE_DIR}/../third_party/webview2/build/native/x64/WebView2Loader.dll"
+		$<TARGET_FILE_DIR:chiaki>/WebView2Loader.dll
+	)
+endif()
 if(CHIAKI_ENABLE_SPEEX)
   target_link_libraries(chiaki PkgConfig::SpeexDSP)
   target_compile_definitions(chiaki PRIVATE CHIAKI_GUI_ENABLE_SPEEX)

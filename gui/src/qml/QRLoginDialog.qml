@@ -174,7 +174,9 @@ DialogView {
                 console.error("QR Login: PSN account ID error:", error);
                 isProcessing = false;
                 statusLabel.visible = false;
-                root.showMessageDialog(qsTr("Login Error"), qsTr("Invalid redirect URL. Please ensure the redirect URL you copied is valid and up to date. Try generating a new QR code."), () => {});
+                if (error && error !== "Inicio de sesión cancelado") {
+                    root.showMessageDialog(qsTr("Login Error"), error, () => {});
+                }
             }
         }
 
@@ -404,13 +406,22 @@ DialogView {
                                 Material.foreground: Material.foreground
                                 font.pointSize: 12
                                 enabled: !isProcessing && !isCheckingStatus
-                                onClicked: fallbackToWebLogin()
+                                onClicked: {
+                                    if (Qt.platform.os === "windows") {
+                                        isProcessing = true;
+                                        statusLabel.text = qsTr("Opening PlayStation login...");
+                                        statusLabel.visible = true;
+                                        Chiaki.startWebView2Login();
+                                    } else {
+                                        fallbackToWebLogin();
+                                    }
+                                }
                                 KeyNavigation.left: refreshButton
                                 KeyNavigation.down: cancelButton
                                 
                                 Keys.onPressed: function(event) {
                                     if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
-                                        if (enabled) fallbackToWebLogin();
+                                        if (enabled) clicked();
                                         event.accepted = true;
                                     }
                                     if (event.key === Qt.Key_Escape) {

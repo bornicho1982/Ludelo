@@ -1,7 +1,7 @@
 *~
 *.swp
 .idea
-build
+/build
 cmake-build-*
 /build_*
 /build-arm64
@@ -110,3 +110,4 @@ build-ctrl/
 build-output-appstore-final/
 .playwright-mcp/
 docs/handoff/
+docs/notes/webview2_nuget_unused/

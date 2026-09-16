@@ -49,6 +49,27 @@ DialogView {
     buttonText: qsTr("Connect")
     buttonEnabled: hasNpssoData
     buttonVisible: false
+    Connections {
+        target: Chiaki
+
+        function onPsnLoginAccountIdDone(accountId) {
+            console.log("PSNTokenDialog: PSN account ID received:", accountId);
+            root.closeDialog();
+            root.showMainView();
+            root.showToast(
+                qsTr("Login Successful!"), 
+                qsTr("Login completed successfully!"),
+                "#4CAF50"
+            );
+        }
+
+        function onPsnLoginAccountIdError(error) {
+            console.error("PSNTokenDialog: PSN account ID error:", error);
+            if (error && error !== "Inicio de sesión cancelado") {
+                root.showMessageDialog(qsTr("Login Error"), error, () => {});
+            }
+        }
+    }
     onAccepted: {
         let npssoTokenValue = npssoToken.text.trim();
         
@@ -74,8 +95,11 @@ DialogView {
         });
     }
     StackView.onActivated: {
-        console.log("[qmlbackend] PSNTokenDialog activated (traditional/manual token dialog)");
+        console.log("[qmlbackend] PSNTokenDialog activated (embedded WebView2 / token dialog)");
         Chiaki.settings.remotePlayAsk = true;
+        if (Qt.platform.os === "windows") {
+            Chiaki.startWebView2Login();
+        }
         if (linkgridScroll.visible) {
             Qt.callLater(() => {
                 if (step1Button) {
@@ -485,7 +509,7 @@ DialogView {
                             }
 
                             Label {
-                                text: qsTr("Click the button below to open the login page in your external browser.")
+                                text: Qt.platform.os === "windows" ? qsTr("Click below to sign in directly with your PlayStation account.") : qsTr("Click the button below to open the login page in your external browser.")
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                                 font.pixelSize: 19
@@ -505,15 +529,19 @@ DialogView {
 
                             C.Button {
                                 id: step1Button
-                                text: qsTr("Open Login Page")
+                                text: Qt.platform.os === "windows" ? qsTr("Login on This Device") : qsTr("Open Login Page")
                                 onClicked: {
-                                    let loginUrl = Chiaki.psnLoginUrl();
-                                    if (loginUrl) {
-                                        Qt.openUrlExternally(loginUrl);
-                                        if(openurl) {
-                                            openurl.text = loginUrl.toString();
-                                            openurl.selectAll();
-                                            openurl.copy();
+                                    if (Qt.platform.os === "windows") {
+                                        Chiaki.startWebView2Login();
+                                    } else {
+                                        let loginUrl = Chiaki.psnLoginUrl();
+                                        if (loginUrl) {
+                                            Qt.openUrlExternally(loginUrl);
+                                            if(openurl) {
+                                                openurl.text = loginUrl.toString();
+                                                openurl.selectAll();
+                                                openurl.copy();
+                                            }
                                         }
                                     }
                                 }
