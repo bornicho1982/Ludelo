@@ -32,14 +32,6 @@ DialogView {
         if(Chiaki.settings.psnAccountId)
             accountId.text = Chiaki.settings.psnAccountId
     }
-    Connections {
-        target: Chiaki
-        function onPsnLoginAccountIdDone(id) {
-            if (id) {
-                accountId.text = id;
-            }
-        }
-    }
     onAccepted: {
         let psnId = onlineId.visible ? onlineId.text.trim() : accountId.text.trim();
         let registerOk = Chiaki.registerHost(hostField.text.trim(), psnId, pin.text.trim(), cpin.text.trim(), hostField.text.trim() == "255.255.255.255", consoleButtons.checkedButton.target, function(msg, ok, done) {
@@ -55,6 +47,14 @@ DialogView {
     }
 
     Item {
+        Connections {
+            target: Chiaki
+            function onPsnLoginAccountIdDone(id) {
+                if (id) {
+                    accountId.text = id;
+                }
+            }
+        }
         GridLayout {
             anchors {
                 top: parent.top

@@ -238,6 +238,9 @@ Item {
         remindDialog.open();
     }
 
+    function showOnboarding() {
+        stack.push(onboardingViewComponent);
+    }
 
     function showRegistDialog(host, ps5) {
         stack.push(registDialogComponent, {host: host, ps5: ps5});
@@ -316,6 +319,8 @@ Item {
             stack.replace(stack.get(0), streamViewComponent, {}, StackView.Immediate);
         else if (Chiaki.autoConnect)
             stack.replace(stack.get(0), autoConnectViewComponent, {}, StackView.Immediate);
+        else if (Qt.application.arguments.indexOf("--onboarding") !== -1 || !Chiaki.settings.psnAccountId)
+            stack.replace(stack.get(0), onboardingViewComponent, {}, StackView.Immediate);
     }
 
     StackView {
@@ -628,6 +633,24 @@ Item {
     Component {
         id: donationPromptDialogComponent
         DonationPromptDialog { }
+    }
+
+    Component {
+        id: onboardingViewComponent
+        OnboardingView {
+            onSkipRequested: {
+                if (stack.depth > 1)
+                    stack.pop();
+                else
+                    stack.replace(stack.get(0), mainViewComponent, {}, StackView.Immediate);
+            }
+            onLoginCompleted: function(id) {
+                if (stack.depth > 1)
+                    stack.pop();
+                else
+                    stack.replace(stack.get(0), mainViewComponent, {}, StackView.Immediate);
+            }
+        }
     }
 
     Connections {

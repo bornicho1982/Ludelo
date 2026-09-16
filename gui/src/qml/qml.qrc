@@ -3,6 +3,7 @@
     <file>qtquickcontrols2.conf</file>
     <file>Main.qml</file>
     <file>MainView.qml</file>
+    <file>LudeloTheme.qml</file>
     <file>CleanBlueBackground.qml</file>
     <file>StreamView.qml</file>
     <file>ControllerOverlay.qml</file>
@@ -36,6 +37,12 @@
     <file>QRCodeDialog.qml</file>
     <file>DonationPromptDialog.qml</file>
     <file alias="donation_prompt_phrases.json">../../../shared/donation_prompt_phrases.json</file>
+    <file>OnboardingView.qml</file>
+    <file>components/LButton.qml</file>
+    <file>components/LCard.qml</file>
+    <file>components/LPill.qml</file>
+    <file>components/LNavTab.qml</file>
+    <file>components/LTopBar.qml</file>
     <file>controls/Button.qml</file>
     <file>controls/CheckBox.qml</file>
     <file>controls/ComboBox.qml</file>

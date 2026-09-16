@@ -156,6 +156,8 @@ QmlBackend::QmlBackend(Settings *settings, QmlMainWindow *window, SteamworksWrap
     qmlRegisterSingletonInstance(uri, 1, 0, "ChiakiGames", games_backend);
     auto *donationManager = new DonationManager(settings, this);
     qmlRegisterSingletonInstance(uri, 1, 0, "DonationManager", donationManager);
+    qmlRegisterSingletonType(QUrl("qrc:/LudeloTheme.qml"), uri, 1, 0, "LudeloTheme");
+    qmlRegisterSingletonType(QUrl("qrc:/LudeloTheme.qml"), "Ludelo", 1, 0, "LudeloTheme");
 #ifdef CHIAKI_IS_MAC_APPSTORE
     // Mac App Store: arm the SKStoreReviewController prompt for the next active transition.
     auto *appReviewManager = new AppReviewManager(settings, donationManager, this);
