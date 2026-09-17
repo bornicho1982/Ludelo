@@ -54,8 +54,23 @@
   - Backup de versión anterior en `docs/notes/SettingsDialog.qml.bak`.
   - Compilación exitosa con CMake + MinGW64 (`Ludelo.exe`, `chiaki-unit`). Tests unitarios 100% pasados en CTest.
 
+- **Pantalla 05: Cuenta PSN & Biblioteca**:
+  - Maqueta generada con Stitch MCP y aprobada con correcciones (`docs/ux/mockups/05_account.png`).
+  - Creado `gui/src/qml/AccountView.qml` integrado en `Main.qml`, `MainView.qml` (clic en píldora PSN del top bar) y `SettingsDialog.qml` (botón "VIEW FULL ACCOUNT & GAMES"):
+    - Hero Card de perfil con avatar circular y halo de estado, ID de cuenta ofuscado (`xxxx••••yyyy`), región de tienda (`ES`), estado de seguridad `CONNECTED TO PSN • ENCRYPTED LOCAL STORAGE (DPAPI)`.
+    - Eliminados badges y claims inventados (removido badge falso "PlayStation Plus Premium", sin días de expiración ficticios ni firmware inventado).
+    - Acciones de autenticación: `[Y] RE-AUTHENTICATE` (dispara WebView2 nativo), `SYNC GAMES` y `[X] SIGN OUT` (purga credenciales y tokens cifrados de DPAPI).
+    - Grid de juegos instalados de consola (`Chiaki.getPsnInstalledGames()` y `ChiakiGames.getGameImage`) con filtros por plataforma (PS5 / PS4).
+    - Eliminados badges técnicos no reportados por juego ("60 FPS", "DualSense Haptics", "Fidelity Mode", "PS4 Pro Enhanced"); solo datos reales (carátula real, nombre, plataforma PS5/PS4, Title ID).
+    - Botón de cada juego renombrado honestamente a `CONECTAR` (inicia la sesión remota con la consola vinculada, sin prometer lanzamiento directo remoto).
+    - Tarjeta colapsable de fallback técnico `ADVANCED AUTHENTICATION & MANUAL NPSSO TOKEN` con campo protegido para entrada manual de token de 64 caracteres.
+    - Footer de atajos universales de gamepad (`[A] SELECT GAME`, `[B] BACK`, `[Y] RE-AUTHENTICATE`, `[X] SIGN OUT`).
+    - Registrada en `docs/ux/screen-inventory.md` la advertencia legal para capturas de marketing de tienda (usar carátulas genéricas/libres en la tienda pública).
+  - Compilación exitosa con CMake + MinGW64 (`Ludelo.exe`, `chiaki-unit`). Tests unitarios 100% pasados en CTest.
+
 - **Siguiente**:
-  - Pantalla 05: Cuenta PSN (`docs/ux/mockups/05_account.png` vía Stitch MCP).
+  - Pantalla 06: Cloud Play (`docs/ux/mockups/06_cloudplay.png` vía Stitch MCP).
+
 
 
 

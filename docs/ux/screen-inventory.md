@@ -6,7 +6,7 @@
 | 02 | Home / Consolas | ✅ Aprobada | `docs/ux/mockups/02_home.png` | ✅ Implementada |
 | 03 | Sesión / HUD | ✅ Aprobada | `docs/ux/mockups/03_hud.png` | ✅ Implementada |
 | 04 | Ajustes | ✅ Aprobada | `docs/ux/mockups/04_settings.png` | ✅ Implementada |
-| 05 | Cuenta PSN | ⏳ Pendiente | `docs/ux/mockups/05_account.png` | Pendiente |
+| 05 | Cuenta PSN | ✅ Aprobada | `docs/ux/mockups/05_account.png` | ✅ Implementada |
 | 06 | Cloud Play | ⏳ Pendiente | `docs/ux/mockups/06_cloudplay.png` | Pendiente |
 | 07 | RegistDialog / PIN | ⏳ Pendiente | `docs/ux/mockups/07_regist_pin.png` | Pendiente |
 | 08 | Diálogos menores + Toasts | ⏳ Pendiente | `docs/ux/mockups/08_dialogs_toasts.png` | Pendiente |
@@ -23,8 +23,12 @@
 
 ---
 
-## 04. Ajustes (Settings)
-- **Prompt Stitch**: `"Design a premium gamer desktop settings screen for 'Ludelo', a PlayStation remote play client. Aesthetic: Cyber-minimalist luxury, Steam Big Picture meets Razer Synapse. Deep obsidian dark theme #0B0E14, frosted glass card panels #151923 with subtle 1px border and indigo #6C5CE7 glow, vibrant mint #00F5D4 accents for active toggles and badges. Layout: Fullscreen 1920x1080 desktop interface. Header: Title 'SETTINGS' in bold Sora font, with category tabs: 'Video', 'Audio', 'Network', 'Controller', 'Account', 'General'. Quick bumper hints '[LB]' and '[RB]' for tab switching. Active tab content (Video & Stream): Clean grouped setting cards with section titles: 'Display & Resolution': Resolution dropdown (1080p, 720p, 540p), Target Framerate toggle (60 FPS / 30 FPS), Video Codec selector (H.265 / H.264), Hardware Decoder selection (D3D11VA, DXVA2, Software). 'Bitrate & Network': Streaming Bitrate slider (range 5 - 30 Mbps, current 15 Mbps), Stream Diagnostics HUD switch (toggle ON with mint #00F5D4 indicator). 'Gamepad & Feedback': Controller Haptics toggle, Trigger Resistance slider, Polling Rate readout (1000Hz DualSense). Bottom action footer: Controller navigation hints '[A] SELECT' '[B] BACK / CLOSE' '[X] RESET DEFAULTS'. Strict rules: No PlayStation trademark symbols or geometric glyphs (no triangle, circle, cross, square). No fake marketing engine claims (no 'Vortex'). Only real, clean, technical gaming parameters."`
-- **Maqueta Generada**: `docs/ux/mockups/04_settings.png`
-- **Estado**: Generada en Stitch MCP (Screen `ef5d78282b2a4bc4901c35955e9ba2e4`), pendiente de revisión del usuario.
+## 05. Cuenta PSN (PSN Account & Library Profile)
+- **Prompt Stitch**: `"Design 'Ludelo - Screen 05: PlayStation Network Account & Library Profile'. Target Device: Desktop 1920x1080 gamer UI. Brand: Ludelo remote client. Aesthetic: Cyber-minimalist luxury, Steam Big Picture meets Razer Synapse. Deep obsidian dark canvas #0B0E14, frosted glass card panels #151923/80 with crisp 1px border, electric indigo #6C5CE7 glow and highlights, vibrant mint #00F5D4 status pills, badges, and active accents. Sora and JetBrains Mono monospace telemetry typography. Strict exclusions: No PlayStation geometric trademark glyphs. No marketing engine buzzwords. Focus strictly on authentic technical specs, cryptographic local storage, and gaming library telemetry."`
+- **Maqueta Generada**: `docs/ux/mockups/05_account.png`
+- **Estado**: ✅ Aprobada e Implementada (`gui/src/qml/AccountView.qml`).
+- **NOTA DE COPYRIGHT / TIENDA (Steam & MS Store)**:
+  - Las carátulas de títulos comerciales (Ghost of Tsushima, Cyberpunk, etc.) provienen en tiempo de ejecución de la propia cuenta y consola del usuario autenticado vía API de PSN (uso privado legítimo).
+  - **Para capturas públicas de marketing / Steam Store**: Está estrictamente prohibido usar carátulas comerciales de terceros con copyright. Se deberán sustituir por carátulas genéricas ilustradas de demostración o títulos de dominio público/libres.
+
 

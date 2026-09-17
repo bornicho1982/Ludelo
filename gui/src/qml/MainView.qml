@@ -337,7 +337,9 @@ Pane {
                     }
 
                     onClicked: {
-                        if (Chiaki.settings.psnAuthToken) {
+                        if (typeof root.showAccountView === "function") {
+                            root.showAccountView();
+                        } else if (Chiaki.settings.psnAuthToken) {
                             Chiaki.refreshPsnToken();
                         } else {
                             root.showPSNTokenDialog("", false);

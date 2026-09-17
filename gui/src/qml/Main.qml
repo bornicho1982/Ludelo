@@ -284,6 +284,10 @@ Item {
         stack.push(profileDialogComponent)
     }
 
+    function showAccountView() {
+        stack.push(accountViewComponent);
+    }
+
     function showConsolePinDialog(consoleIndex) {
         stack.push(consolePinDialogComponent, {consoleIndex: consoleIndex});
     }
@@ -571,6 +575,11 @@ Item {
     Component {
         id: manualHostDialogComponent
         ManualHostDialog { }
+    }
+
+    Component {
+        id: accountViewComponent
+        AccountView {}
     }
 
     Component {

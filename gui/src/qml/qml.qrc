@@ -38,6 +38,7 @@
     <file>DonationPromptDialog.qml</file>
     <file alias="donation_prompt_phrases.json">../../../shared/donation_prompt_phrases.json</file>
     <file>OnboardingView.qml</file>
+    <file>AccountView.qml</file>
     <file>components/LButton.qml</file>
     <file>components/LCard.qml</file>
     <file>components/LPill.qml</file>

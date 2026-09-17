@@ -934,13 +934,30 @@ Rectangle {
                                             }
                                         }
 
-                                        LButton {
-                                            height: 38
-                                            implicitWidth: 240
-                                            customRadius: 8
-                                            variant: Chiaki.settings.psnAccountId ? "ghost" : "primary"
-                                            text: Chiaki.settings.psnAccountId ? qsTr("RE-AUTHENTICATE PSN") : qsTr("SIGN IN WITH PLAYSTATION")
-                                            onClicked: Chiaki.startWebView2Login()
+                                        RowLayout {
+                                            spacing: 12
+                                            LButton {
+                                                height: 38
+                                                implicitWidth: 200
+                                                customRadius: 8
+                                                variant: Chiaki.settings.psnAccountId ? "ghost" : "primary"
+                                                text: Chiaki.settings.psnAccountId ? qsTr("RE-AUTHENTICATE PSN") : qsTr("SIGN IN WITH PSN")
+                                                onClicked: Chiaki.startWebView2Login()
+                                            }
+
+                                            LButton {
+                                                height: 38
+                                                implicitWidth: 240
+                                                customRadius: 8
+                                                variant: "secondary"
+                                                text: qsTr("VIEW FULL ACCOUNT & GAMES")
+                                                onClicked: {
+                                                    dialog.close();
+                                                    if (typeof root !== "undefined" && root.showAccountView) {
+                                                        root.showAccountView();
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
