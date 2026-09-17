@@ -117,6 +117,7 @@ signals:
     void videoPresetChanged();
     void menuRequested();
     void directStreamChanged();
+    void userActivity();
 
 private:
     void init(Settings *settings, bool exit_app_on_stream_exit = false, SteamworksWrapper *steamworks = nullptr);
@@ -145,6 +146,7 @@ private:
     bool is_stream_window_adjustable = false;
     int dropped_frames_current = 0;
     bool going_full = false;
+    QTimer *mouse_hide_timer = nullptr;
     VideoMode video_mode = VideoMode::Normal;
     float zoom_factor = 0;
     VideoPreset video_preset = VideoPreset::HighQuality;

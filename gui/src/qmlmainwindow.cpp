@@ -543,6 +543,19 @@ void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit, Steam
     connect(qml_engine, &QQmlEngine::quit, this, &QWindow::close);
 
     backend = new QmlBackend(settings, this, steamworks);
+
+    mouse_hide_timer = new QTimer(this);
+    mouse_hide_timer->setSingleShot(true);
+    connect(mouse_hide_timer, &QTimer::timeout, this, [this]() {
+        if (has_video && !grab_input && this->settings->GetHideCursor()) {
+            setCursor(Qt::BlankCursor);
+        }
+    });
+
+    connect(ControllerManager::GetInstance(), &ControllerManager::ControllerMoved, this, [this]() {
+        emit userActivity();
+    });
+
     connect(backend, &QmlBackend::sessionChanged, this, [this, exit_app_on_stream_exit](StreamSession *s) {
         session = s;
         grab_input = 0;
@@ -1171,6 +1184,12 @@ bool QmlMainWindow::handleShortcut(QKeyEvent *event)
             else
                 normalTime();
             return true;
+        case Qt::Key_F10:
+            emit menuRequested();
+            return true;
+        case Qt::Key_Tab:
+            settings->SetShowStreamStats(!settings->GetShowStreamStats());
+            return true;
         default:
             break;
         }
@@ -1219,13 +1238,27 @@ bool QmlMainWindow::event(QEvent *event)
         if (static_cast<QMouseEvent*>(event)->source() != Qt::MouseEventNotSynthesized)
             return true;
         if (session && !grab_input) {
-            if (event->type() == QEvent::MouseMove)
+            setCursor(Qt::ArrowCursor);
+            if (settings->GetHideCursor() && mouse_hide_timer)
+                mouse_hide_timer->start(3000);
+            emit userActivity();
+
+            if (event->type() == QEvent::MouseMove) {
                 session->HandleMouseMoveEvent(static_cast<QMouseEvent*>(event), width(), height());
-            else if (event->type() == QEvent::MouseButtonPress)
-                session->HandleMousePressEvent(static_cast<QMouseEvent*>(event));
-            else if (event->type() == QEvent::MouseButtonRelease)
-                session->HandleMouseReleaseEvent(static_cast<QMouseEvent*>(event));
-            return true;
+                QGuiApplication::sendEvent(quick_window, event);
+                return true;
+            } else {
+                QMouseEvent *mouse_event = static_cast<QMouseEvent*>(event);
+                QGuiApplication::sendEvent(quick_window, event);
+                if (event->isAccepted()) {
+                    return true;
+                }
+                if (event->type() == QEvent::MouseButtonPress)
+                    session->HandleMousePressEvent(mouse_event);
+                else
+                    session->HandleMouseReleaseEvent(mouse_event);
+                return true;
+            }
         }
         QGuiApplication::sendEvent(quick_window, event);
         break;

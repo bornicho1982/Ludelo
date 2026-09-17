@@ -4,7 +4,7 @@
 |---|---|---|---|---|
 | 01 | Onboarding | ✅ Aprobada | `docs/ux/mockups/01_onboarding.png` | ✅ Implementada |
 | 02 | Home / Consolas | ✅ Aprobada | `docs/ux/mockups/02_home.png` | ✅ Implementada |
-| 03 | Sesión / HUD | ⏳ Pendiente | `docs/ux/mockups/03_hud.png` | Pendiente |
+| 03 | Sesión / HUD | ✅ Aprobada | `docs/ux/mockups/03_hud.png` | ✅ Implementada |
 | 04 | Ajustes | ⏳ Pendiente | `docs/ux/mockups/04_settings.png` | Pendiente |
 | 05 | Cuenta PSN | ⏳ Pendiente | `docs/ux/mockups/05_account.png` | Pendiente |
 | 06 | Cloud Play | ⏳ Pendiente | `docs/ux/mockups/06_cloudplay.png` | Pendiente |

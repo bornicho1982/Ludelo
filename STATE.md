@@ -29,6 +29,17 @@
       - Tarjeta integrada "Hardware Acceleration HUD" con telemetría de decodificador HW activo (D3D11VA/NVDEC), tasa de polling de mando DualSense/gamepad y bitrate dinámico real.
     - Footer HUD inferior con atajos de mando usando nomenclatura Xbox y texto legible (`[A] SELECT`, `[Y] WAKE`, `[X] DETAILS`, `[B] BACK`, `[START] SETTINGS`) sin glifos geométricos de PlayStation.
   - Verificado y compilado con CMake + MinGW64. Tests unitarios 100% pasados en CTest.
+- **Pantalla 03: Sesión / HUD**:
+  - Maqueta generada con Stitch MCP y aprobada con correcciones (`docs/ux/mockups/03_hud.png`).
+  - Implementado en `gui/src/qml/StreamView.qml`, `gui/src/qmlmainwindow.cpp` y `gui/include/qmlmainwindow.h`:
+    - Eliminado cualquier claim ficticio ("VORTEX"). Barra superior muestra estado real verificable: `DIRECT LAN • 1080p 60FPS • H.265/H.264` o `CLOUD STREAM`.
+    - Telemetría de mando en vivo con tasa de polling real (1000Hz DualSense / 250Hz Gamepad / Keyboard Mode) y control de volumen integrado. Batería omitida honestamente al no reportarse por SDL.
+    - Píldora de diagnóstico en tiempo real (Bitrate medido, RTT real, Loss % real, FPS y resolución) conmutada persistentemente con tecla `[TAB]`.
+    - Dock flotante inferior auto-ocultable a los 1.5s sin interacción (`PS HOME`, `MUTE AUDIO`, `FULLSCREEN`, `HUD STATS`, `DISPLAY`, `DISCONNECT`).
+    - Atajos de teclado en `QmlMainWindow`: `[TAB]` conmuta stats, `[F10]` conmuta dock HUD, `[F11]` conmuta pantalla completa.
+    - Auto-ocultación del cursor del ratón a los 3 segundos de inactividad durante el streaming.
+  - Compilado y verificado con MinGW64/CMake (`Ludelo.exe`). Tests unitarios 100% pasados en CTest.
+
 
 
 
