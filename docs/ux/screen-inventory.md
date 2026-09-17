@@ -7,7 +7,7 @@
 | 03 | Sesión / HUD | ✅ Aprobada | `docs/ux/mockups/03_hud.png` | ✅ Implementada |
 | 04 | Ajustes | ✅ Aprobada | `docs/ux/mockups/04_settings.png` | ✅ Implementada |
 | 05 | Cuenta PSN | ✅ Aprobada | `docs/ux/mockups/05_account.png` | ✅ Implementada |
-| 06 | Cloud Play | ⏳ Pendiente | `docs/ux/mockups/06_cloudplay.png` | Pendiente |
+| 06 | Cloud Play | ✅ Aprobada (con correcciones) | `docs/ux/mockups/06_cloudplay.png` (privada, no commitear) | ✅ Implementada |
 | 07 | RegistDialog / PIN | ⏳ Pendiente | `docs/ux/mockups/07_regist_pin.png` | Pendiente |
 | 08 | Diálogos menores + Toasts | ⏳ Pendiente | `docs/ux/mockups/08_dialogs_toasts.png` | Pendiente |
 
@@ -23,12 +23,16 @@
 
 ---
 
-## 05. Cuenta PSN (PSN Account & Library Profile)
-- **Prompt Stitch**: `"Design 'Ludelo - Screen 05: PlayStation Network Account & Library Profile'. Target Device: Desktop 1920x1080 gamer UI. Brand: Ludelo remote client. Aesthetic: Cyber-minimalist luxury, Steam Big Picture meets Razer Synapse. Deep obsidian dark canvas #0B0E14, frosted glass card panels #151923/80 with crisp 1px border, electric indigo #6C5CE7 glow and highlights, vibrant mint #00F5D4 status pills, badges, and active accents. Sora and JetBrains Mono monospace telemetry typography. Strict exclusions: No PlayStation geometric trademark glyphs. No marketing engine buzzwords. Focus strictly on authentic technical specs, cryptographic local storage, and gaming library telemetry."`
-- **Maqueta Generada**: `docs/ux/mockups/05_account.png`
-- **Estado**: ✅ Aprobada e Implementada (`gui/src/qml/AccountView.qml`).
-- **NOTA DE COPYRIGHT / TIENDA (Steam & MS Store)**:
-  - Las carátulas de títulos comerciales (Ghost of Tsushima, Cyberpunk, etc.) provienen en tiempo de ejecución de la propia cuenta y consola del usuario autenticado vía API de PSN (uso privado legítimo).
-  - **Para capturas públicas de marketing / Steam Store**: Está estrictamente prohibido usar carátulas comerciales de terceros con copyright. Se deberán sustituir por carátulas genéricas ilustradas de demostración o títulos de dominio público/libres.
+## 06. Cloud Play (PlayStation Cloud Gaming Portal)
+- **Prompt Stitch**: `"Design 'Ludelo - Screen 06: PlayStation Cloud Gaming Portal (Cloud Play)'. Aesthetic: Cyber-minimalist luxury, blending Steam Big Picture with GeForce NOW and Razer Synapse precision. Deep obsidian dark canvas #0B0E14, frosted glass card panels #151923 with crisp 1px borders, electric indigo #6C5CE7 ambient glows, and vibrant mint #00F5D4 accents for playable cloud indicators and status pills. Desktop 1920x1080 layout. Header & Sub-Bar: Brandmark 'LUDELO' with pill badge 'CLOUD STREAMING v2.4'. Search bar. Telemetry pills: Datacenter & PS Plus Premium cloud notice. Filter bar: [ALL GAMES], [STREAMABLE NOW], [OWNED], [FAVORITES], Sort dropdown. Hero Cloud Spotlight: Wide cinematic banner for featured title with '[A] LAUNCH CLOUD STREAM'. Cloud Games Catalog Grid: Multi-column grid of cloud game cover cards with tags and '[A] PLAY' action. Bottom Controller Footer: Universal controller buttons [A], [B], [X], [Y], [START]."`
+- **Maqueta Generada**: `docs/ux/mockups/06_cloudplay.png` (mantenida en local/privado, ignorada en git por contener arte con copyright comercial).
+- **Estado**: ✅ Aprobada con correcciones de honestidad e Implementada (`gui/src/qml/CloudPlayView.qml`, `gui/src/qml/CloudGameCard.qml`).
+- **Pautas y Correcciones Aplicadas**:
+  - Cero claims ficticios: eliminados "TIER 1 LOW-LATENCY EDGE", "Instant Edge Launch", nodos falsos ("Frankfurt Node 01"), "Adaptive Bitrate 45 Mbps" por juego y badges "1080p 60FPS HDR10" ficticios.
+  - Telemetría real en Top Bar y Hero: Región resuelta de catálogo (`es-ES`), validez de caché de catálogo, y total de títulos reales de `Chiaki.cloudCatalog`.
+  - Manejo honesto de falta de suscripción PS Plus Premium: títulos no reproducibles muestran badge "REQUIRES PS PLUS" y botón `[A] PS PLUS` que abre el navegador externo a la web oficial de PlayStation (`https://www.playstation.com/ps-plus`), sin cobrar ni engañar dentro de la app.
+  - Carátulas dinámicas cargadas únicamente desde la cuenta y catálogo PSN del usuario autenticado vía `getImageUrl()`. Prohibido empaquetar arte comercial en el repo.
+  - Cero glifos PlayStation: controles universales y nomenclatura Xbox (`[A]`, `[B]`, `[X]`, `[Y]`, `[START]`).
+
 
 

@@ -112,3 +112,6 @@ build-output-appstore-final/
 docs/handoff/
 docs/notes/*
 !docs/notes/README.md
+
+# Private UX mockups containing third-party commercial game art (never commit to public repo)
+docs/ux/mockups/06_cloudplay.png

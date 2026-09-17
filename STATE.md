@@ -68,8 +68,22 @@
     - Registrada en `docs/ux/screen-inventory.md` la advertencia legal para capturas de marketing de tienda (usar carátulas genéricas/libres en la tienda pública).
   - Compilación exitosa con CMake + MinGW64 (`Ludelo.exe`, `chiaki-unit`). Tests unitarios 100% pasados en CTest.
 
+- **Pantalla 06: Cloud Play**:
+  - Maqueta generada con Stitch MCP y aprobada con correcciones de honestidad y copyright comercial.
+  - Maqueta `docs/ux/mockups/06_cloudplay.png` preservada en local e ignorada en `.gitignore` por contener arte comercial con copyright. Prohibido empaquetar carátulas de Sony en el repo.
+  - Implementado `gui/src/qml/CloudPlayView.qml` y `gui/src/qml/CloudGameCard.qml` con `LudeloTheme` y suite `L*`:
+    - Eliminados claims ficticios ("TIER 1 LOW-LATENCY EDGE", "Instant Edge Launch", nodos falsos "Frankfurt Node 01", "Adaptive Bitrate 45 Mbps" por juego y badges "1080p 60FPS HDR10" inventados).
+    - Header superior con breadcrumb, telemetría real (región detectada `es-ES`, total de títulos en catálogo, estado de caché), buscador reactivo neón con atajo `[Y]` y botón de refresco `[F5]`.
+    - Fila de filtros con chips interactivos (`[ALL GAMES]`, `[STREAMABLE]`, `[OWNED]`, `[FAVORITES]`) y selector de ordenación cíclico (`[SORT: PLAYABLE FIRST]`, `A → Z`, `Z → A`).
+    - Banners honestos de advertencia técnica: aviso claro si falta token NPSSO con acceso directo a ajustes, y aviso de región de fallback si cloud no está soportado nativamente en el país de la cuenta.
+    - Hero Spotlight cinemático: destaca el juego seleccionado con imagen atenuada, badges honestos (región resuelta, plataforma, validez de caché), botón primario `[A] LAUNCH CLOUD STREAM` si es jugable o `[A] REQUIRES PS PLUS` si requiere suscripción/compra externa, y alternancia de favoritos `[X] FAVORITE`.
+    - Manejo ético y legal de suscripción: los títulos no streamables muestran badge "REQUIRES PS PLUS" y abren la web oficial `https://www.playstation.com/ps-plus` o enlace del store en el navegador externo con `Qt.openUrlExternally` — sin engañar ni cobrar dentro de la app.
+    - Grid adaptativo `GridView` con foco por teclado y mando, navegación por flechas y scroll suave.
+    - Footer HUD inferior con atajos universales (`[A] PLAY / STORE`, `[B] BACK`, `[X] FAVORITE`, `[Y] SEARCH`, `[START] SORT`) sin glifos geométricos de PlayStation.
+  - Compilación exitosa con CMake + MinGW64 (`Ludelo.exe`, `chiaki-unit`). Tests unitarios 100% pasados en CTest.
+
 - **Siguiente**:
-  - Pantalla 06: Cloud Play (`docs/ux/mockups/06_cloudplay.png` vía Stitch MCP).
+  - Pantalla 07: RegistDialog / PIN (Vinculación de Consola por PIN de 8 dígitos).
 
 
 
