@@ -38,7 +38,24 @@
     - Dock flotante inferior auto-ocultable a los 1.5s sin interacción (`PS HOME`, `MUTE AUDIO`, `FULLSCREEN`, `HUD STATS`, `DISPLAY`, `DISCONNECT`).
     - Atajos de teclado en `QmlMainWindow`: `[TAB]` conmuta stats, `[F10]` conmuta dock HUD, `[F11]` conmuta pantalla completa.
     - Auto-ocultación del cursor del ratón a los 3 segundos de inactividad durante el streaming.
-  - Compilado y verificado con MinGW64/CMake (`Ludelo.exe`). Tests unitarios 100% pasados en CTest.
+- **Pantalla 04: Ajustes (Settings)**:
+  - Maqueta generada con Stitch MCP y aprobada con correcciones (`docs/ux/mockups/04_settings.png`).
+  - Creados nuevos componentes reutilizables `LToggle.qml` y `LSlider.qml` en `gui/src/qml/components/` registrados en `qml.qrc`.
+  - Rediseñado completamente `gui/src/qml/SettingsDialog.qml` sobre `LudeloTheme` y componentes `L*`:
+    - Eliminados textos publicitarios o claims inventados ("Ultra Low Latency", "Lossless F2P", "AUTOTUNE STREAM", "Firmware 9.00").
+    - Navegación superior por categorías (`Video & Stream`, `Audio`, `Network`, `Controller`, `Account`, `General`) con atajos de navegación por botones bumper `[LB]` y `[RB]` y teclas `PageUp`/`PageDown`.
+    - Selector de perfil y consolas objetivo (PS5 / PS4) con configuración granular de resoluciones (1080p/720p/540p), tasa de refresco (60 FPS/30 FPS), códec (H.265/H.264) y decodificador por hardware (D3D11VA/NVDEC).
+    - Toggle de HDR con validación real: solo activo cuando se selecciona PS5 con códec H.265 (HEVC), desactivado con nota "HDR disponible en streams H.265 compatibles" en H.264.
+    - Slider de bitrate de 5 a 30 Mbps con marcas claras (`Eco`, `Standard`, `High Quality / Recommended for LAN`).
+    - Panel lateral de telemetría y diagnóstico honesto: valores de RTT, Decoder Time, Jitter y Packet Loss leídos en vivo de `Chiaki.session` si hay sesión activa; en reposo sin conexión muestran `"--"` en gris tenue.
+    - Botón y atajo `[X] RESET DEFAULTS` funcional conectado a restablecimiento directo de parámetros de fábrica en `Chiaki.settings` con feedback mediante toast.
+    - Footer de atajos de gamepad universales (`[A] SELECT`, `[B] BACK / CLOSE`, `[X] RESET DEFAULTS`).
+    - Tipografía exclusivamente `Inter` y `JetBrains Mono`.
+  - Backup de versión anterior en `docs/notes/SettingsDialog.qml.bak`.
+  - Compilación exitosa con CMake + MinGW64 (`Ludelo.exe`, `chiaki-unit`). Tests unitarios 100% pasados en CTest.
+
+- **Siguiente**:
+  - Pantalla 05: Cuenta PSN (`docs/ux/mockups/05_account.png` vía Stitch MCP).
 
 
 

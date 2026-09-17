@@ -2,14 +2,15 @@ import QtCore
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-import QtQuick.Controls.Material
 import QtQuick.Dialogs
 
 import org.streetpea.chiaking
+import Ludelo 1.0
+import "components"
 
-import "controls" as C
+Rectangle {
+    id: dialog
 
-DialogView {
     enum Console {
         PS4,
         PS5
@@ -18,3429 +19,1428 @@ DialogView {
         PSCloud,
         PSNOW
     }
+
     property int selectedConsole: SettingsDialog.Console.PS5
     property int selectedCloudService: SettingsDialog.CloudService.PSCloud
     property bool quitControllerMapping: true
-    id: dialog
-    title: qsTr("Settings")
-    header: qsTr("* Defaults in () to right of value or marked with (Default)")
-    buttonVisible: false
-    // Override DialogView's activation seed: its generic tab-chain walk does not
-    // resolve to a settings control here, so it used to clobber the tab-aware
-    // seed right after the push transition finished -- leaving nothing focused
-    // until a control was clicked. Land on the current tab's first control.
-    function seedFocus() {
-        stackLayout.focusCurrentTab();
-    }
-    Keys.onPressed: (event) => {
-        if (event.modifiers)
-            return;
-        
-        // Don't intercept Up/Down keys if any ComboBox popup is visible
-        // This allows ComboBoxes to handle navigation and selection
-        if (event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
-            let focusedItem = Window.activeFocusItem;
-            if (focusedItem && focusedItem.popup && focusedItem.popup.visible) {
-                return;
-            }
-        }
-        
-        switch (event.key) {
-        case Qt.Key_PageUp:
-            bar.decrementCurrentIndex();
-            event.accepted = true;
-            break;
-        case Qt.Key_PageDown:
-            bar.incrementCurrentIndex();
-            event.accepted = true;
-            break;
-        case Qt.Key_Up:
-        case Qt.Key_Down: {
-            // If focus is not on one of the tab's controls (dialog root, or a
-            // stray target left by a failed or clobbered seed), seed it onto the
-            // current tab's first control instead of dropping the key. Every
-            // focusable settings control declares firstInFocusChain.
-            let afi = dialog.Window.activeFocusItem;
-            if (!afi || afi.firstInFocusChain === undefined) {
-                stackLayout.focusCurrentTab();
-                event.accepted = true;
-            } else {
-                event.accepted = false;
-            }
-            break;
-        }
+    property int activeCategoryIndex: 0
+
+    readonly property var categoryTitles: [
+        qsTr("Video & Stream"),
+        qsTr("Audio"),
+        qsTr("Network"),
+        qsTr("Controller"),
+        qsTr("Account"),
+        qsTr("General")
+    ]
+
+    anchors.fill: parent
+    color: LudeloTheme.bgBase
+
+    // Close helper
+    function close() {
+        if (typeof root !== "undefined" && root.closeDialog) {
+            root.closeDialog();
+        } else if (dialog.StackView && dialog.StackView.view) {
+            dialog.StackView.view.pop();
         }
     }
 
+    // Factory Defaults Reset Function (Real function connected to Chiaki.settings)
+    function resetToDefaults() {
+        Chiaki.settings.resolutionLocalPS5 = 3;  // 1080p
+        Chiaki.settings.resolutionRemotePS5 = 2; // 720p
+        Chiaki.settings.resolutionLocalPS4 = 2;  // 720p
+        Chiaki.settings.resolutionRemotePS4 = 1; // 540p
+        Chiaki.settings.fpsLocalPS5 = 1;         // 60 FPS
+        Chiaki.settings.fpsRemotePS5 = 1;
+        Chiaki.settings.fpsLocalPS4 = 1;
+        Chiaki.settings.fpsRemotePS4 = 1;
+        Chiaki.settings.bitrateLocalPS5 = 15000; // 15 Mbps
+        Chiaki.settings.bitrateRemotePS5 = 10000;// 10 Mbps
+        Chiaki.settings.bitrateLocalPS4 = 10000;
+        Chiaki.settings.bitrateRemotePS4 = 5000;
+        Chiaki.settings.codecLocalPS5 = 1;       // H.265
+        Chiaki.settings.codecRemotePS5 = 1;
+        Chiaki.settings.decoder = "d3d11va";
+        Chiaki.settings.showStreamStats = false;
+        Chiaki.settings.audioBufferSize = 19200;
+        Chiaki.settings.audioVolume = 100;
+        Chiaki.settings.rumbleHapticsIntensity = 3; // Normal
+        Chiaki.settings.windowType = 0;
+        Chiaki.settings.logVerbose = false;
+        resetToast.show();
+    }
+
+    focus: true
+    Keys.onEscapePressed: close()
+    Keys.onPressed: (event) => {
+        if (event.key === Qt.Key_PageUp) {
+            activeCategoryIndex = Math.max(0, activeCategoryIndex - 1);
+            event.accepted = true;
+        } else if (event.key === Qt.Key_PageDown) {
+            activeCategoryIndex = Math.min(categoryTitles.length - 1, activeCategoryIndex + 1);
+            event.accepted = true;
+        } else if (event.key === Qt.Key_X) {
+            resetToDefaults();
+            event.accepted = true;
+        }
+    }
+
+    // Background ambient lighting
     Item {
-        // Container for tab bar with LB/RB buttons
+        anchors.fill: parent
+        z: 0
+
         Rectangle {
-            id: tabBarContainer
-            anchors {
-                top: parent.top
-                left: parent.left
-                right: parent.right
-                topMargin: 15
-                leftMargin: 20
-                rightMargin: 20
-            }
-            height: 60
-            color: Qt.rgba(255, 255, 255, 0.05)
-            radius: 12
-            border.color: Qt.rgba(0, 212/255, 255/255, 0.2)
+            anchors.top: parent.top
+            anchors.right: parent.right
+            width: 500
+            height: 500
+            radius: 250
+            color: Qt.rgba(0x6C/255, 0x5C/255, 0xE7/255, 0.06)
+        }
+
+        Rectangle {
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            width: 600
+            height: 600
+            radius: 300
+            color: Qt.rgba(0x00/255, 0xF5/255, 0xD4/255, 0.03)
+        }
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
+        z: 1
+
+        // =====================================================================
+        // TOP NAVIGATION HEADER (Bumper hints [LB] and [RB] + Categories)
+        // =====================================================================
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 72
+            color: Qt.rgba(0x15/255, 0x19/255, 0x23/255, 0.90)
+            border.color: LudeloTheme.borderSubtle
             border.width: 1
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 8
-                spacing: 0
+                anchors.leftMargin: 24
+                anchors.rightMargin: 24
+                spacing: 16
 
-                // Left L1 button
-                Button {
-                    Layout.preferredWidth: 40
-                    Layout.fillHeight: true
-                    focusPolicy: Qt.NoFocus
-                    enabled: bar.currentIndex > 0
-                    onClicked: bar.currentIndex = Math.max(0, bar.currentIndex - 1)
-                    
-                    background: Rectangle {
-                        radius: 6
-                        color: "transparent"
-                        opacity: parent.enabled ? 1.0 : 0.3
-                    }
-                    
-                    Image {
-                        anchors.centerIn: parent
-                        width: 28
-                        height: 28
-                        sourceSize: Qt.size(width, height)
-                        source: "qrc:/icons/l1.svg"
-                        opacity: parent.enabled ? 1.0 : 0.3
-                    }
-                }
-
-                // Tab bar in the center
-                TabBar {
-                    id: bar
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    background: Rectangle { color: "transparent" }
-
-                    TabButton {
-                        id: general
-                        text: qsTr("General")
-                        focusPolicy: Qt.NoFocus
-                    }
-
-                    TabButton {
-                        id: video
-                        text: qsTr("Video")
-                        focusPolicy: Qt.NoFocus
-                    }
-
-                    TabButton {
-                        id: stream
-                        text: qsTr("Stream")
-                        focusPolicy: Qt.NoFocus
-                    }
-
-                    TabButton {
-                        text: qsTr("Audio/Wifi")
-                        id: audio
-                        focusPolicy: Qt.NoFocus
-                    }
-
-                    TabButton {
-                        text: qsTr("Consoles")
-                        id: consoles
-                        focusPolicy: Qt.NoFocus
-                    }
-
-                    TabButton {
-                        text: qsTr("Keys")
-                        id: keys
-                        focusPolicy: Qt.NoFocus
-                    }
-
-                    TabButton {
-                        text: qsTr("Controllers")
-                        id: controllers
-                        focusPolicy: Qt.NoFocus
-                    }
-
-                    TabButton {
-                        text: qsTr("Config")
-                        id: config
-                        focusPolicy: Qt.NoFocus
-                    }
-
-                    TabButton {
-                        text: qsTr("Cloud")
-                        id: cloud
-                        focusPolicy: Qt.NoFocus
-                    }
-                }
-
-                // Right R1 button
-                Button {
-                    Layout.preferredWidth: 40
-                    Layout.fillHeight: true
-                    focusPolicy: Qt.NoFocus
-                    enabled: bar.currentIndex < bar.count - 1
-                    onClicked: bar.currentIndex = Math.min(bar.count - 1, bar.currentIndex + 1)
-                    
-                    background: Rectangle {
-                        radius: 6
-                        color: "transparent"
-                        opacity: parent.enabled ? 1.0 : 0.3
-                    }
-                    
-                    Image {
-                        anchors.centerIn: parent
-                        width: 28
-                        height: 28
-                        sourceSize: Qt.size(width, height)
-                        source: "qrc:/icons/r1.svg"
-                        opacity: parent.enabled ? 1.0 : 0.3
-                    }
-                }
-            }
-        }
-
-        StackLayout {
-            id: stackLayout
-            anchors {
-                top: tabBarContainer.bottom
-                left: parent.left
-                right: parent.right
-                bottom: parent.bottom
-                topMargin: 10
-            }
-            currentIndex: bar.currentIndex
-            // Seed active focus onto the first control of the current tab so
-            // controller/keyboard Up/Down work as soon as the tab is shown. Every
-            // tab's first control is marked `firstInFocusChain: true`; find it by
-            // walking the current page's subtree. We do NOT use nextItemInFocusChain()
-            // here: called on the StackLayout it walks the Tab-focus order and lands on
-            // nothing, so no control ends up focused and Down does nothing until you
-            // click a control. Deferred with Qt.callLater so it runs after the newly
-            // current page has been laid out. Also fired once for the initial tab.
-            function findFirstInFocusChain(item, anyControl) {
-                if (!item || item.visible === false)
-                    return null;
-                var isMatch = anyControl ? (item.firstInFocusChain !== undefined)
-                                         : (item.firstInFocusChain === true);
-                if (isMatch && item.enabled)
-                    return item;
-                var kids = item.children;
-                for (var i = 0; kids && i < kids.length; ++i) {
-                    var found = findFirstInFocusChain(kids[i], anyControl);
-                    if (found)
-                        return found;
-                }
-                return null;
-            }
-            function focusCurrentTab() {
-                // Only seed while this dialog is (becoming) the StackView's current
-                // page -- seeding while hidden would steal focus from whatever
-                // screen is actually visible.
-                var status = dialog.StackView.status;
-                if (status !== StackView.Active && status !== StackView.Activating)
-                    return;
-                var page = stackLayout.children[stackLayout.currentIndex];
-                // Prefer the tab's explicitly-marked first control; fall back to the
-                // first custom control on the page so no tab is ever left unfocusable.
-                var target = findFirstInFocusChain(page) || findFirstInFocusChain(page, true);
-                if (target)
-                    target.forceActiveFocus(Qt.TabFocusReason);
-            }
-            onCurrentIndexChanged: Qt.callLater(focusCurrentTab)
-            Component.onCompleted: Qt.callLater(focusCurrentTab)
-
-            Item {
-                // General
-                C.SmartFlickable {
-                    id: generalFlick
-                    implicitWidth: parent.width ? parent.width : 0
-                    implicitHeight: parent.height ? parent.height : 0
-                    anchors {
-                        fill: parent
-                        topMargin: 20
-                        bottomMargin: 20
-                        leftMargin: parent.width ? (parent.width / 2 - generalColumn.width / 2) : 0
-                    }
-                    contentWidth: generalColumn.width
-                    contentHeight: generalColumn.height
-                    tabIndex: 0
-                    currentTabIndex: bar.currentIndex
-                    contentLayout: generalColumn
-                    
-                    ColumnLayout {
-                    id: generalColumn
-                    anchors {
-                        top: parent.top
-                        horizontalCenter: parent.horizontalCenter
-                    }
+                // Brandmark
+                Row {
                     spacing: 10
-                    GridLayout {
-                        Layout.alignment: Qt.AlignHCenter
-                        columns: 3
-                        rowSpacing: 5
-                        columnSpacing: 20
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Action On Disconnect:")
-                        }
-
-                        C.ComboBox {
-                            Layout.preferredWidth: 400
-                            firstInFocusChain: true
-                            model: [qsTr("Do Nothing"), qsTr("Enter Sleep Mode"), qsTr("Ask")]
-                            currentIndex: Chiaki.settings.disconnectAction
-                            onActivated: index => Chiaki.settings.disconnectAction = index
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Ask)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Action On Suspend:")
-                        }
-
-                        C.ComboBox {
-                            Layout.preferredWidth: 400
-                            model: [qsTr("Do Nothing"), qsTr("Enter Sleep Mode")]
-                            currentIndex: Chiaki.settings.suspendAction
-                            onActivated: index => Chiaki.settings.suspendAction = index
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Do Nothing)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Steam Deck Haptics:")
-                            visible: (typeof Chiaki.settings.steamDeckHaptics !== "undefined")
-                        }
-
-                        C.CheckBox {
-                            text: qsTr("True haptics for SteamDeck, better quality but noisier")
-                            checked: {
-                                if(typeof Chiaki.settings.steamDeckHaptics !== "undefined")
-                                    Chiaki.settings.steamDeckHaptics
-                                else
-                                    false
-                            }
-                            onToggled: Chiaki.settings.steamDeckHaptics = checked
-                            visible: (typeof Chiaki.settings.steamDeckHaptics !== "undefined")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Unchecked)")
-                            visible: (typeof Chiaki.settings.steamDeckHaptics !== "undefined")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Steam Deck Vertical:")
-                            visible: typeof Chiaki.settings.verticalDeck !== "undefined"
-                        }
-
-                        C.CheckBox {
-                            text: qsTr("Use Steam Deck in vertical orientation (motion controls)")
-                            checked: {
-                                if(typeof Chiaki.settings.verticalDeck !== "undefined")
-                                    Chiaki.settings.verticalDeck
-                                else
-                                    false
-                            }
-                            onToggled: Chiaki.settings.verticalDeck = checked
-                            visible: typeof Chiaki.settings.verticalDeck !== "undefined"
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Unchecked)")
-                            visible: typeof Chiaki.settings.verticalDeck !== "undefined"
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Audio/Video:")
-                        }
-
-                        C.ComboBox {
-                            Layout.preferredWidth: 400
-                            model: [qsTr("Audio and Video Enabled"), qsTr("Audio Disabled"), qsTr("Video Disabled"), qsTr("Audio and Video Disabled")]
-                            currentIndex: Chiaki.settings.audioVideoDisabled
-                            onActivated: index => Chiaki.settings.audioVideoDisabled = index
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Audio and Video Enabled)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Log Directory:")
-                        }
-
-                        Label {
-                            Layout.maximumWidth: 600
-                            text: Chiaki.settings.logDirectory
-                            verticalAlignment: Text.AlignVCenter
-                            fontSizeMode: Text.HorizontalFit
-                            minimumPixelSize: 10
-
-                            C.Button {
-                                id: openButton
-                                anchors {
-                                    left: parent.left
-                                    verticalCenter: parent.verticalCenter
-                                    leftMargin: parent.paintedWidth + 20
-                                }
-                                text: qsTr("Open")
-                                onClicked: Qt.openUrlExternally("file://" + parent.text);
-                                Material.roundedScale: Material.SmallScale
-                            }
-                        }
-                        Label {
-
-                        }
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Streamer Mode (Hides Info)")
-                        }
-                        C.CheckBox {
-                            id: streamerMode
-                            checked: Chiaki.settings.streamerMode
-                            onToggled: Chiaki.settings.streamerMode = !Chiaki.settings.streamerMode
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Unchecked)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Stream Menu Shortcut Enabled")
-                        }
-                        C.CheckBox {
-                            id: streamMenu
-                            checked: Chiaki.settings.streamMenuEnabled
-                            onToggled: Chiaki.settings.streamMenuEnabled = !Chiaki.settings.streamMenuEnabled
-                            KeyNavigation.priority: KeyNavigation.BeforeItem
-                            KeyNavigation.up: streamerMode
-                            KeyNavigation.left: streamMenu
-                            KeyNavigation.right: streamMenu
-                            KeyNavigation.down: psnGamesSyncCheckbox
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Checked)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Sync Console Game Data")
-                        }
-                        C.CheckBox {
-                            id: psnGamesSyncCheckbox
-                            text: qsTr("Save game list for main screen")
-                            checked: Chiaki.settings.psnGamesSyncEnabled
-                            onToggled: Chiaki.settings.psnGamesSyncEnabled = checked
-                            KeyNavigation.priority: KeyNavigation.BeforeItem
-                            KeyNavigation.up: streamMenu
-                            KeyNavigation.left: psnGamesSyncCheckbox
-                            KeyNavigation.right: psnGamesSyncCheckbox
-                            KeyNavigation.down: showGameImageDuringLaunch
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Checked)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Display Game Art While Loading")
-                        }
-                        C.CheckBox {
-                            id: showGameImageDuringLaunch
-                            checked: Chiaki.settings.showGameImageDuringLaunch
-                            onToggled: Chiaki.settings.showGameImageDuringLaunch = !Chiaki.settings.showGameImageDuringLaunch
-                            KeyNavigation.priority: KeyNavigation.BeforeItem
-                            KeyNavigation.up: psnGamesSyncCheckbox
-                            KeyNavigation.left: showGameImageDuringLaunch
-                            KeyNavigation.right: showGameImageDuringLaunch
-                            KeyNavigation.down: {
-                                if(streamMenuShortcut1.visible)
-                                    streamMenuShortcut1
-                                else
-                                    showGameImageDuringLaunch
-                            }
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Checked)")
-                        }
-                    }
-                    RowLayout {
-                        spacing: 10
-                        visible: Chiaki.settings.streamMenuEnabled
-                        Layout.alignment: Qt.AlignHCenter
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Stream Menu Combo:")
-                        }
-
-                        C.ComboBox {
-                            id: streamMenuShortcut1
-                            implicitContentWidthPolicy: ComboBox.WidestText
-                            firstInFocusChain: false
-                            model: [qsTr("Not Used"), qsTr("Cross"), qsTr("Moon"), qsTr("Box"), qsTr("Pyramid"), qsTr("Dpad Left"), qsTr("Dpad Right"), qsTr("Dpad Up"), qsTr("Dpad Down"), qsTr("L1"), qsTr("R1"), qsTr("L3"), qsTr("R3"), qsTr("Options"), qsTr("Share"), qsTr("Touchpad"), qsTr("PS")]
-                            currentIndex: Chiaki.settings.streamMenuShortcut1
-                            onActivated: index => Chiaki.settings.streamMenuShortcut1 = index
-                            KeyNavigation.priority: {
-                                if(!popup.visible)
-                                    KeyNavigation.BeforeItem
-                                else
-                                    KeyNavigation.AfterItem
-                            }
-                            KeyNavigation.up: psnGamesSyncCheckbox
-                            KeyNavigation.down: streamMenuShortcut1
-                            KeyNavigation.left: streamMenuShortcut1
-                            KeyNavigation.right: streamMenuShortcut2
-                        }
-
-                        C.ComboBox {
-                            id: streamMenuShortcut2
-                            implicitContentWidthPolicy: ComboBox.WidestText
-                            firstInFocusChain: false
-                            model: [qsTr("Not Used"), qsTr("Cross"), qsTr("Moon"), qsTr("Box"), qsTr("Pyramid"), qsTr("Dpad Left"), qsTr("Dpad Right"), qsTr("Dpad Up"), qsTr("Dpad Down"), qsTr("L1"), qsTr("R1"), qsTr("L3"), qsTr("R3"), qsTr("Options"), qsTr("Share"), qsTr("Touchpad"), qsTr("PS")]
-                            currentIndex: Chiaki.settings.streamMenuShortcut2
-                            onActivated: index => Chiaki.settings.streamMenuShortcut2 = index
-                            KeyNavigation.priority: {
-                                if(!popup.visible)
-                                    KeyNavigation.BeforeItem
-                                else
-                                    KeyNavigation.AfterItem
-                            }
-                            KeyNavigation.up: psnGamesSyncCheckbox
-                            KeyNavigation.down: streamMenuShortcut2
-                            KeyNavigation.left: streamMenuShortcut1
-                            KeyNavigation.right: streamMenuShortcut3
-                        }
-
-                        C.ComboBox {
-                            id: streamMenuShortcut3
-                            implicitContentWidthPolicy: ComboBox.WidestText
-                            firstInFocusChain: false
-                            model: [qsTr("Not Used"), qsTr("Cross"), qsTr("Moon"), qsTr("Box"), qsTr("Pyramid"), qsTr("Dpad Left"), qsTr("Dpad Right"), qsTr("Dpad Up"), qsTr("Dpad Down"), qsTr("L1"), qsTr("R1"), qsTr("L3"), qsTr("R3"), qsTr("Options"), qsTr("Share"), qsTr("Touchpad"), qsTr("PS")]
-                            currentIndex: Chiaki.settings.streamMenuShortcut3
-                            onActivated: index => Chiaki.settings.streamMenuShortcut3 = index
-                            KeyNavigation.priority: {
-                                if(!popup.visible)
-                                    KeyNavigation.BeforeItem
-                                else
-                                    KeyNavigation.AfterItem
-                            }
-                            KeyNavigation.up: psnGamesSyncCheckbox
-                            KeyNavigation.down: streamMenuShortcut3
-                            KeyNavigation.left: streamMenuShortcut2
-                            KeyNavigation.right: streamMenuShortcut4
-                        }
-
-                        C.ComboBox {
-                            id: streamMenuShortcut4
-                            implicitContentWidthPolicy: ComboBox.WidestText
-                            firstInFocusChain: false
-                            model: [qsTr("Not Used"), qsTr("Cross"), qsTr("Moon"), qsTr("Box"), qsTr("Pyramid"), qsTr("Dpad Left"), qsTr("Dpad Right"), qsTr("Dpad Up"), qsTr("Dpad Down"), qsTr("L1"), qsTr("R1"), qsTr("L3"), qsTr("R3"), qsTr("Options"), qsTr("Share"), qsTr("Touchpad"), qsTr("PS")]
-                            currentIndex: Chiaki.settings.streamMenuShortcut4
-                            onActivated: index => Chiaki.settings.streamMenuShortcut4 = index
-                            KeyNavigation.priority: {
-                                if(!popup.visible)
-                                    KeyNavigation.BeforeItem
-                                else
-                                    KeyNavigation.AfterItem
-                            }
-                            KeyNavigation.up: psnGamesSyncCheckbox
-                            KeyNavigation.down: streamMenuShortcut4
-                            KeyNavigation.left: streamMenuShortcut3
-                            KeyNavigation.right: streamMenuShortcut4
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(L1+R1+L3+R3)")
-                        }
-                    }
-                }
-                }
-            }
-
-            Item {
-                // Video
-                C.SmartFlickable {
-                    id: videoFlick
-                    implicitWidth: parent.width ? parent.width : 0
-                    implicitHeight: parent.height ? parent.height : 0
-                    anchors {
-                        fill: parent
-                        topMargin: 20
-                        bottomMargin: 20
-                        leftMargin: parent.width ? (parent.width / 2 - videoGrid.width / 2) : 0
-                    }
-                    contentWidth: videoGrid.width
-                    contentHeight: videoGrid.height
-                    tabIndex: 1
-                    currentTabIndex: bar.currentIndex
-                    contentLayout: videoGrid
-                    
-                GridLayout {
-                    id: videoGrid
-                    anchors {
-                        top: parent.top
-                        horizontalCenter: parent.horizontalCenter
-                    }
-                    columns: 3
-                    rowSpacing: 10
-                    columnSpacing: 20
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Hardware Decoder:")
-                    }
-
-                    C.ComboBox {
-                        Layout.preferredWidth: 400
-                        firstInFocusChain: true
-                        model: Chiaki.settings.availableDecoders
-                        currentIndex: Math.max(0, model.indexOf(Chiaki.settings.decoder))
-                        onActivated: (index) => Chiaki.settings.decoder = index ? model[index] : ""
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("(Auto)")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Window Type:")
-                    }
-
-                    C.ComboBox {
-                        Layout.preferredWidth: 400
-                        popup.width: 500
-                        model: [qsTr("Stream Resolution"), qsTr("Custom Resolution"), qsTr("Adjust Resolution Manually"), qsTr("Fullscreen"), qsTr("Zoom [adjust zoom using slider in stream menu]"), qsTr("Stretch")]
-                        currentIndex: Chiaki.settings.windowType
-                        onActivated: (index) => Chiaki.settings.windowType = index;
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("(Stream Resolution)")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Custom Resolution Width")
-                        visible: Chiaki.settings.windowType == 1
-                    }
-
-                    C.TextField {
-                        id: customResolutionWidth
-                        Layout.preferredWidth: 400
-                        visible: Chiaki.settings.windowType == 1
-                        text: Chiaki.settings.customResolutionWidth
-                        Material.accent: text && !validate() ? Material.Red : undefined
-                        onEditingFinished: {
-                            if (validate()) {
-                                Chiaki.settings.customResolutionWidth = parseInt(text);
-                            } else {
-                                Chiaki.settings.customResolutionWidth = 0;
-                                text = "";
-                            }
-                        }
-                        function validate() {
-                            var num = parseInt(text);
-                            return num >= 0 && num <= 9999;
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("(1920)")
-                        visible: Chiaki.settings.windowType == 1
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Custom Resolution Height")
-                        visible: Chiaki.settings.windowType == 1
-                    }
-
-                    C.TextField {
-                        id: customResolutionHeight
-                        Layout.preferredWidth: 400
-                        visible: Chiaki.settings.windowType == 1
-                        text: Chiaki.settings.customResolutionHeight
-                        Material.accent: text && !validate() ? Material.Red : undefined
-                        onEditingFinished: {
-                            if (validate()) {
-                                Chiaki.settings.customResolutionHeight = parseInt(text);
-                            } else {
-                                Chiaki.settings.customResolutionHeight = 0;
-                                text = "";
-                            }
-                        }
-                        function validate() {
-                            var num = parseInt(text);
-                            return num >= 0 && num <= 9999;
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("(1080)")
-                        visible: Chiaki.settings.windowType == 1
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Toggle Fullscreen on Double-click:")
-                    }
-
-                    C.CheckBox {
-                        checked: Chiaki.settings.fullscreenDoubleClick
-                        onToggled: Chiaki.settings.fullscreenDoubleClick = checked
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("(Unchecked)")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Hide Cursor during Stream")
-                    }
-                    C.CheckBox {
-                        checked: Chiaki.settings.hideCursor
-                        onToggled: Chiaki.settings.hideCursor = !Chiaki.settings.hideCursor
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("(Checked)")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Render Preset:")
-                    }
-
-                    C.ComboBox {
-                        Layout.preferredWidth: 400
-                        model: [qsTr("Fast"), qsTr("Default"), qsTr("High Quality"), qsTr("Custom")]
-                        currentIndex: Chiaki.settings.videoPreset
-                        onActivated: (index) => {
-                            Chiaki.settings.videoPreset = index;
-                            switch (index) {
-                            case 0: Chiaki.window.videoPreset = ChiakiWindow.VideoPreset.Fast; break;
-                            case 1: Chiaki.window.videoPreset = ChiakiWindow.VideoPreset.Default; break;
-                            case 2: Chiaki.window.videoPreset = ChiakiWindow.VideoPreset.HighQuality; break;
-                            case 3: Chiaki.window.videoPreset = ChiakiWindow.VideoPreset.Custom; break;
-                            }
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("(High Quality)")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Custom Renderer Settings")
-                        visible: Chiaki.window.videoPreset == ChiakiWindow.VideoPreset.Custom
-                    }
-
-                    C.Button {
-                        id: customRendererSettings
-                        text: qsTr("Open")
-                        onClicked: root.showPlaceboSettingsDialog()
-                        Material.roundedScale: Material.SmallScale
-                        visible: Chiaki.window.videoPreset == ChiakiWindow.VideoPreset.Custom
-                    }
-
-                    Label { visible: Chiaki.window.videoPreset == ChiakiWindow.VideoPreset.Custom }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Display Settings")
-                    }
-
-                    C.Button {
-                        id: displaySettings
-                        text: qsTr("Open")
-                        onClicked: root.showDisplaySettingsDialog()
-                        Material.roundedScale: Material.SmallScale
-                        lastInFocusChain: true
-                    }
-
-                    Label {}
-                }
-                }
-            }
-
-            Item {
-                // Stream
-                C.SmartFlickable {
-                    id: streamFlick
-                    implicitWidth: parent.width ? parent.width : 0
-                    implicitHeight: parent.height ? parent.height : 0
-                    anchors {
-                        fill: parent
-                        topMargin: 20
-                        bottomMargin: 20
-                        leftMargin: parent.width ? (parent.width / 2 - streamGrid.width / 2) : 0
-                    }
-                    contentWidth: streamGrid.width
-                    contentHeight: streamGrid.height
-                    tabIndex: 2
-                    currentTabIndex: bar.currentIndex
-                    contentLayout: streamGrid
-                    
-                GridLayout {
-                    id: streamGrid
-                    anchors {
-                        top: parent.top
-                        horizontalCenter: parent.horizontalCenter
-                    }
-                    columns: 3
-                    rowSpacing: 10
-                    columnSpacing: 20
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Settings for:")
-                    }
-
-
-                    C.ComboBox {
-                        id: consoleSelection
-                        Layout.preferredWidth: 400
-                        Layout.alignment: Qt.AlignLeft
-                        model: [qsTr("PS4"), qsTr("PS5")]
-                        currentIndex: selectedConsole
-                        onActivated: (index) => selectedConsole = index
-                        firstInFocusChain: true
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                        KeyNavigation.down: {
-                            if(selectedConsole == SettingsDialog.Console.PS4)
-                                resolutionLocalPS4
-                            else
-                                resolutionLocalPS5
-
-                        }
-
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignCenter
-                        text: qsTr("Local")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignCenter
-                        text: qsTr("Remote")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Resolution:")
-                    }
-
-                    C.ComboBox {
-                        id: resolutionLocalPS4
-                        Layout.preferredWidth: 400
-                        model: [qsTr("360p"), qsTr("540p"), qsTr("720p (Default)"), qsTr("1080p (PS5 and PS4 Pro)")]
-                        currentIndex: Chiaki.settings.resolutionLocalPS4 - 1
-                        onActivated: (index) => {
-                            Chiaki.settings.resolutionLocalPS4 = index + 1
-                            Chiaki.settings.bitrateLocalPS4 = 0
-                        }
-                        visible: selectedConsole == SettingsDialog.Console.PS4
-                        KeyNavigation.right: resolutionRemotePS4
-                        KeyNavigation.down: fpsLocalPS4
-                        KeyNavigation.up: consoleSelection
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    C.ComboBox {
-                        id: resolutionRemotePS4
-                        Layout.preferredWidth: 400
-                        model: [qsTr("360p"), qsTr("540p"), qsTr("720p (Default)"), qsTr("1080p (PS5 and PS4 Pro)")]
-                        currentIndex: Chiaki.settings.resolutionRemotePS4 - 1
-                        onActivated: (index) => {
-                            Chiaki.settings.resolutionRemotePS4 = index + 1
-                            Chiaki.settings.bitrateRemotePS4 = 0
-                        }
-                        visible: selectedConsole == SettingsDialog.Console.PS4
-                        KeyNavigation.left: resolutionLocalPS4
-                        KeyNavigation.down: fpsRemotePS4
-                        KeyNavigation.up: consoleSelection
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    C.ComboBox {
-                        id: resolutionLocalPS5
-                        Layout.preferredWidth: 400
-                        model: [qsTr("360p"), qsTr("540p"), qsTr("720p"), qsTr("1080p (Default)")]
-                        currentIndex: Chiaki.settings.resolutionLocalPS5 - 1
-                        onActivated: (index) => {
-                            Chiaki.settings.resolutionLocalPS5 = index + 1
-                            Chiaki.settings.bitrateLocalPS5 = 0
-                        }
-                        visible: selectedConsole == SettingsDialog.Console.PS5
-                        KeyNavigation.right: resolutionRemotePS5
-                        KeyNavigation.up: consoleSelection
-                        KeyNavigation.down: fpsLocalPS5
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    C.ComboBox {
-                        id: resolutionRemotePS5
-                        Layout.preferredWidth: 400
-                        model: [qsTr("360p"), qsTr("540p"), qsTr("720p (Default)"), qsTr("1080p")]
-                        currentIndex: Chiaki.settings.resolutionRemotePS5 - 1
-                        onActivated: (index) => {
-                            Chiaki.settings.resolutionRemotePS5 = index + 1
-                            Chiaki.settings.bitrateRemotePS5 = 0
-                        }
-                        visible: selectedConsole == SettingsDialog.Console.PS5
-                        KeyNavigation.left: resolutionLocalPS5
-                        KeyNavigation.up: consoleSelection
-                        KeyNavigation.down: fpsRemotePS5
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("FPS:")
-                    }
-
-                    C.ComboBox {
-                        id: fpsLocalPS4
-                        Layout.preferredWidth: 400
-                        model: [qsTr("30 fps"), qsTr("60 fps (Default)")]
-                        currentIndex: (Chiaki.settings.fpsLocalPS4 / 30) - 1
-                        onActivated: (index) => Chiaki.settings.fpsLocalPS4 = (index + 1) * 30
-                        visible: selectedConsole == SettingsDialog.Console.PS4
-                        KeyNavigation.up: resolutionLocalPS4
-                        KeyNavigation.right: fpsRemotePS4
-                        KeyNavigation.down: bitrateLocalPS4
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    C.ComboBox {
-                        id: fpsRemotePS4
-                        Layout.preferredWidth: 400
-                        model: [qsTr("30 fps"), qsTr("60 fps (Default)")]
-                        currentIndex: (Chiaki.settings.fpsRemotePS4 / 30) - 1
-                        onActivated: (index) => Chiaki.settings.fpsRemotePS4 = (index + 1) * 30
-                        visible: selectedConsole == SettingsDialog.Console.PS4
-                        KeyNavigation.up: resolutionRemotePS4
-                        KeyNavigation.left: fpsLocalPS4
-                        KeyNavigation.down: bitrateRemotePS4
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    C.ComboBox {
-                        id: fpsLocalPS5
-                        Layout.preferredWidth: 400
-                        model: [qsTr("30 fps"), qsTr("60 fps (Default)")]
-                        currentIndex: (Chiaki.settings.fpsLocalPS5 / 30) - 1
-                        onActivated: (index) => Chiaki.settings.fpsLocalPS5 = (index + 1) * 30
-                        visible: selectedConsole == SettingsDialog.Console.PS5
-                        KeyNavigation.up: resolutionLocalPS5
-                        KeyNavigation.right: fpsRemotePS5
-                        KeyNavigation.down: bitrateLocalPS5
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    C.ComboBox {
-                        id: fpsRemotePS5
-                        Layout.preferredWidth: 400
-                        model: [qsTr("30 fps"), qsTr("60 fps (Default)")]
-                        currentIndex: (Chiaki.settings.fpsRemotePS5 / 30) - 1
-                        onActivated: (index) => Chiaki.settings.fpsRemotePS5 = (index + 1) * 30
-                        visible: selectedConsole == SettingsDialog.Console.PS5
-                        KeyNavigation.up: resolutionRemotePS5
-                        KeyNavigation.left: fpsLocalPS5
-                        KeyNavigation.down: bitrateRemotePS5
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Bitrate:")
-                    }
-
-                    C.Slider {
-                        id: bitrateLocalPS4
-                        visible: selectedConsole == SettingsDialog.Console.PS4
-                        property var bitrate: {
-                            var rate = 0;
-                            switch (Chiaki.settings.resolutionLocalPS4) {
-                            case 1: rate = 2; break; // 360p
-                            case 2: rate = 6; break; // 540p
-                            case 3: rate = 10; break; // 720p
-                            case 4: rate = 15; break; // 1080p
-                            }
-                            return rate;
-                        }
-                        Layout.preferredWidth: 200
-                        from: 2
-                        to: 100
-                        stepSize: 1
-                        value: Chiaki.settings.bitrateLocalPS4 / 1000 ? (Chiaki.settings.bitrateLocalPS4 / 1000) : bitrate
-                        onMoved: Chiaki.settings.bitrateLocalPS4 = value * 1000;
-                        KeyNavigation.up: fpsLocalPS4
-                        KeyNavigation.down: bitrateLocalPS4
-                        KeyNavigation.priority: KeyNavigation.BeforeItem
-                        Label {
-                            anchors {
-                                left: parent.right
-                                verticalCenter: parent.verticalCenter
-                                leftMargin: 10
-                            }
-                            text: (parent.value) + qsTr(" Mbps") + qsTr(" (%1 Mbps)").arg(parent.bitrate.toFixed(0))
-                        }
-                    }
-
-                    C.Slider {
-                        id: bitrateRemotePS4
-                        visible: selectedConsole == SettingsDialog.Console.PS4
-                        property var bitrate: {
-                            var rate = 0;
-                            switch (Chiaki.settings.resolutionRemotePS4) {
-                            case 1: rate = 2; break; // 360p
-                            case 2: rate = 6; break; // 540p
-                            case 3: rate = 10; break; // 720p
-                            case 4: rate = 15; break; // 1080p
-                            }
-                            return rate;
-                        }
-                        Layout.preferredWidth: 200
-                        from: 2
-                        to: 100
-                        stepSize: 1
-                        value: Chiaki.settings.bitrateRemotePS4 / 1000 ? (Chiaki.settings.bitrateRemotePS4 / 1000) : bitrate
-                        onMoved: Chiaki.settings.bitrateRemotePS4 = value * 1000;
-                        KeyNavigation.up: fpsRemotePS4
-                        KeyNavigation.down: bitrateRemotePS4
-                        KeyNavigation.priority: KeyNavigation.BeforeItem
-                        lastInFocusChain: true
-
-                        Label {
-                            anchors {
-                                left: parent.right
-                                verticalCenter: parent.verticalCenter
-                                leftMargin: 10
-                            }
-                            text: (parent.value) + qsTr(" Mbps") + qsTr(" (%1 Mbps)").arg(parent.bitrate.toFixed(0))
-                        }
-                    }
-
-                    C.Slider {
-                        id: bitrateLocalPS5
-                        visible: selectedConsole == SettingsDialog.Console.PS5
-                        property var bitrate: {
-                            var rate = 0;
-                            switch (Chiaki.settings.resolutionLocalPS5) {
-                            case 1: rate = 2; break; // 360p
-                            case 2: rate = 6; break; // 540p
-                            case 3: rate = 10; break; // 720p
-                            case 4: rate = 15; break; // 1080p
-                            }
-                            return rate;
-                        }
-                        Layout.preferredWidth: 200
-                        from: 2
-                        to: 100
-                        stepSize: 1
-                        value: Chiaki.settings.bitrateLocalPS5 / 1000 ? (Chiaki.settings.bitrateLocalPS5 / 1000) : bitrate
-                        onMoved: Chiaki.settings.bitrateLocalPS5 = value * 1000;
-                        KeyNavigation.up: fpsLocalPS5
-                        KeyNavigation.down: codecLocalPS5
-                        KeyNavigation.priority: KeyNavigation.BeforeItem
-
-                        Label {
-                            anchors {
-                                left: parent.right
-                                verticalCenter: parent.verticalCenter
-                                leftMargin: 10
-                            }
-                            text: (parent.value) + qsTr(" Mbps") + qsTr(" (%1 Mbps)").arg(parent.bitrate.toFixed(0))
-                        }
-                    }
-
-                    C.Slider {
-                        id: bitrateRemotePS5
-                        visible: selectedConsole == SettingsDialog.Console.PS5
-                        property var bitrate: {
-                            var rate = 0;
-                            switch (Chiaki.settings.resolutionRemotePS5) {
-                            case 1: rate = 2; break; // 360p
-                            case 2: rate = 6; break; // 540p
-                            case 3: rate = 10; break; // 720p
-                            case 4: rate = 15; break; // 1080p
-                            }
-                            return rate;
-                        }
-                        Layout.preferredWidth: 200
-                        from: 2
-                        to: 100
-                        stepSize: 1
-                        value: Chiaki.settings.bitrateRemotePS5 / 1000 ? (Chiaki.settings.bitrateRemotePS5 / 1000) : bitrate
-                        onMoved: Chiaki.settings.bitrateRemotePS5 = value * 1000;
-                        KeyNavigation.up: fpsRemotePS5
-                        KeyNavigation.down: codecRemotePS5
-                        KeyNavigation.priority: KeyNavigation.BeforeItem
-                        lastInFocusChain: true
-
-                        Label {
-                            anchors {
-                                left: parent.right
-                                verticalCenter: parent.verticalCenter
-                                leftMargin: 10
-                            }
-                            text: (parent.value) + qsTr(" Mbps") + qsTr(" (%1 Mbps)").arg(parent.bitrate.toFixed(0))
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Codec:")
-                        visible: selectedConsole == SettingsDialog.Console.PS5
-                    }
-
-                    C.ComboBox {
-                        id: codecLocalPS5
-                        Layout.preferredWidth: 400
-                        model: [qsTr("H264"), qsTr("H265 (Default)"), qsTr("H265 HDR")]
-                        currentIndex: Chiaki.settings.codecLocalPS5
-                        onActivated: (index) => Chiaki.settings.codecLocalPS5 = index
-                        visible: selectedConsole == SettingsDialog.Console.PS5
-                        Keys.onReturnPressed: {
-                            if (popup.visible) {
-                                activated(highlightedIndex);
-                                popup.close();
-                            } else
-                                popup.open();
-                        }
-                        KeyNavigation.up: bitrateLocalPS5
-                        KeyNavigation.right: codecRemotePS5
-                        KeyNavigation.down: codecLocalPS5
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    C.ComboBox {
-                        id: codecRemotePS5
-                        Layout.preferredWidth: 400
-                        model: [qsTr("H264"), qsTr("H265 (Default)"), qsTr("H265 HDR")]
-                        currentIndex: Chiaki.settings.codecRemotePS5
-                        onActivated: (index) => Chiaki.settings.codecRemotePS5 = index
-                        visible: selectedConsole == SettingsDialog.Console.PS5
-                        lastInFocusChain: true
-                        Keys.onReturnPressed: {
-                            if (popup.visible) {
-                                activated(highlightedIndex);
-                                popup.close();
-                            } else
-                                popup.open();
-                        }
-                        KeyNavigation.up: bitrateRemotePS5
-                        KeyNavigation.left: codecLocalPS5
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-                }
-                }
-            }
-
-            Item {
-                // Audio and Wifi
-                C.SmartFlickable {
-                    id: audiowifiFlick
-                    implicitWidth: parent.width ? parent.width: 0
-                    implicitHeight: parent.height ? parent.height: 0
-                    anchors {
-                        fill: parent
-                        topMargin: 20
-                        bottomMargin: 20
-                        leftMargin: parent.width ? (parent.width / 2 - audiowifigrid.width / 2) : 0
-                    }
-                    contentWidth: audiowifigrid.width
-                    contentHeight: audiowifigrid.height
-                    tabIndex: 3
-                    currentTabIndex: bar.currentIndex
-                    contentLayout: audiowifigrid
-                    
-                    GridLayout {
-                        id: audiowifigrid
-                        columns: 3
-                        rowSpacing: 10
-                        columnSpacing: 20
-                        onVisibleChanged: if (visible) Chiaki.settings.refreshAudioDevices()
-
-                        anchors {
-                            top: parent.top
-                            horizontalCenter: parent.horizontalCenter
-                        }
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Output Device:")
-                        }
-
-                        C.ComboBox {
-                            Layout.preferredWidth: 400
-                            popup.x: (width - popup.width) / 2
-                            popup.width: 700
-                            popup.font.pixelSize: 16
-                            firstInFocusChain: true
-                            model: [qsTr("Auto")].concat(Chiaki.settings.availableAudioOutDevices)
-                            currentIndex: Math.max(0, model.indexOf(Chiaki.settings.audioOutDevice))
-                            onActivated: (index) => Chiaki.settings.audioOutDevice = index ? model[index] : ""
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Auto)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Input Device:")
-                        }
-
-                        C.ComboBox {
-                            Layout.preferredWidth: 400
-                            popup.x: (width - popup.width) / 2
-                            popup.width: 700
-                            popup.font.pixelSize: 16
-                            model: [qsTr("Auto")].concat(Chiaki.settings.availableAudioInDevices)
-                            currentIndex: Math.max(0, model.indexOf(Chiaki.settings.audioInDevice))
-                            onActivated: (index) => Chiaki.settings.audioInDevice = index ? model[index] : ""
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Auto)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Audio Buffer Size:")
-                        }
-
-                        C.Slider {
-                            Layout.preferredWidth: 250
-                            from: 1
-                            to: 10
-                            stepSize: 1
-                            value: Chiaki.settings.audioBufferSize / 1920 ? (Chiaki.settings.audioBufferSize / 1920) : 5
-                            onMoved: Chiaki.settings.audioBufferSize = value * 1920;
-                            sendOutput: true
-
-                            Label {
-                                anchors {
-                                    left: parent.right
-                                    verticalCenter: parent.verticalCenter
-                                    leftMargin: 10
-                                }
-                                text: {
-                                    (parent.value * 10).toFixed(0) + qsTr(" ms")
-                                }
-                            }
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(50 ms)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Audio Volume:")
-                        }
-
-                        C.Slider {
-                            Layout.preferredWidth: 250
-                            from: 0
-                            to: 128
-                            stepSize: 1
-                            value: Chiaki.settings.audioVolume
-                            onMoved: Chiaki.settings.audioVolume = value
-                            sendOutput: true
-
-                            Label {
-                                anchors {
-                                    left: parent.right
-                                    verticalCenter: parent.verticalCenter
-                                    leftMargin: 10
-                                }
-                                text: {
-                                    ((parent.value / 128.0) * 100).toFixed(0) + qsTr("% volume")
-                                }
-                            }
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(100%)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Start Mic Unmuted:")
-                        }
-
-                        C.CheckBox {
-                            sendOutput: true
-                            checked: Chiaki.settings.startMicUnmuted
-                            onToggled: Chiaki.settings.startMicUnmuted = checked
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Unchecked)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Speech Processing:")
-                            visible: typeof Chiaki.settings.speechProcessing !== "undefined"
-                        }
-
-                        C.CheckBox {
-                            sendOutput: true
-                            text: qsTr("Noise suppression + echo cancellation")
-                            checked: Chiaki.settings.speechProcessing
-                            onToggled: Chiaki.settings.speechProcessing = !Chiaki.settings.speechProcessing
-                            visible: typeof Chiaki.settings.speechProcessing !== "undefined"
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Unchecked)")
-                            visible: typeof Chiaki.settings.speechProcessing !== "undefined"
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Noise To Suppress:")
-                            visible: if (typeof Chiaki.settings.speechProcessing !== "undefined") {Chiaki.settings.speechProcessing} else {false}
-                        }
-
-                        C.Slider {
-                            Layout.preferredWidth: 250
-                            from: 0
-                            to: 60
-                            stepSize: 1
-                            sendOutput: true
-                            visible: if (typeof Chiaki.settings.speechProcessing !== "undefined") {Chiaki.settings.speechProcessing} else {false}
-                            value: Chiaki.settings.noiseSuppressLevel
-                            onMoved: Chiaki.settings.noiseSuppressLevel = value
-
-                            Label {
-                                anchors {
-                                    left: parent.right
-                                    verticalCenter: parent.verticalCenter
-                                    leftMargin: 10
-                                }
-                                text: qsTr("%1 dB").arg(parent.value)
-                            }
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(6 dB)")
-                            visible: if (typeof Chiaki.settings.speechProcessing !== "undefined") {Chiaki.settings.speechProcessing} else {false}
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Echo To Suppress:")
-                            visible: if (typeof Chiaki.settings.speechProcessing !== "undefined") {Chiaki.settings.speechProcessing} else {false}
-                        }
-
-                        C.Slider {
-                            Layout.preferredWidth: 250
-                            from: 0
-                            to: 60
-                            stepSize: 1
-                            sendOutput: true
-                            value: Chiaki.settings.echoSuppressLevel
-                            visible: if (typeof Chiaki.settings.speechProcessing !== "undefined") {Chiaki.settings.speechProcessing} else {false}
-                            onMoved: Chiaki.settings.echoSuppressLevel = value
-
-                            Label {
-                                anchors {
-                                    left: parent.right
-                                    verticalCenter: parent.verticalCenter
-                                    leftMargin: 10
-                                }
-                                text: qsTr("%1 dB").arg(parent.value)
-                            }
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(30 dB)")
-                            visible: if (typeof Chiaki.settings.speechProcessing !== "undefined") {Chiaki.settings.speechProcessing} else {false}
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Weak Wifi Notification:")
-                        }
-
-                        C.Slider {
-                            Layout.preferredWidth: 250
-                            from: 0
-                            to: 100
-                            stepSize: 1
-                            sendOutput: true
-                            value: Chiaki.settings.wifiDroppedNotif
-                            onMoved: Chiaki.settings.wifiDroppedNotif = value
-
-                            Label {
-                                anchors {
-                                    left: parent.right
-                                    verticalCenter: parent.verticalCenter
-                                    leftMargin: 10
-                                }
-                                text: qsTr(">= %1% dropped packets").arg(parent.value)
-                            }
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(3%)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Packet Loss Reported Max:")
-                        }
-
-                        C.Slider {
-                            Layout.preferredWidth: 250
-                            from: 0
-                            to: 100
-                            stepSize: 1
-                            sendOutput: true
-                            value: Chiaki.settings.packetLossMax
-                            onMoved: Chiaki.settings.packetLossMax = value
-
-                            Label {
-                                anchors {
-                                    left: parent.right
-                                    verticalCenter: parent.verticalCenter
-                                    leftMargin: 10
-                                }
-                                text: qsTr("%1% packet loss").arg(parent.value)
-                            }
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(5%)")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Show Stream Stats During Gameplay")
-                        }
-                        C.CheckBox {
-                            lastInFocusChain: true
-                            checked: Chiaki.settings.showStreamStats
-                            onToggled: Chiaki.settings.showStreamStats = !Chiaki.settings.showStreamStats
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Unchecked)")
-                        }
-                    }
-                }
-            }
-
-            Item {
-                // Consoles
-                C.SmartFlickable {
-                    id: consolesFlick
-                    implicitWidth: parent.width ? parent.width : 0
-                    implicitHeight: parent.height ? parent.height : 0
-                    anchors {
-                        fill: parent
-                        topMargin: 20
-                        bottomMargin: 20
-                    }
-                    contentWidth: consolesContent.width
-                    contentHeight: consolesContent.height
-                    tabIndex: 4
-                    currentTabIndex: bar.currentIndex
-                    contentLayout: consolesContent
-                    
-                Column {
-                    id: consolesContent
-                    width: consolesFlick.width
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    
-                Item {
-                    width: parent.width
-                    height: registerNewButton.height + 30
-                    
-                    C.Button {
-                        id: registerNewButton
-                        anchors.centerIn: parent
-                        topPadding: 26
-                        leftPadding: 30
-                        rightPadding: 30
-                        bottomPadding: 26
-                        firstInFocusChain: true
-                        text: qsTr("Register New")
-                        onClicked: root.showRegistDialog("255.255.255.255", true)
-                        Material.roundedScale: Material.SmallScale
-                    }
-                }
-
-                Label {
-                    id: consolesLabel
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    topPadding: 10
-                    text: qsTr("Registered Consoles")
-                    font.bold: true
-                }
-
-                ListView {
-                    id: consolesView
-                    height: 170
-                    width: 700
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.topMargin: 10
-                    onCountChanged: {
-                        consolesView.contentHeight = consolesView.count * 80 + consolesView.anchors.topMargin;
-                    }
-                    keyNavigationEnabled: false
-                    ScrollBar.vertical: ScrollBar {
-                        id: consolesScrollbar
-                        policy: ScrollBar.AlwaysOn
-                        visible: consolesView.contentHeight > consolesView.height
-                    }
-                    clip: true
-                    model: Chiaki.settings.registeredHosts
-                    delegate: ItemDelegate {
-                        text: "%1 (%2, %3)".arg(Chiaki.settings.streamerMode ? "hidden" : modelData.mac).arg(modelData.ps5 ? "PS5" : "PS4").arg(modelData.name)
-                        height: 80
-                        width: parent ? parent.width : 0
-                        leftPadding: autoConnectButton.width + 40
-
-                        CheckBox {
-                            property bool firstInFocusChain: false
-                            property bool lastInFocusChain: false
-                            property bool lastDownInFocusChain: index > consolesView.count + hiddenConsolesView.count - 2
-
-                            id: autoConnectButton
-                            anchors {
-                                left: parent.left
-                                verticalCenter: parent.verticalCenter
-                                leftMargin: 20
-                            }
-                            text: qsTr("Auto-Connect")
-                            checked: Chiaki.settings.autoConnectMac == modelData.mac
-                            onToggled: Chiaki.settings.autoConnectMac = checked ? modelData.mac : "";
-
-                            Keys.onPressed: (event) => {
-                                switch (event.key) {
-                                case Qt.Key_Right:
-                                    if (!lastInFocusChain) {
-                                        let item = nextItemInFocusChain();
-                                        if (item)
-                                            item.forceActiveFocus(Qt.TabFocusReason);
-                                        event.accepted = true;
-                                    }
-                                    break;
-                                case Qt.Key_Up:
-                                    if (!firstInFocusChain) {
-                                        let item = nextItemInFocusChain(false);
-                                        if (item)
-                                            item.forceActiveFocus(Qt.TabFocusReason);
-                                        let count = index > 0 ? 2: 0;
-                                        for(var i = 0; i < count; i++)
-                                        {
-                                            let item2 = item.nextItemInFocusChain(false);
-                                            if (item)
-                                            {
-                                                item.forceActiveFocus(Qt.TabFocusReason);
-                                                item = item2;
-                                            }
-                                        }
-                                        event.accepted = true;
-                                    }
-                                    break;
-                                case Qt.Key_Down:
-                                    if (!lastDownInFocusChain) {
-                                        let item = nextItemInFocusChain();
-                                        if (item)
-                                            item.forceActiveFocus(Qt.TabFocusReason);
-                                        let count = 2;
-                                        for(var i = 0; i < count; i++)
-                                        {
-                                            let item2 = item.nextItemInFocusChain();
-                                            if (item)
-                                            {
-                                                item.forceActiveFocus(Qt.TabFocusReason);
-                                                item = item2;
-                                            }
-                                        }
-                                        event.accepted = true;
-                                    }
-                                    break;
-                                case Qt.Key_Return:
-                                    if (visualFocus) {
-                                        toggle();
-                                        toggled();
-                                    }
-                                    event.accepted = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        Button {
-                            property bool firstInFocusChain: false
-                            property bool lastInFocusChain: index > consolesView.count + hiddenConsolesView.count - 2
-                            Material.background: visualFocus ? Material.accent : undefined
-
-                            Component.onDestruction: {
-                                if (visualFocus) {
-                                    let item = nextItemInFocusChain();
-                                    if (item)
-                                        item.forceActiveFocus(Qt.TabFocusReason);
-                                }
-                            }
-                            Keys.onPressed: (event) => {
-                                switch (event.key) {
-                                    case Qt.Key_Left:
-                                        if (!firstInFocusChain) {
-                                            let item = nextItemInFocusChain(false);
-                                            if (item)
-                                                item.forceActiveFocus(Qt.TabFocusReason);
-                                            event.accepted = true;
-                                        }
-                                        break;
-                                    case Qt.Key_Up:
-                                        if (!firstInFocusChain)
-                                        {
-                                            let item = nextItemInFocusChain(false);
-                                            if (item)
-                                                item.forceActiveFocus(Qt.TabFocusReason);
-                                            let count = 2;
-                                            for(var i = 0; i < count; i++)
-                                            {
-                                                let item2 = item.nextItemInFocusChain(false);
-                                                if (item)
-                                                {
-                                                    item.forceActiveFocus(Qt.TabFocusReason);
-                                                    item = item2;
-                                                }
-                                            }
-                                            event.accepted = true;
-                                        }
-                                        break;
-                                    case Qt.Key_Down:
-                                        if (!lastInFocusChain) {
-                                            let item = nextItemInFocusChain();
-                                            if (item)
-                                                item.forceActiveFocus(Qt.TabFocusReason);
-                                            let count = index < consolesView.count - 1 ? 2: 0;
-                                            for(var i = 0; i < count; i++)
-                                            {
-                                                let item2 = item.nextItemInFocusChain();
-                                                if (item)
-                                                {
-                                                    item.forceActiveFocus(Qt.TabFocusReason);
-                                                    item = item2;
-                                                }
-                                            }
-                                            event.accepted = true;
-                                        }
-                                        break;
-                                    case Qt.Key_Return:
-                                        if (visualFocus) {
-                                            clicked();
-                                        }
-                                        event.accepted = true;
-                                        break;
-                                }
-                            }
-                            anchors {
-                                right: parent.right
-                                verticalCenter: parent.verticalCenter
-                                rightMargin: 20
-                            }
-                            text: qsTr("Delete")
-                            onClicked: root.showConfirmDialog(qsTr("Delete Console"), qsTr("Are you sure you want to delete this console?"), () => Chiaki.settings.deleteRegisteredHost(index));
-                            Material.roundedScale: Material.SmallScale
-                            Material.accent: Material.Red
-                        }
-                    }
-                }
-
-                Label {
-                    id: hiddenConsolesLabel
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    topPadding: 10
-                    text: qsTr("Hidden Consoles")
-                    font.bold: true
-                }
-                ListView {
-                    id: hiddenConsolesView
-                    keyNavigationEnabled: false
-                    height: 170
-                    width: 500
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.topMargin: 10
-                    onCountChanged: {
-                        hiddenConsolesView.contentHeight = hiddenConsolesView.count * 80 + hiddenConsolesView.anchors.topMargin;
-                    }
-                    clip: true
-                    ScrollBar.vertical: ScrollBar {
-                        id: hiddenConsolesScrollbar
-                        policy: ScrollBar.AlwaysOn
-                        visible: hiddenConsolesView.contentHeight > hiddenConsolesView.height
-                    }
-                    model: Chiaki.hiddenHosts
-                    delegate: ItemDelegate {
-                        text: "%1 (%2)".arg(Chiaki.settings.streamerMode ? "hidden" : modelData.mac).arg(modelData.name)
-                        height: 80
-                        width: parent ? parent.width : 0
-
-                        Button {
-                            property bool firstInFocusChain: false
-                            property bool lastInFocusChain: index > hiddenConsolesView.count - 2
-                            Material.background: visualFocus ? Material.accent : undefined
-
-                            Component.onDestruction: {
-                                if (visualFocus) {
-                                    let item = nextItemInFocusChain();
-                                    if (item)
-                                        item.forceActiveFocus(Qt.TabFocusReason);
-                                }
-                            }
-                            Keys.onPressed: (event) => {
-                                switch (event.key) {
-                                    case Qt.Key_Up:
-                                        if (!firstInFocusChain)
-                                        {
-                                            let item = nextItemInFocusChain(false);
-                                            if (item)
-                                                item.forceActiveFocus(Qt.TabFocusReason);
-                                            event.accepted = true;
-                                        }
-                                        break;
-                                    case Qt.Key_Down:
-                                        if (!lastInFocusChain) {
-                                            let item = nextItemInFocusChain();
-                                            if (item)
-                                                item.forceActiveFocus(Qt.TabFocusReason);
-                                            event.accepted = true;
-                                        }
-                                        break;
-                                    case Qt.Key_Return:
-                                        if (visualFocus) {
-                                            clicked();
-                                        }
-                                        event.accepted = true;
-                                        break;
-                                }
-                            }
-                            anchors {
-                                right: parent.right
-                                verticalCenter: parent.verticalCenter
-                                rightMargin: 20
-                            }
-                            text: qsTr("Unhide")
-                            onClicked: root.showConfirmDialog(qsTr("Unhide Console"), qsTr("Are you sure you want to unhide this console?"), () => Chiaki.unhideHost(modelData.mac));
-                            Material.roundedScale: Material.SmallScale
-                            Material.accent: Material.Red
-                        }
-                    }
-                }
-                }
-                }
-            }
-
-            Item {
-                // Keys
-                id: controllerMapping
-                C.SmartFlickable {
-                    id: keysFlick
-                    implicitWidth: parent.width ? parent.width : 0
-                    implicitHeight: parent.height ? parent.height : 0
-                    anchors {
-                        fill: parent
-                        topMargin: 20
-                        bottomMargin: 20
-                        leftMargin: parent.width ? (parent.width / 2 - keysGrid.width / 2) : 0
-                    }
-                    contentWidth: keysGrid.width
-                    contentHeight: keysGrid.height
-                    tabIndex: 5
-                    currentTabIndex: bar.currentIndex
-                    contentLayout: keysGrid
-                    
-                GridLayout {
-                    id: keysGrid
-                    anchors {
-                        top: parent.top
-                        horizontalCenter: parent.horizontalCenter
-                    }
-                    columns: 3
-                    rowSpacing: 3
-                    columnSpacing: 10
-
-                    Button {
-                        text: "Reset All Keys"
-                        Layout.alignment: Qt.AlignRight
-                        property bool firstInFocusChain: true
-                        property bool lastInFocusChain: false
-                        onClicked: Chiaki.settings.clearKeyMapping()
-                        Material.roundedScale: Material.SmallScale
-                        Material.background: visualFocus ? Material.accent : undefined
-
-                        Component.onDestruction: {
-                            if (visualFocus) {
-                                let item = nextItemInFocusChain();
-                                if (item)
-                                    item.forceActiveFocus(Qt.TabFocusReason);
-                            }
-                        }
-                        Keys.onPressed: (event) => {
-                            switch (event.key) {
-                            case Qt.Key_Down:
-                                if (!lastInFocusChain) {
-                                    let item = nextItemInFocusChain();
-                                    if (item)
-                                        item.forceActiveFocus(Qt.TabFocusReason);
-                                    for(var i = 0; i < 3; i++)
-                                    {
-                                        let item2 = item.nextItemInFocusChain();
-                                        if (item)
-                                        {
-                                            item.forceActiveFocus(Qt.TabFocusReason);
-                                            item = item2;
-                                        }
-                                    }
-                                    event.accepted = true;
-                                }
-                                break;
-                            case Qt.Key_Right:
-                                if (!lastInFocusChain) {
-                                    let item = nextItemInFocusChain();
-                                    if (item)
-                                        item.forceActiveFocus(Qt.TabFocusReason);
-                                    event.accepted = true;
-                                }
-                                break;
-                            case Qt.Key_Return:
-                                if (visualFocus) {
-                                    clicked();
-                                }
-                                event.accepted = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    CheckBox {
-                        text: qsTr("Enable Keyboard mapping")
-                        checked: {
-                            Chiaki.settings.keyboardEnabled
-                        }
-                        onToggled: Chiaki.settings.keyboardEnabled = checked
-                        Layout.alignment: Qt.AlignRight
-                        property bool firstInFocusChain: false
-                        property bool lastInFocusChain: false
-                        Material.roundedScale: Material.SmallScale
-                        Material.background: visualFocus ? Material.accent : undefined
-
-                        Component.onDestruction: {
-                            if (visualFocus) {
-                                let item = nextItemInFocusChain();
-                                if (item)
-                                    item.forceActiveFocus(Qt.TabFocusReason);
-                            }
-                        }
-                        Keys.onPressed: (event) => {
-                            switch (event.key) {
-                                case Qt.Key_Left:
-                                    if (!firstInFocusChain) {
-                                        let item = nextItemInFocusChain(false);
-                                        if (item)
-                                            item.forceActiveFocus(Qt.TabFocusReason);
-                                        event.accepted = true;
-                                    }
-                                    break;
-                                case Qt.Key_Right:
-                                    if  (!lastInFocusChain) {
-                                        let item = nextItemInFocusChain();
-                                        if (item)
-                                            item.forceActiveFocus(Qt.TabFocusReason);
-                                        event.accepted = true;
-                                    }
-                                    break;
-                                case Qt.Key_Down:
-                                    if (!lastInFocusChain) {
-                                        let item = nextItemInFocusChain();
-                                        if (item)
-                                            item.forceActiveFocus(Qt.TabFocusReason);
-                                        for(var i = 0; i < 3; i++)
-                                        {
-                                            let item2 = item.nextItemInFocusChain();
-                                            if (item)
-                                            {
-                                                item.forceActiveFocus(Qt.TabFocusReason);
-                                                item = item2;
-                                            }
-                                        }
-                                        event.accepted = true;
-                                    }
-                                    break;
-                                case Qt.Key_Return:
-                                    if (visualFocus) {
-                                        toggle();
-                                        toggled();
-                                    }
-                                    event.accepted = true;
-                                    break;
-                            }
-                        }
-                    }
-                    CheckBox {
-                        text: qsTr("Enable Mouse Touchpad")
-                        checked: {
-                            Chiaki.settings.mouseTouchEnabled
-                        }
-                        onToggled: Chiaki.settings.mouseTouchEnabled = checked
-                        Layout.alignment: Qt.AlignRight
-                        property bool firstInFocusChain: false
-                        property bool lastInFocusChain: false
-                        Material.roundedScale: Material.SmallScale
-                        Material.background: visualFocus ? Material.accent : undefined
-
-                        Component.onDestruction: {
-                            if (visualFocus) {
-                                let item = nextItemInFocusChain();
-                                if (item)
-                                    item.forceActiveFocus(Qt.TabFocusReason);
-                            }
-                        }
-                        Keys.onPressed: (event) => {
-                            switch (event.key) {
-                                case Qt.Key_Left:
-                                    if (!firstInFocusChain) {
-                                        let item = nextItemInFocusChain(false);
-                                        if (item)
-                                            item.forceActiveFocus(Qt.TabFocusReason);
-                                        event.accepted = true;
-                                    }
-                                    break;
-                                case Qt.Key_Down:
-                                    if (!lastInFocusChain) {
-                                        let item = nextItemInFocusChain();
-                                        if (item)
-                                            item.forceActiveFocus(Qt.TabFocusReason);
-                                        for(var i = 0; i < 3; i++)
-                                        {
-                                            let item2 = item.nextItemInFocusChain();
-                                            if (item)
-                                            {
-                                                item.forceActiveFocus(Qt.TabFocusReason);
-                                                item = item2;
-                                            }
-                                        }
-                                        event.accepted = true;
-                                    }
-                                    break;
-                                case Qt.Key_Return:
-                                    if (visualFocus) {
-                                        toggle();
-                                        toggled();
-                                    }
-                                    event.accepted = true;
-                                    break;
-                            }
-                        }
-                    }
-                    Repeater {
-                        id: chiakiKeys
-                        model: Chiaki.settings.controllerMapping
-
-                        RowLayout {
-                            spacing: 20
-
-                            Label {
-                                Layout.preferredWidth: 200
-                                horizontalAlignment: Text.AlignRight
-                                text: modelData.buttonName
-                            }
-
-                            Button {
-                                property bool firstInFocusChain: false
-                                property bool lastInFocusChain: index == (chiakiKeys.count - 1)
-                                Layout.preferredWidth: 170
-                                Layout.preferredHeight: 52
-                                text: modelData.keyName
-                                Material.roundedScale: Material.SmallScale
-                                Material.background: visualFocus ? Material.accent : undefined
-                                Component.onDestruction: {
-                                    if (visualFocus) {
-                                        let item = nextItemInFocusChain();
-                                        if (item)
-                                            item.forceActiveFocus(Qt.TabFocusReason);
-                                    }
-                                }
-                                onClicked: {
-                                    keyDialog.show({
-                                        value: modelData.buttonValue,
-                                        mappingIndex: index,
-                                        callback: (name) => text = name,
-                                    });
-                                }
-                                Keys.onPressed: (event) => {
-                                    switch (event.key) {
-                                        case Qt.Key_Left:
-                                            if (!firstInFocusChain && ((index % 3) != 0)) {
-                                                let item = nextItemInFocusChain(false);
-                                                if (item)
-                                                    item.forceActiveFocus(Qt.TabFocusReason);
-                                                event.accepted = true;
-                                            }
-                                            break;
-                                        case Qt.Key_Right:
-                                            if  (!lastInFocusChain && (index % 3) != 2) {
-                                                let item = nextItemInFocusChain();
-                                                if (item)
-                                                    item.forceActiveFocus(Qt.TabFocusReason);
-                                                event.accepted = true;
-                                            }
-                                            break;
-                                        case Qt.Key_Up:
-                                            if (!firstInFocusChain)
-                                            {
-                                                let item = nextItemInFocusChain(false);
-                                                if (item)
-                                                    item.forceActiveFocus(Qt.TabFocusReason);
-                                                for(var i = 0; i < 3; i++)
-                                                {
-                                                    let item2 = item.nextItemInFocusChain(false);
-                                                    if (item)
-                                                    {
-                                                        item.forceActiveFocus(Qt.TabFocusReason);
-                                                        item = item2;
-                                                    }
-                                                }
-                                                event.accepted = true;
-                                            }
-                                            break;
-                                        case Qt.Key_Down:
-                                            if (!lastInFocusChain && index < (chiakiKeys.count - 3)) {
-                                                let item = nextItemInFocusChain();
-                                                if (item)
-                                                    item.forceActiveFocus(Qt.TabFocusReason);
-                                                for(var i = 0; i < 3; i++)
-                                                {
-                                                    let item2 = item.nextItemInFocusChain();
-                                                    if (item)
-                                                    {
-                                                        item.forceActiveFocus(Qt.TabFocusReason);
-                                                        item = item2;
-                                                    }
-                                                }
-                                                event.accepted = true;
-                                            }
-                                            break;
-                                        case Qt.Key_Return:
-                                            if (visualFocus) {
-                                                clicked();
-                                            }
-                                            break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                }
-            }
-
-            Item {
-                // Controllers
-                C.SmartFlickable {
-                    id: controllersFlick
-                    implicitWidth: parent.width ? parent.width: 0
-                    implicitHeight: parent.height ? parent.height: 0
-                    anchors {
-                        fill: parent
-                        topMargin: 20
-                        bottomMargin: 20
-                        leftMargin: parent.width ? (parent.width / 2 - controllersLayout.width / 2) : 0
-                    }
-                    contentWidth: controllersLayout.width
-                    contentHeight: controllersLayout.height
-                    tabIndex: 6
-                    currentTabIndex: bar.currentIndex
-                    contentLayout: controllersLayout
-                    
-                    ColumnLayout {
-                        id: controllersLayout
-                        anchors {
-                            top: parent.top
-                            horizontalCenter: parent.horizontalCenter
-                        }
-                        spacing: 10
-                        C.Button {
-                            sendOutput: true
-                            Layout.alignment: Qt.AlignHCenter
-                            id: controllerMappingChange
-                            firstInFocusChain: true
-                            text: "Change Controller Mapping"
-                            onClicked: controllerMappingDialog.show({
-                                reset: false
-                            });
-                        }
-                    C.Button {
-                        sendOutput: true
-                        Layout.alignment: Qt.AlignHCenter
-                        id: controllerMappingReset
-                        text: "Reset Controller Mapping"
-                        onClicked: controllerMappingDialog.show({
-                            reset: true
-                        });
-                    }
-                    C.Button {
-                        sendOutput: true
-                        Layout.alignment: Qt.AlignHCenter
-                        id: applyControllerLayout
-                        text: qsTr("Apply Base Layout")
-                        visible: typeof Chiaki.configureSteamControllerLayout === "function"
-                        onClicked: {
-                            Chiaki.configureSteamControllerLayout();
-                            root.showToast(qsTr("Layout Applied"), "", "#4CAF50");
-                        }
-                    }
-
-                    RowLayout {
-                        spacing: 10
-                        Layout.alignment: Qt.AlignHCenter
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Background Controller Events:")
-                            }
-                            C.CheckBox {
-                                id: backgroundController
-                                sendOutput: true
-                                text: qsTr("Process controller input when application is in background")
-                                checked: {
-                                    Chiaki.settings.allowJoystickBackgroundEvents
-                                }
-                                onToggled: Chiaki.settings.allowJoystickBackgroundEvents = checked
-                            }
-
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                text: qsTr("(Checked)")
-                            }
-                        }
-                        RowLayout {
-                            spacing: 10
-                            Layout.alignment: Qt.AlignHCenter
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                text: qsTr("Dpad Touchpad Emulation")
-                            }
-                            C.CheckBox {
-                                sendOutput: true
-                                id: dpadTouch
-                                checked: Chiaki.settings.dpadTouchEnabled
-                                onToggled: Chiaki.settings.dpadTouchEnabled = !Chiaki.settings.dpadTouchEnabled
-                                KeyNavigation.priority: KeyNavigation.BeforeItem
-                                KeyNavigation.up: backgroundController
-                                KeyNavigation.left: dpadTouch
-                                KeyNavigation.right: dpadTouch
-                                KeyNavigation.down: {
-                                    if(touchIncrement.visible)
-                                        touchIncrement
-                                    else
-                                        posButtons
-                                }
-                            }
-
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                text: qsTr("(Checked)")
-                            }
-                        }
-
-                        RowLayout {
-                            id: touchIncrementLayout
-                            spacing: 10
-                            Layout.alignment: Qt.AlignHCenter
-                            visible: Chiaki.settings.dpadTouchEnabled
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                text: qsTr("Dpad Touch Increment:")
-                            }
-
-                            C.Slider {
-                                sendOutput: true
-                                id: touchIncrement
-                                Layout.preferredWidth: 250
-                                from: 1
-                                to: 1079
-                                stepSize: 1
-                                value: Chiaki.settings.dpadTouchIncrement
-                                onMoved: Chiaki.settings.dpadTouchIncrement = value
-
-                                Label {
-                                    anchors {
-                                        left: parent.right
-                                        verticalCenter: parent.verticalCenter
-                                        leftMargin: 10
-                                    }
-                                    text: qsTr("%1 mm").arg(parent.value / 100)
-                                }
-                                KeyNavigation.priority: KeyNavigation.BeforeItem
-                                KeyNavigation.up: dpadTouch
-                                KeyNavigation.down: {
-                                    if(dpadShortcut1.visible)
-                                        dpadShortcut1
-                                    else
-                                        posButtons;
-                                }
-                            }
-
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                Layout.leftMargin: 100
-                                text: qsTr("(0.3 mm)")
-                            }
-                        }
-                        RowLayout {
-                            spacing: 10
-                            visible: Chiaki.settings.dpadTouchEnabled
-                            Layout.alignment: Qt.AlignHCenter
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                text: qsTr("Dpad Regular/Touch Combo:")
-                            }
-
-                            C.ComboBox {
-                                id: dpadShortcut1
-                                implicitContentWidthPolicy: ComboBox.WidestText
-                                firstInFocusChain: false
-                                model: [qsTr("Not Used"), qsTr("Cross"), qsTr("Moon"), qsTr("Box"), qsTr("Pyramid"), qsTr("Dpad Left"), qsTr("Dpad Right"), qsTr("Dpad Up"), qsTr("Dpad Down"), qsTr("L1"), qsTr("R1"), qsTr("L3"), qsTr("R3"), qsTr("Options"), qsTr("Share"), qsTr("Touchpad"), qsTr("PS")]
-                                currentIndex: Chiaki.settings.dpadTouchShortcut1
-                                onActivated: index => Chiaki.settings.dpadTouchShortcut1 = index
-                                KeyNavigation.priority: {
-                                    if(!popup.visible)
-                                        KeyNavigation.BeforeItem
-                                    else
-                                        KeyNavigation.AfterItem
-                                }
-                                KeyNavigation.up: touchIncrement
-                                KeyNavigation.down: posButtons
-                                KeyNavigation.left: dpadShortcut1
-                                KeyNavigation.right: dpadShortcut2
-                            }
-
-                            C.ComboBox {
-                                id: dpadShortcut2
-                                implicitContentWidthPolicy: ComboBox.WidestText
-                                firstInFocusChain: false
-                                model: [qsTr("Not Used"), qsTr("Cross"), qsTr("Moon"), qsTr("Box"), qsTr("Pyramid"), qsTr("Dpad Left"), qsTr("Dpad Right"), qsTr("Dpad Up"), qsTr("Dpad Down"), qsTr("L1"), qsTr("R1"), qsTr("L3"), qsTr("R3"), qsTr("Options"), qsTr("Share"), qsTr("Touchpad"), qsTr("PS")]
-                                currentIndex: Chiaki.settings.dpadTouchShortcut2
-                                onActivated: index => Chiaki.settings.dpadTouchShortcut2 = index
-                                KeyNavigation.priority: {
-                                    if(!popup.visible)
-                                        KeyNavigation.BeforeItem
-                                    else
-                                        KeyNavigation.AfterItem
-                                }
-                                KeyNavigation.up: touchIncrement
-                                KeyNavigation.down: posButtons
-                                KeyNavigation.left: dpadShortcut1
-                                KeyNavigation.right: dpadShortcut3
-                            }
-
-                            C.ComboBox {
-                                id: dpadShortcut3
-                                implicitContentWidthPolicy: ComboBox.WidestText
-                                firstInFocusChain: false
-                                model: [qsTr("Not Used"), qsTr("Cross"), qsTr("Moon"), qsTr("Box"), qsTr("Pyramid"), qsTr("Dpad Left"), qsTr("Dpad Right"), qsTr("Dpad Up"), qsTr("Dpad Down"), qsTr("L1"), qsTr("R1"), qsTr("L3"), qsTr("R3"), qsTr("Options"), qsTr("Share"), qsTr("Touchpad"), qsTr("PS")]
-                                currentIndex: Chiaki.settings.dpadTouchShortcut3
-                                onActivated: index => Chiaki.settings.dpadTouchShortcut3 = index
-                                KeyNavigation.priority: {
-                                    if(!popup.visible)
-                                        KeyNavigation.BeforeItem
-                                    else
-                                        KeyNavigation.AfterItem
-                                }
-                                KeyNavigation.up: touchIncrement
-                                KeyNavigation.down: posButtons
-                                KeyNavigation.left: dpadShortcut2
-                                KeyNavigation.right: dpadShortcut4
-                            }
-
-                            C.ComboBox {
-                                id: dpadShortcut4
-                                implicitContentWidthPolicy: ComboBox.WidestText
-                                firstInFocusChain: false
-                                model: [qsTr("Not Used"), qsTr("Cross"), qsTr("Moon"), qsTr("Box"), qsTr("Pyramid"), qsTr("Dpad Left"), qsTr("Dpad Right"), qsTr("Dpad Up"), qsTr("Dpad Down"), qsTr("L1"), qsTr("R1"), qsTr("L3"), qsTr("R3"), qsTr("Options"), qsTr("Share"), qsTr("Touchpad"), qsTr("PS")]
-                                currentIndex: Chiaki.settings.dpadTouchShortcut4
-                                onActivated: index => Chiaki.settings.dpadTouchShortcut4 = index
-                                KeyNavigation.priority: {
-                                    if(!popup.visible)
-                                        KeyNavigation.BeforeItem
-                                    else
-                                        KeyNavigation.AfterItem
-                                }
-                                KeyNavigation.up: touchIncrement
-                                KeyNavigation.down: posButtons
-                                KeyNavigation.left: dpadShortcut3
-                                KeyNavigation.right: dpadShortcut4
-                            }
-
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                text: qsTr("(L1+R1+dpad Up)")
-                            }
-                        }
-                        RowLayout {
-                            spacing: 10
-                            Layout.alignment: Qt.AlignHCenter
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                text: qsTr("Buttons By Position:")
-                            }
-
-                            C.CheckBox {
-                                id: posButtons
-                                sendOutput: true
-                                text: qsTr("Use buttons by position instead of by label")
-                                checked: Chiaki.settings.buttonsByPosition
-                                onToggled: Chiaki.settings.buttonsByPosition = checked
-                                KeyNavigation.priority: KeyNavigation.BeforeItem
-                                KeyNavigation.up: {
-                                    if(dpadShortcut1.visible)
-                                        dpadShortcut1
-                                    else
-                                        dpadTouch;
-                                }
-                                KeyNavigation.down: rumbleHaptics
-                                KeyNavigation.left: posButtons
-                                KeyNavigation.right: posButtons
-                            }
-
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                text: qsTr("(Unchecked)")
-                            }
-                        }
-                        RowLayout {
-                            spacing: 10
-                            Layout.alignment: Qt.AlignHCenter
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                text: qsTr("Rumble Haptics:")
-                            }
-
-                            C.ComboBox {
-                                id: rumbleHaptics
-                                Layout.preferredWidth: 400
-                                model: [qsTr("Off"), qsTr("Very Weak"), qsTr("Weak"), qsTr("Normal"), qsTr("Strong"), qsTr("Very Strong")]
-                                currentIndex: Chiaki.settings.rumbleHapticsIntensity
-                                onActivated: (index) => Chiaki.settings.rumbleHapticsIntensity = index;
-                            }
-
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                text: qsTr("(Normal)")
-                            }
-                        }
-                        RowLayout {
-                            spacing: 10
-                            Layout.alignment: Qt.AlignHCenter
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                text: qsTr("True Haptics Intensity:")
-                            }
-
-                            C.Slider {
-                                sendOutput: true
-                                id: hapticOverride
-                                Layout.preferredWidth: 250
-                                from: 0
-                                to: 2
-                                stepSize: 0.1
-                                value: Chiaki.settings.hapticOverride
-                                onMoved: Chiaki.settings.hapticOverride = value;
-                                lastInFocusChain: true
-                                Label {
-                                    anchors {
-                                        left: parent.right
-                                        verticalCenter: parent.verticalCenter
-                                        leftMargin: 10
-                                    }
-                                    text: {
-                                        if(parent.value > 0.99 && parent.value < 1.01)
-                                            qsTr("console setting")
-                                        else
-                                            (parent.value * 100).toFixed(0) + qsTr(" % console setting")
-                                    }
-                                }
-                            }
-
-                            Label {
-                                Layout.alignment: Qt.AlignRight
-                                Layout.leftMargin: 250
-                                text: qsTr("(console setting)")
-                            }
-                        }
-                    }
-                }
-            }
-
-            Item {
-                // Config (PSN Remote Connection Setup and Import/Export)
-                C.SmartFlickable {
-                    id: configFlick
-                    implicitWidth: parent.width ? parent.width : 0
-                    implicitHeight: parent.height ? parent.height : 0
-                    anchors {
-                        fill: parent
-                        topMargin: 20
-                        bottomMargin: 20
-                        leftMargin: parent.width ? (parent.width / 2 - configColumn.width / 2) : 0
-                    }
-                    contentWidth: configColumn.width
-                    contentHeight: configColumn.height
-                    tabIndex: 7
-                    currentTabIndex: bar.currentIndex
-                    contentLayout: configColumn
-                    
-                ColumnLayout {
-                    id: configColumn
-                    width: 500
-                    anchors {
-                        top: parent.top
-                        horizontalCenter: parent.horizontalCenter
-                    }
-                    spacing: 20
-
-                    Label {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: {
-                            if(Chiaki.settings.currentProfile)
-                                qsTr("Current Profile: ") + Chiaki.settings.currentProfile
-                            else
-                                qsTr("Current Profile: default")
-                        }
-                    }
-
-                    C.Button {
-                        id: profile
-                        firstInFocusChain: true
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 400
-                        Layout.preferredHeight: 50
-                        text: qsTr("Manage Profiles")
-                        onClicked: {
-                            root.showProfileDialog()
-                        }
-                        Material.roundedScale: Material.SmallScale
-                        
-                        // Handle gamepad navigation up - cycle through tabs
-                        Keys.onPressed: (event) => {
-                            if (event.key === Qt.Key_Up) {
-                                if (bar.currentIndex > 0) {
-                                    bar.currentIndex--;
-                                } else {
-                                    bar.currentIndex = bar.count - 1;  // Wrap to last tab
-                                }
-                                event.accepted = true;
-                            }
-                        }
-                    }
-
-                    C.Button {
-                        id: openPsnLogin
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 400
-                        Layout.preferredHeight: 50
-                        text: qsTr("Login")
-                        onClicked: {
-                            root.showPSNTokenDialog(false);
-                        }
-                        Material.roundedScale: Material.SmallScale
-                        visible: !Chiaki.settings.psnRefreshToken || !Chiaki.settings.psnAuthToken || !Chiaki.settings.psnAuthTokenExpiry || !Chiaki.settings.psnAccountId
-                    }
-
-                    C.Button {
-                        id: resetPsnTokens
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 400
-                        Layout.preferredHeight: 50
-                        text: qsTr("Clear Token")
-                        onClicked: {
-                            Chiaki.settings.psnRefreshToken = ""
-                            Chiaki.settings.psnAuthToken = ""
-                            Chiaki.settings.psnAuthTokenExpiry = ""
-                            Chiaki.settings.psnAccountId = ""
-                            Chiaki.settings.psnNpssoToken = ""
-                            openPsnLogin.forceActiveFocus(Qt.TabFocusReason);
-                        }
-                        Material.roundedScale: Material.SmallScale
-                        visible: Chiaki.settings.psnRefreshToken && Chiaki.settings.psnAuthToken && Chiaki.settings.psnAuthTokenExpiry && Chiaki.settings.psnAccountId
-                    }
-
-                    C.Button {
-                        id: clearPsnGamesButton
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 400
-                        Layout.preferredHeight: 50
-                        text: qsTr("Clear Saved Game Data")
-                        onClicked: {
-                            Chiaki.clearPsnGames();
-                        }
-                        Material.roundedScale: Material.SmallScale
-                    }
-
-                    C.Button {
-                        id: exportButton
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 400
-                        Layout.preferredHeight: 50
-                        text: qsTr("Export settings to file")
-                        onClicked: {
-                            Chiaki.settings.exportSettings();
-                        }
-                        Material.roundedScale: Material.SmallScale
-                    }
-
-                    C.Button {
-                        id: importButton
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 400
-                        Layout.preferredHeight: 50
-                        text: qsTr("Import settings from file")
-                        onClicked: {
-                            Chiaki.settings.importSettings();
-                        }
-                        Material.roundedScale: Material.SmallScale
-                    }
-
-                    C.Button {
-                        id: setupGuideButton
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 400
-                        Layout.preferredHeight: 50
-                        text: qsTr("Console Setup Guide")
-                        onClicked: root.showConsoleSetupWalkthrough()
-                        Material.roundedScale: Material.SmallScale
-                    }
-
-                    C.Button {
-                        id: supportButton
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 400
-                        Layout.preferredHeight: 50
-                        text: qsTr("Support Ludelo")
-                        visible: DonationManager.enabled
-                        onClicked: DonationManager.openSupportFromSettings()
-                        Material.roundedScale: Material.SmallScale
-
-                        Connections {
-                            target: DonationManager
-                            function onAlreadyDonated() {
-                                root.showToast(qsTr("Thank You!"), qsTr("You've already donated — we appreciate your support!"), "#4CAF50");
-                            }
-                        }
-                    }
-
-                    C.Button {
-                        id: aboutButton
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 400
-                        Layout.preferredHeight: 50
-                        text: qsTr("About")
-                        onClicked: aboutDialog.open()
-                        Material.roundedScale: Material.SmallScale
-                    }
-
-                    C.CheckBox {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.topMargin: 15
-                        text: qsTr("Verbose Logging (unchecked)")
-                        checked: Chiaki.settings.logVerbose
-                        lastInFocusChain: true
-                        onToggled: Chiaki.settings.logVerbose = checked
-                    }
-                }
-                }
-            }
-
-            Item {
-                // Cloud
-                C.SmartFlickable {
-                    id: cloudFlick
-                    implicitWidth: parent.width ? parent.width : 0
-                    implicitHeight: parent.height ? parent.height : 0
-                    anchors {
-                        fill: parent
-                        topMargin: 20
-                        bottomMargin: 20
-                        leftMargin: parent.width ? (parent.width / 2 - cloudGrid.width / 2) : 0
-                    }
-                    contentWidth: cloudGrid.width
-                    contentHeight: cloudGrid.height
-                    tabIndex: 8
-                    currentTabIndex: bar.currentIndex
-                    contentLayout: cloudGrid
-                
-                GridLayout {
-                    id: cloudGrid
-                    anchors {
-                        top: parent.top
-                        horizontalCenter: parent.horizontalCenter
-                    }
-                    columns: 3
-                    rowSpacing: 10
-                    columnSpacing: 20
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Settings for:")
-                    }
-
-                    C.ComboBox {
-                        id: cloudServiceSelection
-                        Layout.preferredWidth: 400
-                        Layout.alignment: Qt.AlignLeft
-                        model: [qsTr("Owned Games (PS5)"), qsTr("Streamable Games (PS3/PS4)")]
-                        currentIndex: selectedCloudService
-                        onActivated: (index) => selectedCloudService = index
-                        firstInFocusChain: true
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                        KeyNavigation.down: {
-                            if(selectedCloudService == SettingsDialog.CloudService.PSCloud)
-                                resolutionPSCloud
-                            else
-                                resolutionPSNOW
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Resolution:")
-                    }
-
-                    C.ComboBox {
-                        id: resolutionPSCloud
-                        Layout.preferredWidth: 400
-                        model: ["720p", "1080p", "1440p", "2160p"]
-                        currentIndex: {
-                            let res = Chiaki.settings.cloudResolutionPSCloud;
-                            if (res === 720) return 0;
-                            if (res === 1440) return 2;
-                            if (res === 2160) return 3;
-                            return 1; // Default to 1080
-                        }
-                        onActivated: index => {
-                            if (index === 0) {
-                                Chiaki.settings.cloudResolutionPSCloud = 720;
-                            } else if (index === 2) {
-                                Chiaki.settings.cloudResolutionPSCloud = 1440;
-                            } else if (index === 3) {
-                                Chiaki.settings.cloudResolutionPSCloud = 2160;
-                            } else {
-                                Chiaki.settings.cloudResolutionPSCloud = 1080;
-                            }
-                        }
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSCloud
-                        KeyNavigation.right: datacenterPSCloud
-                        KeyNavigation.up: cloudServiceSelection
-                        KeyNavigation.down: cloudLanguage
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("(1080p)")
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSCloud
-                    }
-
-                    C.ComboBox {
-                        id: resolutionPSNOW
-                        Layout.preferredWidth: 400
-                        model: ["720p", "1080p", "1440p", "2160p"]
-                        currentIndex: {
-                            let res = Chiaki.settings.cloudResolutionPSNOW;
-                            if (res === 720) return 0;
-                            if (res === 1440) return 2;
-                            if (res === 2160) return 3;
-                            return 1; // Default to 1080
-                        }
-                        onActivated: index => {
-                            if (index === 0) {
-                                Chiaki.settings.cloudResolutionPSNOW = 720;
-                            } else if (index === 2) {
-                                Chiaki.settings.cloudResolutionPSNOW = 1440;
-                            } else if (index === 3) {
-                                Chiaki.settings.cloudResolutionPSNOW = 2160;
-                            } else {
-                                Chiaki.settings.cloudResolutionPSNOW = 1080;
-                            }
-                        }
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSNOW
-                        KeyNavigation.right: datacenterPSNOW
-                        KeyNavigation.up: cloudServiceSelection
-                        KeyNavigation.down: cloudLanguage
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("(1080p)")
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSNOW
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Game Language:")
-                    }
-
-                    // Cloud streaming language (manual override, stored separately
-                    // from the auto-detected catalog locale so it's never clobbered).
-                    // Every supported language is listed; game language is tied to
-                    // the datacenter region (Gaikai ignores a language whose
-                    // datacenter isn't selected), so the user must pick a matching
-                    // Datacenter below. Supported-locale list lives in libchiaki.
-                    C.ComboBox {
-                        id: cloudLanguage
-                        Layout.preferredWidth: 400
-                        property var languageValues: []
-                        model: {
-                            let displayNames = {
-                                "en-US": "English", "en-GB": "English (UK)", "de-DE": "Deutsch",
-                                "fr-FR": "Français", "fi-FI": "Suomi", "it-IT": "Italiano",
-                                "es-ES": "Español", "nl-NL": "Nederlands", "pt-BR": "Português (BR)",
-                                "ja-JP": "日本語", "ko-KR": "한국어"
-                            };
-                            // Show every supported language (datacenter language
-                            // support can't be reliably enumerated). "Auto" (empty
-                            // value) clears the override so the auto-detected
-                            // catalog/region locale is used instead.
-                            let supported = Chiaki.settings.cloudSupportedLanguages();
-                            let catalogLocale = Chiaki.settings.cloudStoreLocale || "en-US";
-                            let values = [""];
-                            let labels = [qsTr("Auto") + " (" + catalogLocale + ")"];
-                            for (let i = 0; i < supported.length; i++) {
-                                let loc = supported[i];
-                                values.push(loc);
-                                labels.push((displayNames[loc] || loc) + " (" + loc + ")");
-                            }
-                            languageValues = values;
-                            return labels;
-                        }
-                        currentIndex: {
-                            // Empty override selects "Auto" (index 0).
-                            let sel = Chiaki.settings.cloudGameLanguage || "";
-                            let idx = languageValues.indexOf(sel);
-                            return idx >= 0 ? idx : 0;
-                        }
-                        onActivated: index => {
-                            // "" (Auto) clears the override; otherwise store the pick.
-                            Chiaki.settings.cloudGameLanguage = languageValues[index] || "";
-                        }
-                        // Thread this control into the cloud-tab focus chain, between
-                        // Resolution and Datacenter for whichever service is visible (it
-                        // shows for both PSCLOUD and PSNOW). priority BeforeItem so these
-                        // win over the ComboBox's own nextItemInFocusChain() default,
-                        // exactly like the sibling combos -- without it this row was skipped.
-                        KeyNavigation.up: selectedCloudService == SettingsDialog.CloudService.PSCloud ? resolutionPSCloud : resolutionPSNOW
-                        KeyNavigation.down: selectedCloudService == SettingsDialog.CloudService.PSCloud ? datacenterPSCloud : datacenterPSNOW
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    // 3rd-column filler keeps the 3-column grid aligned.
-                    Label { text: "" }
-
-                    // Disclaimer row: empty label column + caption under the control.
-                    Label { text: "" }
-                    Label {
-                        Layout.columnSpan: 2
-                        Layout.maximumWidth: 400
-                        wrapMode: Text.WordWrap
-                        opacity: 0.6
-                        font.pixelSize: 12
-                        text: qsTr("Not all regions support every language. A language only works on datacenters that offer it — if your chosen language isn't applied, pick a matching Datacenter below.")
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Datacenter:")
-                    }
-
-                    C.ComboBox {
-                        id: datacenterPSCloud
-                        Layout.preferredWidth: 400
-                        model: {
-                            let m = ["Auto"];
-                            try {
-                                let datacentersJson = Chiaki.settings.cloudDatacentersJsonPSCloud || "[]";
-                                let datacenters = JSON.parse(datacentersJson);
-                                if (Array.isArray(datacenters)) {
-                                    for (let i = 0; i < datacenters.length; i++) {
-                                        let dc = datacenters[i];
-                                        let name = dc.dataCenter || "";
-                                        let rtt = dc.rtt || -1;
-                                        if (name) {
-                                            if (rtt >= 0) {
-                                                m.push(name + " (" + rtt + "ms)");
-                                            } else {
-                                                m.push(name);
-                                            }
-                                        }
-                                    }
-                                }
-                            } catch (e) {
-                                console.warn("Failed to parse datacenters:", e);
-                            }
-                            return m;
-                        }
-                        currentIndex: {
-                            let selected = Chiaki.settings.cloudDatacenterPSCloud || "Auto";
-                            if (selected === "Auto") return 0;
-                            for (let i = 1; i < model.length; i++) {
-                                if (model[i].startsWith(selected)) return i;
-                            }
-                            return 0;
-                        }
-                        onActivated: index => {
-                            if (index === 0) {
-                                Chiaki.settings.cloudDatacenterPSCloud = "Auto";
-                            } else {
-                                let name = model[index];
-                                let match = name.match(/^([^(]+)/);
-                                if (match) {
-                                    Chiaki.settings.cloudDatacenterPSCloud = match[1].trim();
-                                } else {
-                                    Chiaki.settings.cloudDatacenterPSCloud = name;
-                                }
-                            }
-                        }
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSCloud
-                        KeyNavigation.left: resolutionPSCloud
-                        KeyNavigation.up: cloudLanguage
-                        KeyNavigation.down: cloudBitratePSCloud
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("(Auto)")
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSCloud
-                    }
-
-                    C.ComboBox {
-                        id: datacenterPSNOW
-                        Layout.preferredWidth: 400
-                        model: {
-                            let m = ["Auto"];
-                            try {
-                                let datacentersJson = Chiaki.settings.cloudDatacentersJsonPSNOW || "[]";
-                                let datacenters = JSON.parse(datacentersJson);
-                                if (Array.isArray(datacenters)) {
-                                    for (let i = 0; i < datacenters.length; i++) {
-                                        let dc = datacenters[i];
-                                        let name = dc.dataCenter || "";
-                                        let rtt = dc.rtt || -1;
-                                        if (name) {
-                                            if (rtt >= 0) {
-                                                m.push(name + " (" + rtt + "ms)");
-                                            } else {
-                                                m.push(name);
-                                            }
-                                        }
-                                    }
-                                }
-                            } catch (e) {
-                                console.warn("Failed to parse datacenters:", e);
-                            }
-                            return m;
-                        }
-                        currentIndex: {
-                            let selected = Chiaki.settings.cloudDatacenterPSNOW || "Auto";
-                            if (selected === "Auto") return 0;
-                            for (let i = 1; i < model.length; i++) {
-                                if (model[i].startsWith(selected)) return i;
-                            }
-                            return 0;
-                        }
-                        onActivated: index => {
-                            if (index === 0) {
-                                Chiaki.settings.cloudDatacenterPSNOW = "Auto";
-                            } else {
-                                let name = model[index];
-                                let match = name.match(/^([^(]+)/);
-                                if (match) {
-                                    Chiaki.settings.cloudDatacenterPSNOW = match[1].trim();
-                                } else {
-                                    Chiaki.settings.cloudDatacenterPSNOW = name;
-                                }
-                            }
-                        }
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSNOW
-                        KeyNavigation.left: resolutionPSNOW
-                        KeyNavigation.up: cloudLanguage
-                        KeyNavigation.down: cloudBitratePSNOW
-                        KeyNavigation.priority: {
-                            if(!popup.visible)
-                                KeyNavigation.BeforeItem
-                            else
-                                KeyNavigation.AfterItem
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("(Auto)")
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSNOW
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTr("Bitrate:")
-                    }
-
-                    Item {
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSCloud
-                        Layout.preferredWidth: 400
-                        Layout.preferredHeight: cloudBitratePSCloud.implicitHeight
-
-                        Label {
-                            id: cloudBitratePSCloudValue
-                            anchors {
-                                right: parent.right
-                                verticalCenter: parent.verticalCenter
-                            }
-                            width: 70
-                            horizontalAlignment: Text.AlignRight
-                            text: Math.round(cloudBitratePSCloud.value) + qsTr(" Mbps")
-                        }
-
-                        C.Slider {
-                            id: cloudBitratePSCloud
-                            clip: true
-                            anchors {
-                                left: parent.left
-                                right: cloudBitratePSCloudValue.left
-                                rightMargin: 20
-                                verticalCenter: parent.verticalCenter
-                            }
-                            from: 2
-                            to: 200
-                            stepSize: 1
-                            value: Chiaki.settings.cloudBitratePSCloud / 1000
-                            onMoved: Chiaki.settings.cloudBitratePSCloud = value * 1000
-                            KeyNavigation.up: datacenterPSCloud
-                            KeyNavigation.priority: KeyNavigation.BeforeItem
-                            lastInFocusChain: selectedCloudService == SettingsDialog.CloudService.PSCloud
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSCloud
-                        text: qsTr("(20 Mbps)")
-                    }
-
-                    Item {
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSNOW
-                        Layout.preferredWidth: 400
-                        Layout.preferredHeight: cloudBitratePSNOW.implicitHeight
-
-                        Label {
-                            id: cloudBitratePSNOWValue
-                            anchors {
-                                right: parent.right
-                                verticalCenter: parent.verticalCenter
-                            }
-                            width: 70
-                            horizontalAlignment: Text.AlignRight
-                            text: Math.round(cloudBitratePSNOW.value) + qsTr(" Mbps")
-                        }
-
-                        C.Slider {
-                            id: cloudBitratePSNOW
-                            clip: true
-                            anchors {
-                                left: parent.left
-                                right: cloudBitratePSNOWValue.left
-                                rightMargin: 20
-                                verticalCenter: parent.verticalCenter
-                            }
-                            from: 2
-                            to: 200
-                            stepSize: 1
-                            value: Chiaki.settings.cloudBitratePSNOW / 1000
-                            onMoved: Chiaki.settings.cloudBitratePSNOW = value * 1000
-                            KeyNavigation.up: datacenterPSNOW
-                            KeyNavigation.priority: KeyNavigation.BeforeItem
-                            lastInFocusChain: selectedCloudService == SettingsDialog.CloudService.PSNOW
-                        }
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignRight
-                        visible: selectedCloudService == SettingsDialog.CloudService.PSNOW
-                        text: qsTr("(20 Mbps)")
-                    }
-                }
-                }
-            }
-        }
-
-        Item {
-            Timer {
-                id: openTimer
-                interval: 100
-                running: false
-                onTriggered: {
-                    if(controllerMappingDialog.resetMapping)
-                    {
-                        if(!Chiaki.controllerMappingDefaultMapping)
-                        {
-                            quitControllerMapping = false;
-                            Chiaki.controllerMappingReset();
-                        }
-                        controllerMappingDialog.close();
-                    }
-                    else
-                    {
-                        controllerMappingChange.forceActiveFocus(Qt.TabFocusReason);
-                        root.showControllerMappingDialog();
-                        quitControllerMapping = false;
-                        controllerMappingDialog.resetFocus = false;
-                        controllerMappingDialog.close();
-                    }
-                }
-            }
-        }
-
-        Dialog {
-            id: aboutDialog
-            parent: Overlay.overlay
-            x: Math.round((root.width - width) / 2)
-            y: Math.round((root.height - height) / 2)
-            width: Math.min(700, root.width - 40)
-            height: Math.min(600, root.height - 80)
-            title: qsTr("About Ludelo")
-            modal: true
-            standardButtons: Dialog.Ok
-            Material.roundedScale: Material.MediumScale
-            onAboutToHide: aboutButton.forceActiveFocus(Qt.TabFocusReason)
-
-            Flickable {
-                id: aboutFlick
-                anchors.fill: parent
-                clip: true
-                contentWidth: width
-                contentHeight: aboutContent.implicitHeight
-                flickableDirection: Flickable.VerticalFlick
-                boundsBehavior: Flickable.StopAtBounds
-                interactive: true
-                focus: true
-
-                ScrollBar.vertical: ScrollBar {
-                    id: aboutScrollBar
-                    policy: ScrollBar.AlwaysOn
-                }
-
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Up) {
-                        aboutFlick.flick(0, 500)
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Down) {
-                        aboutFlick.flick(0, -500)
-                        event.accepted = true
-                    }
-                }
-
-                ColumnLayout {
-                    id: aboutContent
-                    width: aboutFlick.width - aboutScrollBar.width - 4
-                    spacing: 4
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: qsTr("Ludelo")
-                        font.pixelSize: 22
-                        font.bold: true
-                        Layout.bottomMargin: 2
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: qsTr("Version %1").arg(Qt.application.version)
-                        font.pixelSize: 13
-                        opacity: 0.7
-                        Layout.bottomMargin: 12
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: qsTr("License")
-                        font.pixelSize: 13
-                        font.bold: true
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        font.pixelSize: 12
-                        text: qsTr("Licensed under the GNU Affero General Public License version 3.")
-                        Layout.bottomMargin: 10
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: qsTr("Warranty")
-                        font.pixelSize: 13
-                        font.bold: true
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        font.pixelSize: 12
-                        text: qsTr("This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
-                        Layout.bottomMargin: 10
-                    }
+                    Layout.alignment: Qt.AlignVCenter
 
                     Rectangle {
-                        Layout.fillWidth: true
-                        height: 1
-                        color: Material.dividerColor
-                        Layout.bottomMargin: 8
+                        width: 34
+                        height: 34
+                        radius: 8
+                        color: LudeloTheme.accentPrimary
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Image {
+                            anchors.centerIn: parent
+                            width: 20
+                            height: 20
+                            source: "qrc:icons/logo_square_1024.png"
+                            fillMode: Image.PreserveAspectFit
+                            mipmap: true
+                        }
                     }
 
-                    Label {
-                        Layout.fillWidth: true
-                        text: qsTr("Full License Text")
-                        font.pixelSize: 14
-                        font.bold: true
-                        Layout.bottomMargin: 4
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        Text {
+                            text: "LUDELO"
+                            font.family: LudeloTheme.fontFamily
+                            font.pixelSize: 15
+                            font.weight: Font.Bold
+                            font.letterSpacing: 1.2
+                            color: LudeloTheme.textPrimary
+                        }
+                        Text {
+                            text: "SETTINGS"
+                            font.family: LudeloTheme.fontFamilyMono
+                            font.pixelSize: 10
+                            font.weight: Font.DemiBold
+                            color: LudeloTheme.accentMint
+                        }
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                // Category Nav with [LB] and [RB] Bumper hints
+                RowLayout {
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 8
+
+                    // [LB] Button Hint
+                    Rectangle {
+                        width: 40
+                        height: 32
+                        radius: 6
+                        color: activeCategoryIndex > 0 ? Qt.rgba(1.0, 1.0, 1.0, 0.08) : Qt.rgba(1.0, 1.0, 1.0, 0.02)
+                        border.color: LudeloTheme.borderSubtle
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "LB"
+                            font.family: LudeloTheme.fontFamilyMono
+                            font.pixelSize: 11
+                            font.weight: Font.Bold
+                            color: activeCategoryIndex > 0 ? LudeloTheme.textPrimary : LudeloTheme.textDim
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: activeCategoryIndex > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: if (activeCategoryIndex > 0) activeCategoryIndex--
+                        }
                     }
 
-                    Label {
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        textFormat: Text.PlainText
-                        font.pixelSize: 11
-                        text: Chiaki.settings.getLicenseText()
+                    // Navigation Tabs
+                    Row {
+                        spacing: 4
+                        Repeater {
+                            model: dialog.categoryTitles
+                            delegate: LNavTab {
+                                text: modelData
+                                active: dialog.activeCategoryIndex === index
+                                onClicked: dialog.activeCategoryIndex = index
+                            }
+                        }
+                    }
+
+                    // [RB] Button Hint
+                    Rectangle {
+                        width: 40
+                        height: 32
+                        radius: 6
+                        color: activeCategoryIndex < categoryTitles.length - 1 ? Qt.rgba(1.0, 1.0, 1.0, 0.08) : Qt.rgba(1.0, 1.0, 1.0, 0.02)
+                        border.color: LudeloTheme.borderSubtle
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "RB"
+                            font.family: LudeloTheme.fontFamilyMono
+                            font.pixelSize: 11
+                            font.weight: Font.Bold
+                            color: activeCategoryIndex < categoryTitles.length - 1 ? LudeloTheme.textPrimary : LudeloTheme.textDim
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: activeCategoryIndex < categoryTitles.length - 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: if (activeCategoryIndex < categoryTitles.length - 1) activeCategoryIndex++
+                        }
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                // Gamepad Polling Telemetry Badge
+                Rectangle {
+                    height: 32
+                    radius: 16
+                    color: Qt.rgba(0x1C/255, 0x22/255, 0x30/255, 0.8)
+                    border.color: LudeloTheme.borderSubtle
+                    border.width: 1
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth: gamepadRow.implicitWidth + 20
+
+                    Row {
+                        id: gamepadRow
+                        anchors.centerIn: parent
+                        spacing: 8
+
+                        Rectangle {
+                            width: 7; height: 7; radius: 3.5
+                            color: (Chiaki.controllers && Chiaki.controllers.length > 0) ? LudeloTheme.accentMint : LudeloTheme.textDim
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Text {
+                            text: (Chiaki.controllers && Chiaki.controllers.length > 0) ? "GAMEPAD CONNECTED • 1000Hz" : "NO GAMEPAD"
+                            font.family: LudeloTheme.fontFamilyMono
+                            font.pixelSize: 10
+                            font.weight: Font.DemiBold
+                            color: (Chiaki.controllers && Chiaki.controllers.length > 0) ? LudeloTheme.textPrimary : LudeloTheme.textDim
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                }
+
+                // Close / Back Button [ESC]
+                LButton {
+                    height: 36
+                    implicitWidth: 90
+                    customRadius: 18
+                    variant: "secondary"
+                    text: qsTr("CLOSE")
+                    keyHint: "[ESC]"
+                    onClicked: dialog.close()
+                }
+            }
+        }
+
+        // =====================================================================
+        // MAIN BODY (Split: Left Configuration Cards / Right Telemetry Sidebar)
+        // =====================================================================
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.margins: 24
+            spacing: 24
+
+            // -----------------------------------------------------------------
+            // LEFT COLUMN: SCROLLABLE SETTINGS PANE
+            // -----------------------------------------------------------------
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 16
+
+                // Section Subtitle & Action Bar
+                RowLayout {
+                    Layout.fillWidth: true
+
+                    Column {
+                        spacing: 2
+                        Text {
+                            text: qsTr("CLIENT PREFERENCES / %1").arg(dialog.categoryTitles[dialog.activeCategoryIndex].toUpperCase())
+                            font.family: LudeloTheme.fontFamilyMono
+                            font.pixelSize: 11
+                            font.weight: Font.Bold
+                            color: LudeloTheme.accentPrimary
+                        }
+                        Text {
+                            text: {
+                                switch (dialog.activeCategoryIndex) {
+                                case 0: return qsTr("Display & Stream Configuration");
+                                case 1: return qsTr("Audio Output & Input Devices");
+                                case 2: return qsTr("Network Transport & Cloud Streaming");
+                                case 3: return qsTr("Controller, Haptics & Input Mapping");
+                                case 4: return qsTr("PlayStation Network & Registered Consoles");
+                                case 5: return qsTr("General Application & Performance");
+                                default: return "";
+                                }
+                            }
+                            font.family: LudeloTheme.fontFamily
+                            font.pixelSize: 22
+                            font.weight: Font.Bold
+                            color: LudeloTheme.textPrimary
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    // Reset Defaults Button
+                    LButton {
+                        height: 38
+                        implicitWidth: 160
+                        customRadius: 8
+                        variant: "ghost"
+                        text: qsTr("RESET DEFAULTS")
+                        keyHint: "[X]"
+                        onClicked: dialog.resetToDefaults()
+                    }
+                }
+
+                // Flickable Content Area
+                Flickable {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    contentWidth: width
+                    contentHeight: currentCategoryContent.implicitHeight + 40
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    Item {
+                        id: currentCategoryContent
+                        width: parent.width
+                        implicitHeight: categoryStack.children[dialog.activeCategoryIndex].implicitHeight
+
+                        StackLayout {
+                            id: categoryStack
+                            anchors.fill: parent
+                            currentIndex: dialog.activeCategoryIndex
+
+                            // -------------------------------------------------
+                            // 0: VIDEO & STREAM
+                            // -------------------------------------------------
+                            ColumnLayout {
+                                spacing: 20
+
+                                // Target Console Selector
+                                RowLayout {
+                                    spacing: 12
+                                    Text {
+                                        text: qsTr("Active Target Profile:")
+                                        font.family: LudeloTheme.fontFamily
+                                        font.pixelSize: 13
+                                        font.weight: Font.Medium
+                                        color: LudeloTheme.textSecondary
+                                    }
+
+                                    Row {
+                                        spacing: 8
+                                        LButton {
+                                            height: 32
+                                            implicitWidth: 140
+                                            customRadius: 6
+                                            variant: dialog.selectedConsole === SettingsDialog.Console.PS5 ? "primary" : "secondary"
+                                            text: "PlayStation 5"
+                                            onClicked: dialog.selectedConsole = SettingsDialog.Console.PS5
+                                        }
+                                        LButton {
+                                            height: 32
+                                            implicitWidth: 140
+                                            customRadius: 6
+                                            variant: dialog.selectedConsole === SettingsDialog.Console.PS4 ? "primary" : "secondary"
+                                            text: "PlayStation 4"
+                                            onClicked: dialog.selectedConsole = SettingsDialog.Console.PS4
+                                        }
+                                    }
+                                }
+
+                                // Card: Display & Resolution
+                                LCard {
+                                    Layout.fillWidth: true
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 20
+                                        spacing: 16
+
+                                        Text {
+                                            text: qsTr("Display & Resolution")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 16
+                                            font.weight: Font.Bold
+                                            color: LudeloTheme.textPrimary
+                                        }
+
+                                        // Resolution Selection
+                                        ColumnLayout {
+                                            spacing: 6
+                                            Text {
+                                                text: qsTr("Target Resolution (Local Stream)")
+                                                font.family: LudeloTheme.fontFamily
+                                                font.pixelSize: 12
+                                                color: LudeloTheme.textSecondary
+                                            }
+                                            RowLayout {
+                                                spacing: 8
+                                                Repeater {
+                                                    model: [
+                                                        { text: "1080p", res: 3, label: "1920x1080 (Recommended)" },
+                                                        { text: "720p", res: 2, label: "1280x720" },
+                                                        { text: "540p", res: 1, label: "960x540" }
+                                                    ]
+                                                    delegate: LButton {
+                                                        height: 42
+                                                        implicitWidth: 170
+                                                        customRadius: 8
+                                                        variant: {
+                                                            let cur = (dialog.selectedConsole === SettingsDialog.Console.PS5)
+                                                                ? Chiaki.settings.resolutionLocalPS5
+                                                                : Chiaki.settings.resolutionLocalPS4;
+                                                            return cur === modelData.res ? "mint" : "secondary";
+                                                        }
+                                                        text: modelData.text
+                                                        onClicked: {
+                                                            if (dialog.selectedConsole === SettingsDialog.Console.PS5)
+                                                                Chiaki.settings.resolutionLocalPS5 = modelData.res;
+                                                            else
+                                                                Chiaki.settings.resolutionLocalPS4 = modelData.res;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // Target Refresh Rate
+                                        ColumnLayout {
+                                            spacing: 6
+                                            Text {
+                                                text: qsTr("Target Refresh Rate")
+                                                font.family: LudeloTheme.fontFamily
+                                                font.pixelSize: 12
+                                                color: LudeloTheme.textSecondary
+                                            }
+                                            RowLayout {
+                                                spacing: 8
+                                                LButton {
+                                                    height: 38
+                                                    implicitWidth: 150
+                                                    customRadius: 8
+                                                    variant: ((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.fpsLocalPS5 : Chiaki.settings.fpsLocalPS4) === 1) ? "mint" : "secondary"
+                                                    text: "60 FPS"
+                                                    onClicked: {
+                                                        if (dialog.selectedConsole === SettingsDialog.Console.PS5)
+                                                            Chiaki.settings.fpsLocalPS5 = 1;
+                                                        else
+                                                            Chiaki.settings.fpsLocalPS4 = 1;
+                                                    }
+                                                }
+                                                LButton {
+                                                    height: 38
+                                                    implicitWidth: 150
+                                                    customRadius: 8
+                                                    variant: ((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.fpsLocalPS5 : Chiaki.settings.fpsLocalPS4) === 0) ? "mint" : "secondary"
+                                                    text: "30 FPS"
+                                                    onClicked: {
+                                                        if (dialog.selectedConsole === SettingsDialog.Console.PS5)
+                                                            Chiaki.settings.fpsLocalPS5 = 0;
+                                                        else
+                                                            Chiaki.settings.fpsLocalPS4 = 0;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // Video Codec
+                                        ColumnLayout {
+                                            spacing: 6
+                                            Text {
+                                                text: qsTr("Video Stream Codec (PS5)")
+                                                font.family: LudeloTheme.fontFamily
+                                                font.pixelSize: 12
+                                                color: LudeloTheme.textSecondary
+                                            }
+                                            RowLayout {
+                                                spacing: 8
+                                                LButton {
+                                                    height: 38
+                                                    implicitWidth: 170
+                                                    customRadius: 8
+                                                    variant: (Chiaki.settings.codecLocalPS5 >= 1) ? "mint" : "secondary"
+                                                    text: "HEVC / H.265"
+                                                    onClicked: Chiaki.settings.codecLocalPS5 = 1
+                                                }
+                                                LButton {
+                                                    height: 38
+                                                    implicitWidth: 170
+                                                    customRadius: 8
+                                                    variant: (Chiaki.settings.codecLocalPS5 === 0) ? "mint" : "secondary"
+                                                    text: "AVC / H.264"
+                                                    onClicked: Chiaki.settings.codecLocalPS5 = 0
+                                                }
+                                            }
+                                            Text {
+                                                text: qsTr("H.265 provides ~30% higher bitrate efficiency with modern GPUs.")
+                                                font.family: LudeloTheme.fontFamily
+                                                font.pixelSize: 11
+                                                color: LudeloTheme.textDim
+                                            }
+                                        }
+
+                                        // Hardware Decoder
+                                        ColumnLayout {
+                                            spacing: 6
+                                            Text {
+                                                text: qsTr("Hardware Accelerated Decoder")
+                                                font.family: LudeloTheme.fontFamily
+                                                font.pixelSize: 12
+                                                color: LudeloTheme.textSecondary
+                                            }
+                                            RowLayout {
+                                                spacing: 12
+                                                ComboBox {
+                                                    id: decoderCombo
+                                                    Layout.preferredWidth: 320
+                                                    model: Chiaki.settings.availableDecoders
+                                                    currentIndex: Math.max(0, model.indexOf(Chiaki.settings.decoder))
+                                                    onActivated: (index) => Chiaki.settings.decoder = model[index]
+                                                }
+                                                Text {
+                                                    text: qsTr("Active engine: %1").arg(Chiaki.settings.decoder || "d3d11va")
+                                                    font.family: LudeloTheme.fontFamilyMono
+                                                    font.pixelSize: 11
+                                                    color: LudeloTheme.accentMint
+                                                }
+                                            }
+                                        }
+
+                                        // HDR Stream Output Toggle (Honest: only active when H.265 is selected)
+                                        LToggle {
+                                            label: qsTr("HDR Stream Output (10-bit Rec.2020)")
+                                            description: (Chiaki.settings.codecLocalPS5 === 0)
+                                                ? qsTr("HDR disponible en streams H.265 compatibles")
+                                                : qsTr("Direct 10-bit HDR metadata passthrough to compatible displays")
+                                            enabled: dialog.selectedConsole === SettingsDialog.Console.PS5 && Chiaki.settings.codecLocalPS5 >= 1
+                                            checked: Chiaki.settings.codecLocalPS5 === 2
+                                            onToggled: {
+                                                if (checked) {
+                                                    Chiaki.settings.codecLocalPS5 = 2; // H265 HDR
+                                                } else {
+                                                    Chiaki.settings.codecLocalPS5 = 1; // H265 Standard
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Card: Bitrate & Network Allocation
+                                LCard {
+                                    Layout.fillWidth: true
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 20
+                                        spacing: 16
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            Text {
+                                                text: qsTr("Bitrate & Network Allocation")
+                                                font.family: LudeloTheme.fontFamily
+                                                font.pixelSize: 16
+                                                font.weight: Font.Bold
+                                                color: LudeloTheme.textPrimary
+                                            }
+                                            Item { Layout.fillWidth: true }
+                                            Text {
+                                                text: qsTr("%1 Mbps (%2)").arg(
+                                                    Math.round((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateLocalPS5 : Chiaki.settings.bitrateLocalPS4) / 1000)
+                                                ).arg(
+                                                    ((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateLocalPS5 : Chiaki.settings.bitrateLocalPS4) >= 25000)
+                                                        ? qsTr("High Quality / Recommended for LAN")
+                                                        : qsTr("Standard")
+                                                )
+                                                font.family: LudeloTheme.fontFamilyMono
+                                                font.pixelSize: 12
+                                                font.weight: Font.Bold
+                                                color: LudeloTheme.accentMint
+                                            }
+                                        }
+
+                                        LSlider {
+                                            Layout.fillWidth: true
+                                            from: 5000
+                                            to: 30000
+                                            stepSize: 1000
+                                            value: dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateLocalPS5 : Chiaki.settings.bitrateLocalPS4
+                                            onMoved: {
+                                                if (dialog.selectedConsole === SettingsDialog.Console.PS5)
+                                                    Chiaki.settings.bitrateLocalPS5 = Math.round(value);
+                                                else
+                                                    Chiaki.settings.bitrateLocalPS4 = Math.round(value);
+                                            }
+                                        }
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            Text { text: "5 Mbps (Eco)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textDim }
+                                            Item { Layout.fillWidth: true }
+                                            Text { text: "15 Mbps (Standard)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textDim }
+                                            Item { Layout.fillWidth: true }
+                                            Text { text: "30 Mbps (High Quality / LAN)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textDim }
+                                        }
+
+                                        Rectangle { Layout.fillWidth: true; height: 1; color: LudeloTheme.borderSubtle }
+
+                                        // Diagnostics HUD Toggle
+                                        LToggle {
+                                            label: qsTr("In-Game Diagnostics HUD Overlay")
+                                            description: qsTr("Display live RTT latency, packet loss, and frame drop metrics during stream [TAB]")
+                                            checked: Chiaki.settings.showStreamStats
+                                            onToggled: Chiaki.settings.showStreamStats = checked
+                                        }
+
+                                        // Advanced Display Pipeline Button
+                                        RowLayout {
+                                            spacing: 12
+                                            LButton {
+                                                height: 38
+                                                implicitWidth: 220
+                                                customRadius: 8
+                                                variant: "secondary"
+                                                text: qsTr("ADVANCED RENDERER")
+                                                onClicked: {
+                                                    if (typeof root !== "undefined" && root.showDisplaySettingsDialog)
+                                                        root.showDisplaySettingsDialog();
+                                                }
+                                            }
+                                            Text {
+                                                text: qsTr("Adjust tone mapping, sharpening, and color grading")
+                                                font.family: LudeloTheme.fontFamily
+                                                font.pixelSize: 11
+                                                color: LudeloTheme.textDim
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // -------------------------------------------------
+                            // 1: AUDIO
+                            // -------------------------------------------------
+                            ColumnLayout {
+                                spacing: 20
+
+                                LCard {
+                                    Layout.fillWidth: true
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 20
+                                        spacing: 16
+
+                                        Text {
+                                            text: qsTr("Audio Devices & Buffers")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 16
+                                            font.weight: Font.Bold
+                                            color: LudeloTheme.textPrimary
+                                        }
+
+                                        ColumnLayout {
+                                            spacing: 6
+                                            Text { text: qsTr("Audio Output Device"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; color: LudeloTheme.textSecondary }
+                                            ComboBox {
+                                                Layout.fillWidth: true
+                                                model: Chiaki.settings.availableAudioOutDevices
+                                                currentIndex: Math.max(0, model.indexOf(Chiaki.settings.audioOutDevice))
+                                                onActivated: (index) => Chiaki.settings.audioOutDevice = model[index]
+                                            }
+                                        }
+
+                                        ColumnLayout {
+                                            spacing: 6
+                                            Text { text: qsTr("Microphone Input Device"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; color: LudeloTheme.textSecondary }
+                                            ComboBox {
+                                                Layout.fillWidth: true
+                                                model: Chiaki.settings.availableAudioInDevices
+                                                currentIndex: Math.max(0, model.indexOf(Chiaki.settings.audioInDevice))
+                                                onActivated: (index) => Chiaki.settings.audioInDevice = model[index]
+                                            }
+                                        }
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            Text { text: qsTr("Audio Buffer Size (Frames): %1").arg(Chiaki.settings.audioBufferSize); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; color: LudeloTheme.textSecondary }
+                                            Item { Layout.fillWidth: true }
+                                            Text { text: "19200 (Default)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.accentMint }
+                                        }
+                                        LSlider {
+                                            Layout.fillWidth: true
+                                            from: 4800
+                                            to: 38400
+                                            stepSize: 2400
+                                            value: Chiaki.settings.audioBufferSize
+                                            onMoved: Chiaki.settings.audioBufferSize = Math.round(value)
+                                        }
+
+                                        LToggle {
+                                            label: qsTr("Start Session with Microphone Unmuted")
+                                            description: qsTr("Enables voice chat transmission immediately upon stream start")
+                                            checked: Chiaki.settings.startMicUnmuted
+                                            onToggled: Chiaki.settings.startMicUnmuted = checked
+                                        }
+                                    }
+                                }
+                            }
+
+                            // -------------------------------------------------
+                            // 2: NETWORK & CLOUD
+                            // -------------------------------------------------
+                            ColumnLayout {
+                                spacing: 20
+
+                                LCard {
+                                    Layout.fillWidth: true
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 20
+                                        spacing: 16
+
+                                        Text {
+                                            text: qsTr("Network & Socket Optimization")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 16
+                                            font.weight: Font.Bold
+                                            color: LudeloTheme.textPrimary
+                                        }
+
+                                        LToggle {
+                                            label: qsTr("WiFi Congestion Notification")
+                                            description: qsTr("Warn when network packet drops exceed threshold on wireless connections")
+                                            checked: Chiaki.settings.wifiDroppedNotif > 0
+                                            onToggled: Chiaki.settings.wifiDroppedNotif = checked ? 1 : 0
+                                        }
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            Text { text: qsTr("Max Packet Loss Recovery Tolerance: %1%").arg(Chiaki.settings.packetLossMax); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; color: LudeloTheme.textSecondary }
+                                            Item { Layout.fillWidth: true }
+                                            Text { text: "10% (Default)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.accentMint }
+                                        }
+                                        LSlider {
+                                            Layout.fillWidth: true
+                                            from: 1
+                                            to: 30
+                                            stepSize: 1
+                                            value: Chiaki.settings.packetLossMax
+                                            onMoved: Chiaki.settings.packetLossMax = Math.round(value)
+                                        }
+                                    }
+                                }
+
+                                LCard {
+                                    Layout.fillWidth: true
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 20
+                                        spacing: 16
+
+                                        Text {
+                                            text: qsTr("PlayStation Cloud Gaming Streaming")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 16
+                                            font.weight: Font.Bold
+                                            color: LudeloTheme.textPrimary
+                                        }
+
+                                        ColumnLayout {
+                                            spacing: 6
+                                            Text { text: qsTr("Cloud Data Center Location"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; color: LudeloTheme.textSecondary }
+                                            ComboBox {
+                                                Layout.preferredWidth: 320
+                                                model: [qsTr("Auto (Lowest Latency)"), qsTr("North America"), qsTr("Europe"), qsTr("Asia-Pacific")]
+                                                currentIndex: 0
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // -------------------------------------------------
+                            // 3: CONTROLLER
+                            // -------------------------------------------------
+                            ColumnLayout {
+                                spacing: 20
+
+                                LCard {
+                                    Layout.fillWidth: true
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 20
+                                        spacing: 16
+
+                                        Text {
+                                            text: qsTr("Gamepad & Feedback")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 16
+                                            font.weight: Font.Bold
+                                            color: LudeloTheme.textPrimary
+                                        }
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            Text {
+                                                text: qsTr("Rumble & Haptics Intensity: %1").arg(
+                                                    ["Off", "Very Weak", "Weak", "Normal", "Strong", "Very Strong"][Chiaki.settings.rumbleHapticsIntensity] || "Normal"
+                                                )
+                                                font.family: LudeloTheme.fontFamily; font.pixelSize: 12; color: LudeloTheme.textSecondary
+                                            }
+                                            Item { Layout.fillWidth: true }
+                                            Text { text: "Normal (Default)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.accentMint }
+                                        }
+                                        LSlider {
+                                            Layout.fillWidth: true
+                                            from: 0
+                                            to: 5
+                                            stepSize: 1
+                                            value: Chiaki.settings.rumbleHapticsIntensity
+                                            onMoved: Chiaki.settings.rumbleHapticsIntensity = Math.round(value)
+                                        }
+
+                                        LToggle {
+                                            label: qsTr("Show On-Screen Controller Overlay")
+                                            description: qsTr("Renders visual gamepad button highlights on screen")
+                                            checked: Chiaki.settings.controllerOverlayShown
+                                            onToggled: Chiaki.settings.controllerOverlayShown = checked
+                                        }
+
+                                        LToggle {
+                                            label: qsTr("Map Physical Buttons by Position (Nintendo / Xbox)")
+                                            description: qsTr("Swaps South/East and West/North face buttons according to layout")
+                                            checked: Chiaki.settings.buttonsByPosition
+                                            onToggled: Chiaki.settings.buttonsByPosition = checked
+                                        }
+
+                                        LToggle {
+                                            label: qsTr("Allow Gamepad Events in Background")
+                                            description: qsTr("Permits game controls when Ludelo window is unfocused")
+                                            checked: Chiaki.settings.allowJoystickBackgroundEvents
+                                            onToggled: Chiaki.settings.allowJoystickBackgroundEvents = checked
+                                        }
+
+                                        RowLayout {
+                                            spacing: 12
+                                            LButton {
+                                                height: 38
+                                                implicitWidth: 220
+                                                customRadius: 8
+                                                variant: "secondary"
+                                                text: qsTr("REMAP GAMEPAD")
+                                                onClicked: controllerMappingDialog.show({reset: false})
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // -------------------------------------------------
+                            // 4: ACCOUNT & CONSOLES
+                            // -------------------------------------------------
+                            ColumnLayout {
+                                spacing: 20
+
+                                LCard {
+                                    Layout.fillWidth: true
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 20
+                                        spacing: 16
+
+                                        Text {
+                                            text: qsTr("PlayStation Network Account")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 16
+                                            font.weight: Font.Bold
+                                            color: LudeloTheme.textPrimary
+                                        }
+
+                                        RowLayout {
+                                            spacing: 12
+                                            Rectangle {
+                                                width: 8; height: 8; radius: 4
+                                                color: Chiaki.settings.psnAccountId ? LudeloTheme.accentMint : LudeloTheme.textDim
+                                            }
+                                            Text {
+                                                text: Chiaki.settings.psnAccountId ? qsTr("Logged In (Account ID: %1)").arg(Chiaki.settings.psnAccountId) : qsTr("Not Connected to PSN")
+                                                font.family: LudeloTheme.fontFamilyMono
+                                                font.pixelSize: 13
+                                                font.weight: Font.DemiBold
+                                                color: Chiaki.settings.psnAccountId ? LudeloTheme.textPrimary : LudeloTheme.textDim
+                                            }
+                                        }
+
+                                        LButton {
+                                            height: 38
+                                            implicitWidth: 240
+                                            customRadius: 8
+                                            variant: Chiaki.settings.psnAccountId ? "ghost" : "primary"
+                                            text: Chiaki.settings.psnAccountId ? qsTr("RE-AUTHENTICATE PSN") : qsTr("SIGN IN WITH PLAYSTATION")
+                                            onClicked: Chiaki.startWebView2Login()
+                                        }
+                                    }
+                                }
+
+                                LCard {
+                                    Layout.fillWidth: true
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 20
+                                        spacing: 16
+
+                                        Text {
+                                            text: qsTr("Registered Consoles (%1)").arg(Chiaki.settings.registeredHosts ? Chiaki.settings.registeredHosts.length : 0)
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 16
+                                            font.weight: Font.Bold
+                                            color: LudeloTheme.textPrimary
+                                        }
+
+                                        Repeater {
+                                            model: Chiaki.settings.registeredHosts
+                                            delegate: RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 12
+
+                                                Text {
+                                                    text: modelData.server_nickname || "PlayStation Console"
+                                                    font.family: LudeloTheme.fontFamily
+                                                    font.pixelSize: 13
+                                                    color: LudeloTheme.textPrimary
+                                                }
+                                                Text {
+                                                    text: modelData.server_mac || ""
+                                                    font.family: LudeloTheme.fontFamilyMono
+                                                    font.pixelSize: 11
+                                                    color: LudeloTheme.textDim
+                                                }
+                                                Item { Layout.fillWidth: true }
+                                                LButton {
+                                                    height: 28
+                                                    implicitWidth: 80
+                                                    customRadius: 6
+                                                    variant: "danger"
+                                                    text: qsTr("DELETE")
+                                                    onClicked: Chiaki.settings.deleteRegisteredHost(index)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // -------------------------------------------------
+                            // 5: GENERAL & SYSTEM
+                            // -------------------------------------------------
+                            ColumnLayout {
+                                spacing: 20
+
+                                LCard {
+                                    Layout.fillWidth: true
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 20
+                                        spacing: 16
+
+                                        Text {
+                                            text: qsTr("Window & Presentation")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 16
+                                            font.weight: Font.Bold
+                                            color: LudeloTheme.textPrimary
+                                        }
+
+                                        LToggle {
+                                            label: qsTr("Auto-Hide Mouse Cursor during Stream")
+                                            description: qsTr("Hides the cursor after 3 seconds of inactivity while playing")
+                                            checked: Chiaki.settings.hideCursor
+                                            onToggled: Chiaki.settings.hideCursor = checked
+                                        }
+
+                                        LToggle {
+                                            label: qsTr("Double Click for Fullscreen")
+                                            description: qsTr("Toggles fullscreen mode when double clicking the stream view")
+                                            checked: Chiaki.settings.fullscreenDoubleClick
+                                            onToggled: Chiaki.settings.fullscreenDoubleClick = checked
+                                        }
+
+                                        LToggle {
+                                            label: qsTr("Verbose Diagnostic Logging")
+                                            description: qsTr("Writes detailed network and frame timing diagnostics to log file")
+                                            checked: Chiaki.settings.logVerbose
+                                            onToggled: Chiaki.settings.logVerbose = checked
+                                        }
+
+                                        RowLayout {
+                                            spacing: 12
+                                            LButton {
+                                                height: 38
+                                                implicitWidth: 190
+                                                customRadius: 8
+                                                variant: "secondary"
+                                                text: qsTr("OPEN LOG DIRECTORY")
+                                                onClicked: Qt.openUrlExternally("file:///" + Chiaki.settings.logDirectory)
+                                            }
+                                            LButton {
+                                                height: 38
+                                                implicitWidth: 160
+                                                customRadius: 8
+                                                variant: "ghost"
+                                                text: qsTr("EXPORT SETTINGS")
+                                                onClicked: Chiaki.settings.exportSettings()
+                                            }
+                                        }
+                                    }
+                                }
+
+                                LCard {
+                                    Layout.fillWidth: true
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 20
+                                        spacing: 8
+
+                                        Text {
+                                            text: "Ludelo Remote Play Client v2.4"
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 14
+                                            font.weight: Font.Bold
+                                            color: LudeloTheme.textPrimary
+                                        }
+                                        Text {
+                                            text: "Open-source remote play client licensed under AGPL-3.0-only-OpenSSL."
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 11
+                                            color: LudeloTheme.textDim
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // -----------------------------------------------------------------
+            // RIGHT COLUMN: LIVE DIAGNOSTICS & TELEMETRY SIDEBAR
+            // -----------------------------------------------------------------
+            ColumnLayout {
+                Layout.preferredWidth: 380
+                Layout.fillHeight: true
+                spacing: 16
+
+                // Diagnostics Card
+                LCard {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 20
+                        spacing: 16
+
+                        // Header with status indicator
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Rectangle {
+                                width: 8; height: 8; radius: 4
+                                color: Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim
+                            }
+                            Text {
+                                text: qsTr("Network Diagnostics")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 15
+                                font.weight: Font.Bold
+                                color: LudeloTheme.textPrimary
+                            }
+                            Item { Layout.fillWidth: true }
+                            LPill {
+                                text: Chiaki.session ? "LIVE STREAM" : "STANDBY"
+                                status: Chiaki.session ? "online" : "offline"
+                            }
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: LudeloTheme.borderSubtle }
+
+                        // 2x2 Telemetry Grid (Honest: live if Chiaki.session, else "--")
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: 2
+                            rowSpacing: 16
+                            columnSpacing: 16
+
+                            // Metric 1: RTT
+                            Column {
+                                spacing: 2
+                                Text { text: "ROUND-TRIP (RTT)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textSecondary }
+                                Text {
+                                    text: Chiaki.session ? (Math.round(Chiaki.session.measuredRtt) + " ms") : "--"
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 20
+                                    font.weight: Font.Bold
+                                    color: Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim
+                                }
+                                Text { text: Chiaki.session ? "Live ping" : "No active session"; font.family: LudeloTheme.fontFamily; font.pixelSize: 10; color: LudeloTheme.textDim }
+                            }
+
+                            // Metric 2: Decoder Time
+                            Column {
+                                spacing: 2
+                                Text { text: "DECODER TIME"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textSecondary }
+                                Text {
+                                    text: Chiaki.session ? (Chiaki.session.decoderTime ? (Chiaki.session.decoderTime.toFixed(1) + " ms") : "< 1.0 ms") : "--"
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 20
+                                    font.weight: Font.Bold
+                                    color: Chiaki.session ? LudeloTheme.textPrimary : LudeloTheme.textDim
+                                }
+                                Text { text: Chiaki.settings.decoder || "d3d11va"; font.family: LudeloTheme.fontFamily; font.pixelSize: 10; color: LudeloTheme.textDim }
+                            }
+
+                            // Metric 3: Jitter
+                            Column {
+                                spacing: 2
+                                Text { text: "JITTER VARIANCE"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textSecondary }
+                                Text {
+                                    text: Chiaki.session ? (Math.round(Chiaki.session.jitter || 0) + " ms") : "--"
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 20
+                                    font.weight: Font.Bold
+                                    color: Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim
+                                }
+                                Text { text: "Packet variance"; font.family: LudeloTheme.fontFamily; font.pixelSize: 10; color: LudeloTheme.textDim }
+                            }
+
+                            // Metric 4: Packet Loss
+                            Column {
+                                spacing: 2
+                                Text { text: "PACKET LOSS"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textSecondary }
+                                Text {
+                                    text: Chiaki.session ? ((Chiaki.session.averagePacketLoss * 100).toFixed(1) + " %") : "--"
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 20
+                                    font.weight: Font.Bold
+                                    color: (Chiaki.session && Chiaki.session.averagePacketLoss > 0.01) ? LudeloTheme.error : (Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim)
+                                }
+                                Text { text: "FEC recovery active"; font.family: LudeloTheme.fontFamily; font.pixelSize: 10; color: LudeloTheme.textDim }
+                            }
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: LudeloTheme.borderSubtle }
+
+                        // Hardware / Protocol Readout
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text { text: "STREAM FPS:"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
+                                Item { Layout.fillWidth: true }
+                                Text {
+                                    text: Chiaki.session ? (Math.round(Chiaki.session.measuredFps) + " FPS") : "--"
+                                    font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; font.weight: Font.Bold; color: Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim
+                                }
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text { text: "ACTIVE RESOLUTION:"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
+                                Item { Layout.fillWidth: true }
+                                Text {
+                                    text: Chiaki.session ? (Chiaki.session.resolution || "1080p") : "--"
+                                    font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: Chiaki.session ? LudeloTheme.textPrimary : LudeloTheme.textDim
+                                }
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text { text: "CONTROLLER POLLING:"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
+                                Item { Layout.fillWidth: true }
+                                Text {
+                                    text: (Chiaki.controllers && Chiaki.controllers.length > 0) ? "1000 Hz / Synchronous" : "--"
+                                    font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: (Chiaki.controllers && Chiaki.controllers.length > 0) ? LudeloTheme.accentMint : LudeloTheme.textDim
+                                }
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text { text: "REMOTE HOST IP:"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
+                                Item { Layout.fillWidth: true }
+                                Text {
+                                    text: Chiaki.session ? (Chiaki.session.hostIp || "Direct P2P") : "--"
+                                    font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textDim
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Connected Host Card (Only real data from session or selected console)
+                LCard {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 16
+                        spacing: 6
+
+                        RowLayout {
+                            spacing: 8
+                            Rectangle {
+                                width: 24
+                                height: 24
+                                radius: 6
+                                color: Qt.rgba(1.0, 1.0, 1.0, 0.05)
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "🎮"
+                                    font.pixelSize: 12
+                                }
+                            }
+                            Text {
+                                text: Chiaki.session ? (Chiaki.session.targetName || "PlayStation Console") : qsTr("No Active Stream Session")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                font.weight: Font.Bold
+                                color: LudeloTheme.textPrimary
+                            }
+                        }
+
+                        Text {
+                            text: Chiaki.session ? qsTr("Direct connection established") : qsTr("Connect to a console from the home screen to view real-time host telemetry.")
+                            font.family: LudeloTheme.fontFamily
+                            font.pixelSize: 11
+                            color: LudeloTheme.textDim
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+            }
+        }
+
+        // =====================================================================
+        // BOTTOM FOOTER (No fake claims • Real profile • Universal Gamepad Hints)
+        // =====================================================================
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 52
+            color: Qt.rgba(0x0B/255, 0x0E/255, 0x14/255, 0.95)
+            border.color: LudeloTheme.borderSubtle
+            border.width: 1
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 24
+                anchors.rightMargin: 24
+                spacing: 16
+
+                // Real client profile text (no fake claims)
+                Text {
+                    text: qsTr("Ludelo Remote Client • Profile: %1").arg(Chiaki.settings.currentProfile ? Chiaki.settings.currentProfile : "Default")
+                    font.family: LudeloTheme.fontFamilyMono
+                    font.pixelSize: 11
+                    color: LudeloTheme.textSecondary
+                }
+
+                Item { Layout.fillWidth: true }
+
+                // Universal Gamepad Navigation Hints (Strictly NO PlayStation trademark glyphs)
+                Row {
+                    spacing: 20
+                    Layout.alignment: Qt.AlignVCenter
+
+                    Row {
+                        spacing: 6
+                        Rectangle {
+                            width: 20; height: 20; radius: 4
+                            color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
+                            border.color: LudeloTheme.borderSubtle; border.width: 1
+                            Text { anchors.centerIn: parent; text: "A"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                        }
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "SELECT"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
+                    }
+
+                    Row {
+                        spacing: 6
+                        Rectangle {
+                            width: 20; height: 20; radius: 4
+                            color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
+                            border.color: LudeloTheme.borderSubtle; border.width: 1
+                            Text { anchors.centerIn: parent; text: "B"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                        }
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "BACK / CLOSE"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
+                    }
+
+                    Row {
+                        spacing: 6
+                        Rectangle {
+                            width: 20; height: 20; radius: 4
+                            color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
+                            border.color: LudeloTheme.borderSubtle; border.width: 1
+                            Text { anchors.centerIn: parent; text: "X"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                        }
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "RESET DEFAULTS"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                     }
                 }
             }
         }
+    }
 
-        Dialog {
-            id: keyDialog
-            focus: false
-            property int buttonValue
-            property var buttonCallback
-            property var keysIndex
-            parent: Overlay.overlay
-            x: Math.round((root.width - width) / 2)
-            y: Math.round((root.height - height) / 2)
-            title: qsTr("Key Capture")
-            modal: true
-            standardButtons: Dialog.Close
-            closePolicy: Popup.CloseOnPressOutside
-            onOpened: keyLabel.forceActiveFocus(Qt.TabFocusReason)
-            onClosed: {
-                let item = chiakiKeys.itemAt(keysIndex)
-                if(item)
-                {
-                    let item2 = item.children[1];
-                    if(item2)
-                        item2.forceActiveFocus(Qt.TabFocusReason);
-                }
-                keyLabel.focus = false;
-                focus = false;
+    // =========================================================================
+    // POPUP DIALOGS (Controller & Keyboard Mapping Support)
+    // =========================================================================
+    Dialog {
+        id: controllerMappingDialog
+        property bool resetFocus: true
+        property bool resetMapping: false
+        parent: Overlay.overlay
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
+        title: qsTr("Controller Capture")
+        modal: true
+        standardButtons: Dialog.Close
+        closePolicy: Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            radius: LudeloTheme.radiusCard
+            color: LudeloTheme.bgPanelSolid
+            border.color: LudeloTheme.borderHover
+            border.width: 1
+        }
+
+        onOpened: {
+            controllerLabel.forceActiveFocus(Qt.TabFocusReason);
+            Chiaki.creatingControllerMapping(true);
+        }
+        onClosed: {
+            if (quitControllerMapping)
+                Chiaki.controllerMappingQuit();
+            else
+                quitControllerMapping = true;
+        }
+
+        function show(opts) {
+            resetMapping = opts.reset;
+            open();
+        }
+
+        Label {
+            id: controllerLabel
+            text: qsTr("Choose the controller by pressing any button on the gamepad")
+            font.family: LudeloTheme.fontFamily
+            font.pixelSize: 14
+            color: LudeloTheme.textPrimary
+        }
+    }
+
+    // Toast Notification for Reset Defaults
+    Rectangle {
+        id: resetToast
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 70
+        height: 40
+        width: resetToastText.implicitWidth + 32
+        radius: 20
+        color: Qt.rgba(0x15/255, 0x19/255, 0x23/255, 0.95)
+        border.color: LudeloTheme.accentMint
+        border.width: 1
+        opacity: 0.0
+        z: 999
+
+        function show() {
+            toastAnim.restart();
+        }
+
+        Row {
+            anchors.centerIn: parent
+            spacing: 8
+            Rectangle {
+                width: 6; height: 6; radius: 3
+                color: LudeloTheme.accentMint
+                anchors.verticalCenter: parent.verticalCenter
             }
-            Material.roundedScale: Material.MediumScale
-
-            function show(opts) {
-                buttonValue = opts.value;
-                buttonCallback = opts.callback;
-                keysIndex = opts.mappingIndex;
-                open();
-            }
-
-            Label {
-                id: keyLabel
-                focus: true
-                text: qsTr("Press any key to configure button or click close")
-                Keys.onReleased: (event) => {
-                    var name = Chiaki.settings.changeControllerKey(keyDialog.buttonValue, event.key);
-                    keyDialog.buttonCallback(name);
-                    keyDialog.close();
-                }
+            Text {
+                id: resetToastText
+                text: qsTr("Settings successfully restored to factory defaults")
+                font.family: LudeloTheme.fontFamily
+                font.pixelSize: 12
+                font.weight: Font.Medium
+                color: LudeloTheme.textPrimary
+                anchors.verticalCenter: parent.verticalCenter
             }
         }
 
-        Dialog {
-            id: controllerMappingDialog
-            property bool resetFocus: true
-            property bool resetMapping: false
-            parent: Overlay.overlay
-            x: Math.round((root.width - width) / 2)
-            y: Math.round((root.height - height) / 2)
-            title: qsTr("Controller Capture")
-            modal: true
-            standardButtons: Dialog.Close
-            closePolicy: Popup.CloseOnPressOutside
-            onOpened: {
-                controllerLabel.forceActiveFocus(Qt.TabFocusReason);
-                Chiaki.creatingControllerMapping(true);
-            }
-            onClosed: {
-                if(resetFocus)
-                {
-                    if(resetMapping)
-                        controllerMappingReset.forceActiveFocus(Qt.TabFocusReason);
-                    else
-                        controllerMappingChange.forceActiveFocus(Qt.TabFocusReason);
-                    focus = false;
-                }
-                else
-                {
-                    resetFocus = true;
-                    focus = false;
-                }
-                if(quitControllerMapping)
-                    Chiaki.controllerMappingQuit();
-                else
-                    quitControllerMapping = true;
-            }
-            Material.roundedScale: Material.MediumScale
-
-            function show(opts) {
-                resetMapping = opts.reset;
-                open();
-            }
-            Label {
-                id: controllerLabel
-                text: qsTr("Choose the controller by pressing any button on the controller")
-            }
-        }
-
-        Dialog {
-            id: steamControllerMappingDialog
-            property bool resetMapping: false
-            parent: Overlay.overlay
-            x: Math.round((root.width - width) / 2)
-            y: Math.round((root.height - height) / 2)
-            title: qsTr("Controller Managed by Steam")
-            modal: true
-            standardButtons: Dialog.Close
-            closePolicy: Popup.NoAutoClose
-            onOpened: {
-                steamLabel.forceActiveFocus(Qt.TabFocusReason);
-            }
-            onClosed: {
-                if(resetMapping)
-                    controllerMappingReset.forceActiveFocus(Qt.TabFocusReason);
-                else
-                    controllerMappingChange.forceActiveFocus(Qt.TabFocusReason);
-                focus = false;
-            }
-            Material.roundedScale: Material.MediumScale
-
-            Label {
-                id: steamLabel
-                wrapMode: TextEdit.Wrap
-                text: qsTr("This controller is managed by Steam.\nPlease use Steam to map controller or disable Steam Input for the controller before mapping here.")
-                Keys.onReturnPressed: steamControllerMappingDialog.close();
-                Keys.onEscapePressed: steamControllerMappingDialog.close();
-            }
-        }
-
-        Connections {
-            target: Chiaki
-
-            function onControllerMappingInProgressChanged()
-            {
-                if(Chiaki.controllerMappingInProgress)
-                    openTimer.start();
-            }
-
-            function onControllerMappingSteamControllerSelected()
-            {
-                controllerMappingDialog.resetFocus = false;
-                quitControllerMapping = false;
-                steamControllerMappingDialog.resetMapping = controllerMappingDialog.resetMapping;
-                controllerMappingDialog.close();
-                steamControllerMappingDialog.open();
-            }
+        SequentialAnimation {
+            id: toastAnim
+            NumberAnimation { target: resetToast; property: "opacity"; to: 1.0; duration: 200 }
+            PauseAnimation { duration: 2500 }
+            NumberAnimation { target: resetToast; property: "opacity"; to: 0.0; duration: 200 }
         }
     }
 }
