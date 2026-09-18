@@ -2,9 +2,9 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Material
-import "controls" as C
-
 import org.streetpea.chiaking
+import Ludelo 1.0
+import "components"
 
 Dialog {
     id: dialog
@@ -13,133 +13,131 @@ Dialog {
     property var callback
     property bool newDialogOpen: false
     property Item restoreFocusItem
+
     parent: Overlay.overlay
-    x: Math.round((root.width - width) / 2)
-    y: Math.round((root.height - height) / 2)
+    x: Math.round((parent.width - width) / 2)
+    y: Math.round((parent.height - height) / 2)
     modal: true
-    Material.roundedScale: Material.MediumScale
-    
+    width: Math.min(parent ? parent.width - 48 : 500, 500)
+
     background: Rectangle {
-        color: Material.dialogColor
-        radius: 12
-        border.color: Material.accent
-        border.width: 2
+        color: LudeloTheme.bgDialog
+        radius: LudeloTheme.radiusCard + 2
+        border.color: LudeloTheme.borderSubtle
+        border.width: 1
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 2
+            color: LudeloTheme.accent
+        }
     }
-    
-    onOpened: label.forceActiveFocus(Qt.TabFocusReason)
+
+    header: Item {
+        height: 50
+        width: parent.width
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 20
+            anchors.rightMargin: 20
+
+            Label {
+                text: dialog.title || qsTr("REMINDER")
+                font.family: LudeloTheme.fontFamily
+                font.pixelSize: 15
+                font.weight: Font.Black
+                color: LudeloTheme.textPrimary
+                Layout.fillWidth: true
+            }
+
+            Label {
+                text: "[ESC]"
+                font.family: LudeloTheme.fontFamilyMono
+                font.pixelSize: 10
+                font.weight: Font.Bold
+                color: LudeloTheme.textMuted
+            }
+        }
+
+        Rectangle {
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 1
+            color: LudeloTheme.borderSubtle
+        }
+    }
+
+    onOpened: {
+        yesBtn.forceActiveFocus(Qt.TabFocusReason);
+    }
+
     onAccepted: {
         newDialogOpen = true;
         restoreFocus();
-        callback();
+        if (callback) callback();
     }
+
     onRejected: {
-        if(dialog.remotePlay)
+        if (dialog.remotePlay)
             Chiaki.settings.remotePlayAsk = false;
         else
             Chiaki.settings.addSteamShortcutAsk = false;
     }
+
     onClosed: {
-        if(newDialogOpen)
-            return;
-        restoreFocus();
-        // Commented out: Cascading Remote Play via PSN prompt after Steam shortcut dialog
-        // if(!remotePlay && Chiaki.settings.remotePlayAsk)
-        // {
-        //     if(!Chiaki.settings.psnRefreshToken || !Chiaki.settings.psnAuthToken || !Chiaki.settings.psnAuthTokenExpiry || !Chiaki.settings.psnAccountId)
-        //         root.showRemindDialog(qsTr("Remote Play via PSN"), qsTr("Would you like to connect to PSN?\nThis enables:\n- Automatic registration\n- Playing outside of your home network without port forwarding?") + "\n\n" + qsTr("(Note: If you select no now and want to do this later, go to the Config section of the settings.)"), true, () => root.showPSNTokenDialog(false));
-        //     else
-        //         Chiaki.settings.remotePlayAsk = false;
-        // }
+        if (!newDialogOpen) restoreFocus();
     }
 
     function restoreFocus() {
         if (restoreFocusItem)
             restoreFocusItem.forceActiveFocus(Qt.TabFocusReason);
-        label.focus = false;
-    }
-
-    Component.onCompleted: {
-        header.horizontalAlignment = Text.AlignHCenter;
-        // Qt 6.6: Workaround dialog background becoming immediately transparent during close animation
-        header.background = null;
     }
 
     ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 12
         spacing: 20
 
         Label {
             id: label
-            Keys.onEscapePressed: dialog.reject()
-            Keys.onReturnPressed: dialog.accept()
-            Keys.onYesPressed: dialog.close()
+            Layout.fillWidth: true
+            font.family: LudeloTheme.fontFamily
+            font.pixelSize: 13
+            color: LudeloTheme.textSecondary
+            wrapMode: Text.Wrap
+            lineHeight: 1.3
         }
 
         RowLayout {
-            Layout.alignment: Qt.AlignCenter
-            spacing: 20
+            Layout.fillWidth: true
+            spacing: 12
 
-            Button {
-                text: qsTr("Yes")
-                Material.background: Material.accent
-                flat: true
-                leftPadding: 50
+            LButton {
+                id: yesBtn
+                Layout.fillWidth: true
+                Layout.preferredHeight: 44
+                variant: "primary"
+                keyHint: "[A]"
+                text: qsTr("YES")
                 onClicked: dialog.accept()
-                Material.roundedScale: Material.SmallScale
-
-                Image {
-                    anchors {
-                        left: parent.left
-                        verticalCenter: parent.verticalCenter
-                        leftMargin: 12
-                    }
-                    width: 28
-                    height: 28
-                    sourceSize: Qt.size(width, height)
-                    source: root.controllerButton("cross")
-                }
             }
 
-            Button {
-                Material.background: Material.accent
-                text: qsTr("No")
-                flat: true
-                leftPadding: 50
+            LButton {
+                id: noBtn
+                Layout.preferredWidth: 140
+                Layout.preferredHeight: 44
+                variant: "ghost"
+                keyHint: "[B]"
+                text: qsTr("NO")
                 onClicked: dialog.reject()
-                Material.roundedScale: Material.SmallScale
-
-                Image {
-                    anchors {
-                        left: parent.left
-                        verticalCenter: parent.verticalCenter
-                        leftMargin: 12
-                    }
-                    width: 28
-                    height: 28
-                    sourceSize: Qt.size(width, height)
-                    source: root.controllerButton("moon")
-                }
-            }
-
-            Button {
-                Material.background: Material.accent
-                text: qsTr("Remind Me Later")
-                flat: true
-                leftPadding: 50
-                onClicked: dialog.close()
-                Material.roundedScale: Material.SmallScale
-
-                Image {
-                    anchors {
-                        left: parent.left
-                        verticalCenter: parent.verticalCenter
-                        leftMargin: 12
-                    }
-                    width: 28
-                    height: 28
-                    sourceSize: Qt.size(width, height)
-                    source: root.controllerButton("pyramid")
-                }
             }
         }
     }
+
+    Keys.onEscapePressed: dialog.reject()
+    Keys.onReturnPressed: dialog.accept()
 }

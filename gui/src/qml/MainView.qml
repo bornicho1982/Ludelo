@@ -1301,7 +1301,7 @@ Pane {
                             Text { text: qsTr("Controller:"); font.pixelSize: 11; color: LudeloTheme.textDim }
                             Item { Layout.fillWidth: true }
                             Text {
-                                text: Chiaki.controllers.length > 0 ? (Chiaki.controllers[0].dualSense ? "DualSense Wireless" : "Gamepad Connected") : "Keyboard / No Gamepad"
+                                text: Chiaki.controllers.length > 0 ? (Chiaki.controllers[0].dualSense ? "Wireless Gamepad" : "Gamepad Connected") : "Keyboard / No Gamepad"
                                 font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textPrimary
                             }
                         }

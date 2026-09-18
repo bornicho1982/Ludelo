@@ -203,7 +203,7 @@ Rectangle {
                     Layout.alignment: Qt.AlignVCenter
 
                     LPill {
-                        text: (Chiaki.controllers && Chiaki.controllers.length > 0) ? "DUALSENSE WIRELESS • 1000Hz" : "NO GAMEPAD"
+                        text: (Chiaki.controllers && Chiaki.controllers.length > 0) ? "WIRELESS GAMEPAD • 1000Hz" : "NO GAMEPAD"
                         dotColor: (Chiaki.controllers && Chiaki.controllers.length > 0) ? LudeloTheme.accentMint : LudeloTheme.textDim
                         glowColor: LudeloTheme.accentMintGlow
                         showDot: true

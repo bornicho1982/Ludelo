@@ -96,8 +96,28 @@
     - Footer de atajos universales de gamepad (`[A] REGISTER`, `[B] CANCEL`, `[ESC] BACK`) sin glifos geométricos de PlayStation y sin claims publicitarios ("Ultra Low Latency").
   - Compilación exitosa con CMake + MinGW64 (`Ludelo.exe`, `chiaki-unit`). Tests unitarios 100% pasados en CTest.
 
-- **Siguiente**:
-  - Pantalla 08: Diálogos menores + Toasts / Overlays (Última pantalla de Fase 3).
+- **Pantalla 08: Diálogos Menores + Toasts / Overlays**:
+  - Maqueta generada con Stitch MCP (`docs/ux/mockups/08_dialogs_toasts.png`) y aprobada con correcciones.
+  - Implementación completa de la suite de modales, alertas y notificaciones sobre `LudeloTheme` y componentes `L*`:
+    - `ConfirmDialog.qml`: Modal de confirmación de acción/destructivo con tarjeta de vidrio `#151923`, botones `LButton` (`[A] CONFIRM`, `[B] CANCEL`, `[ESC]`) eliminando iconos propietarios.
+    - `MessageDialog.qml`: Modal de información general alineado con `LudeloTheme` y botón `LButton` `[A] OK`.
+    - `RemindDialog.qml`: Diálogo de prompt con botones `[A] YES`, `[B] NO` y checkbox interactivo con estilo gaming para recordar decisión.
+    - `Main.qml` (`errorToast`): Transformado en stack de notificaciones flotantes premium gamer con 3 estados de acento (`success` mint, `info` indigo, `error/warning` coral) y barra de progreso animada.
+    - `ManualHostDialog.qml`: Rediseñado a modal cyber-minimalista sobre `LudeloTheme` con atajos de teclado y gamepad.
+    - `ConsolePinDialog.qml`: Rediseñado sobre `LudeloTheme` para solicitud en vivo de passcode de usuario de 4 dígitos.
+    - `AccountPrivacyDialog.qml` y `AutoConnectView.qml`: Purgados glifos PlayStation (`△`, `cross`, `Circle`), unificados a nomenclatura Xbox/universal (`[A]`, `[B]`, `[Y]`).
+  - **Pasada Global de Consistencia en las 8 Pantallas**:
+    - Purgados todos los claims publicitarios o técnicos no verificables ("Ultra Low Latency", "Vortex Engine", "Lossless F2P", "10 GbE P2P Hardware Verified", "Sony Magic Negotiation Stalled").
+    - Purgados todos los glifos geométricos de PlayStation (`✕`, `○`, `□`, `△`) de los botones y hints de control en toda la UI, reemplazados por nomenclatura universal/Xbox (`[A]`, `[B]`, `[X]`, `[Y]`, `[LB]`, `[RB]`, `[ESC]`, `[START]`).
+    - Eliminada marca hardcodeada "DUALSENSE WIRELESS", sustituida por "Wireless Gamepad" / genérica (`AccountView.qml`, `MainView.qml`, `StreamView.qml`, `LTopBar.qml`, `ControllerMappingDialog.qml`).
+    - Eliminado claim ficticio de "4K HDR 60FPS" de `LTopBar.qml`, sustituido por `DIRECT P2P STREAM READY`.
+  - Compilación exitosa con CMake + MinGW64 (`Ludelo.exe`, `chiaki-unit`). Tests unitarios 100% pasados en CTest.
+
+- **FASE 3 (Diseño Premium Gamer, QML Nativo & Stitch MCP): 100% COMPLETADA**.
+  - Las 8 pantallas del inventario UX implementadas y validadas con fidelidad visual gamer luxury.
+  - QR Login 100% erradicado.
+  - Zero Sony glyphs, zero unverified claims.
+
 
 
 

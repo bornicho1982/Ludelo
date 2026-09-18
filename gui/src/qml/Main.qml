@@ -223,8 +223,14 @@ Item {
     function showToast(title, text, color = "#2196F3") {
         errorTitleLabel.text = title;
         errorTextLabel.text = text;
-        errorToast.color = color;
-        errorHideTimer.start();
+        if (color === "#4CAF50" || color === "green" || color === "#00F5D4") {
+            errorToast.accentColor = LudeloTheme.accentMint;
+        } else if (color === "#F44336" || color === "red" || color === "#EF476F") {
+            errorToast.accentColor = LudeloTheme.colorDanger;
+        } else {
+            errorToast.accentColor = LudeloTheme.accent;
+        }
+        errorHideTimer.restart();
     }
 
 
@@ -401,44 +407,110 @@ Item {
             sourceComponent: placeboColorMappingDialogComponent
         }
     }
+    // Premium Gamer Global Toast Notification
     Rectangle {
         id: errorToast
         anchors {
             bottom: parent.bottom
             horizontalCenter: parent.horizontalCenter
-            bottomMargin: 80
+            bottomMargin: 60
         }
-        color: Material.accent
-        width: errorLayout.width + 40
-        height: errorLayout.height + 20
-        radius: 8
-        opacity: errorHideTimer.running ? 0.8 : 0.0
+        property color accentColor: LudeloTheme.accent
+        color: Qt.rgba(0.08, 0.10, 0.16, 0.95)
+        border.color: accentColor
+        border.width: 1
+        width: Math.min(Math.max(errorLayout.implicitWidth + 48, 320), 540)
+        height: errorLayout.implicitHeight + 24
+        radius: LudeloTheme.radiusCard
+        opacity: errorHideTimer.running ? 1.0 : 0.0
+        visible: opacity > 0
+        z: 9999
 
-        Behavior on opacity { NumberAnimation { duration: 500 } }
-        Behavior on color { ColorAnimation { duration: 300 } }
+        Behavior on opacity { NumberAnimation { duration: LudeloTheme.animNormal; easing.type: LudeloTheme.easingCurve } }
 
-        ColumnLayout {
+        // Glow
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -3
+            radius: parent.radius + 3
+            color: errorToast.accentColor
+            opacity: 0.25
+            z: -1
+        }
+
+        RowLayout {
             id: errorLayout
-            anchors.centerIn: parent
+            anchors.fill: parent
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
+            spacing: 12
 
-            Label {
-                id: errorTitleLabel
-                Layout.alignment: Qt.AlignCenter
-                font.bold: true
-                font.pixelSize: 24
+            // Status Beacon Dot
+            Rectangle {
+                Layout.preferredWidth: 10
+                Layout.preferredHeight: 10
+                radius: 5
+                color: errorToast.accentColor
+                Layout.alignment: Qt.AlignVCenter
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -3
+                    radius: 8
+                    color: parent.color
+                    opacity: 0.5
+                }
             }
 
-            Label {
-                id: errorTextLabel
-                Layout.alignment: Qt.AlignCenter
-                horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 20
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 2
+
+                Label {
+                    id: errorTitleLabel
+                    Layout.fillWidth: true
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 13
+                    font.weight: Font.Bold
+                    color: LudeloTheme.textPrimary
+                    elide: Text.ElideRight
+                }
+
+                Label {
+                    id: errorTextLabel
+                    Layout.fillWidth: true
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 11
+                    color: LudeloTheme.textSecondary
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
+                }
+            }
+        }
+
+        // Animated progress bar at bottom
+        Rectangle {
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            height: 2
+            color: errorToast.accentColor
+            width: errorHideTimer.running ? parent.width : 0
+
+            Behavior on width {
+                enabled: errorHideTimer.running
+                NumberAnimation {
+                    from: errorToast.width
+                    to: 0
+                    duration: errorHideTimer.interval
+                }
             }
         }
 
         Timer {
             id: errorHideTimer
-            interval: 2000
+            interval: 3500
         }
     }
 

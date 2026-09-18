@@ -171,11 +171,7 @@ Dialog {
             color: Material.foreground
             opacity: 0.4
             
-            text: {
-                let buttonName = root.controllerButton("pyramid").includes("deck") ? "Y" : 
-                               (Chiaki.controllers.length > 0 && Chiaki.controllers[0].playStation ? "△" : "Y");
-                return qsTr("(Press %1 to ignore this warning forever)").arg(buttonName);
-            }
+            text: qsTr("(Press [Y] to ignore this warning forever)")
         }
 
         RowLayout {
@@ -184,24 +180,11 @@ Dialog {
 
             Button {
                 id: cancelButton
-                text: qsTr("Close")
+                text: qsTr("[A] Close")
                 Material.background: Material.accent
                 flat: true
-                leftPadding: 50
                 onClicked: dialog.reject()
                 Material.roundedScale: Material.SmallScale
-
-                Image {
-                    anchors {
-                        left: parent.left
-                        verticalCenter: parent.verticalCenter
-                        leftMargin: 12
-                    }
-                    width: 28
-                    height: 28
-                    sourceSize: Qt.size(width, height)
-                    source: root.controllerButton("cross")
-                }
             }
         }
     }

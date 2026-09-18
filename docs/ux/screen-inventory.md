@@ -9,7 +9,7 @@
 | 05 | Cuenta PSN | ✅ Aprobada | `docs/ux/mockups/05_account.png` | ✅ Implementada |
 | 06 | Cloud Play | ✅ Aprobada (con correcciones) | `docs/ux/mockups/06_cloudplay.png` (privada, no commitear) | ✅ Implementada |
 | 07 | RegistDialog / PIN | ✅ Aprobada (con correcciones) | `docs/ux/mockups/07_regist_pin.png` | ✅ Implementada |
-| 08 | Diálogos menores + Toasts | ⏳ Pendiente | `docs/ux/mockups/08_dialogs_toasts.png` | Pendiente |
+| 08 | Diálogos menores + Toasts | ✅ Aprobada | `docs/ux/mockups/08_dialogs_toasts.png` | ✅ Implementada |
 
 ---
 
@@ -47,6 +47,26 @@
   - Selector de consola con etiqueta honesta "PS5 • HDR" (sin claim falso de "4K", ya que Remote Play es hasta 1080p).
   - Eliminado claim publicitario "Ultra Low Latency" del footer.
   - Cero glifos PlayStation: solo controles universales (`[A]`, `[B]`, `[ESC]`).
+
+---
+
+## 08. Diálogos Menores + Toasts / Overlays
+- **Prompt Stitch**: `"Design 'Ludelo - Screen 08: Minor Dialogs, Modal Alerts & Floating Notification Toasts Suite'. Aesthetic: Cyber-minimalist gaming luxury matching Steam Big Picture and Razer Synapse dark UI. Dark obsidian background #0B0E14 with subtle ambient radial glow in electric indigo #6C5CE7. Layout showcase: 1. Confirm Dialog (Destructive/Action confirmation modal). 2. Message / Alert Dialog (Informational modal). 3. Remind Dialog (Action prompt with option to remember decision). 4. Floating Notification Toasts Stack (Success, Warning, Error/Info toasts with progress timers). Bottom Controller Footer: Universal controller hints [A] CONFIRM/OK, [B] CANCEL/CLOSE, [X] REMEMBER DECISION, [ESC] DISMISS."`
+- **Maqueta Generada**: `docs/ux/mockups/08_dialogs_toasts.png`
+- **Estado**: ✅ Aprobada e Implementada.
+- **Componentes y Vistas Actualizadas**:
+  - `ConfirmDialog.qml`: Vidrio `#151923`, botones `LButton` (`[A] CONFIRM`, `[B] CANCEL`, `[ESC]`), eliminados iconos PlayStation.
+  - `MessageDialog.qml`: `LudeloTheme` con botón `LButton` `[A] OK`.
+  - `RemindDialog.qml`: `LudeloTheme` con botones `[A] YES`, `[B] NO` y checkbox con estilo neón para recordar elección.
+  - `Main.qml` (`errorToast`): Transformado en toast flotante gaming premium con barra de progreso animada y 3 modos de acento (`success` mint, `info` indigo, `error/warning` coral).
+  - `ManualHostDialog.qml`: Rediseñado a modal cyber-minimalista sobre `LudeloTheme`.
+  - `ConsolePinDialog.qml`: Rediseñado con `LudeloTheme` para entrada de passcode de 4 dígitos.
+  - `AccountPrivacyDialog.qml` y `AutoConnectView.qml`: Purgados glifos Sony (`△`, `cross`, `Circle`), unificados con nomenclatura Xbox (`[A]`, `[B]`, `[Y]`).
+- **Pautas y Correcciones Aplicadas**:
+  - Eliminados claims inventados ("10 GbE P2P Hardware Verified", "Ultra Low Latency", "Sony Magic Negotiation Stalled").
+  - Toasts muestran errores y estados reales del backend.
+  - Renombrada marca hardcodeada "DUALSENSE WIRELESS" a "Wireless Gamepad" / genérica en toda la suite.
+
 
 
 

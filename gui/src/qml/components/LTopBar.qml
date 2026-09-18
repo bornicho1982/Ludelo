@@ -8,8 +8,10 @@ Rectangle {
 
     property bool showTelemetry: true
     property bool showWindowControls: true
-    property string dualSenseText: qsTr("DUALSENSE WIRELESS DETECTED • 0.8ms")
-    property string streamReadyText: qsTr("STREAM READY • 4K HDR 60FPS")
+    property string dualSenseText: (typeof Chiaki !== "undefined" && Chiaki.controllers && Chiaki.controllers.length > 0) ?
+        (Chiaki.controllers[0].dualSense ? qsTr("WIRELESS GAMEPAD • 1000Hz") : qsTr("GAMEPAD CONNECTED")) :
+        qsTr("DIRECT P2P LAN")
+    property string streamReadyText: qsTr("DIRECT P2P STREAM READY")
     signal settingsClicked()
     signal minimizeClicked()
     signal maximizeClicked()

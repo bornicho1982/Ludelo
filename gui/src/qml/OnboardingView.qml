@@ -162,7 +162,7 @@ Item {
                     Layout.preferredWidth: Math.min(parent.width - 40, 480)
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
-                    text: qsTr("Connect your console for ultra-low latency remote play anywhere. Sign in securely via official PlayStation Network authentication.")
+                    text: qsTr("Connect your console for high-performance direct remote play anywhere. Sign in securely via official PlayStation Network authentication.")
                     font.family: LudeloTheme.fontFamily
                     font.pixelSize: 14
                     lineHeight: 1.4
@@ -281,7 +281,7 @@ Item {
                         color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
                         border.color: LudeloTheme.accentMint
                         border.width: 1
-                        Text { anchors.centerIn: parent; text: "✕"; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.accentMint }
+                        Text { anchors.centerIn: parent; text: "A"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.accentMint }
                     }
                     Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("SELECT"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                 }
@@ -291,7 +291,7 @@ Item {
                     Rectangle {
                         width: 20; height: 20; radius: 4
                         color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
-                        Text { anchors.centerIn: parent; text: "○"; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.textSecondary }
+                        Text { anchors.centerIn: parent; text: "B"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.textSecondary }
                     }
                     Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("BACK"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                 }
@@ -301,7 +301,7 @@ Item {
                     Rectangle {
                         width: 20; height: 20; radius: 4
                         color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
-                        Text { anchors.centerIn: parent; text: "△"; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.textSecondary }
+                        Text { anchors.centerIn: parent; text: "Y"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.textSecondary }
                     }
                     Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("MANUAL IP"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                 }
@@ -325,7 +325,7 @@ Item {
                 spacing: 10
 
                 Text {
-                    text: qsTr("Ludelo Remote Play Client • Ultra Low Latency |")
+                    text: qsTr("Ludelo Remote Play Client • Direct P2P Protocol |")
                     font.family: LudeloTheme.fontFamilyMono
                     font.pixelSize: 11
                     color: LudeloTheme.textDim
@@ -333,7 +333,7 @@ Item {
                 }
 
                 LPill {
-                    text: qsTr("VORTEX ENGINE ACTIVE")
+                    text: qsTr("DIRECT P2P STREAM READY")
                     dotColor: LudeloTheme.accentMint
                     glowColor: LudeloTheme.accentMintGlow
                     showDot: true

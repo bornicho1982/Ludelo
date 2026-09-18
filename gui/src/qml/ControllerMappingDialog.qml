@@ -326,7 +326,7 @@ DialogView {
             Label {
                 Layout.preferredWidth: 400
                 id: buttonLabel
-                text: qsTr("Press any ") + Chiaki.currentControllerType + qsTr(" button to map to DualSense controller button or click close")
+                text: qsTr("Press any ") + Chiaki.currentControllerType + qsTr(" button to map to target controller button or click close")
             }
         }
 

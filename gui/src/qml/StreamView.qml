@@ -392,7 +392,7 @@ Item {
                     text: {
                         if (Chiaki.controllers.length > 0) {
                             var ctrl = Chiaki.controllers[0];
-                            return ctrl.dualSense ? "DUALSENSE WIRELESS • 1000Hz" : "GAMEPAD • 250Hz";
+                            return ctrl.dualSense ? "WIRELESS GAMEPAD • 1000Hz" : "GAMEPAD • 250Hz";
                         }
                         return "KEYBOARD MODE";
                     }

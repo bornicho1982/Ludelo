@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Material
-import "controls" as C
+import Ludelo 1.0
+import "components"
 
 Dialog {
     id: dialog
@@ -10,72 +11,113 @@ Dialog {
     property var callback
     property bool newDialogOpen: false
     property Item restoreFocusItem
+
     parent: Overlay.overlay
-    x: Math.round((root.width - width) / 2)
-    y: Math.round((root.height - height) / 2)
+    x: Math.round((parent.width - width) / 2)
+    y: Math.round((parent.height - height) / 2)
     modal: true
-    Material.roundedScale: Material.MediumScale
-    
+    width: Math.min(parent ? parent.width - 48 : 480, 480)
+
     background: Rectangle {
-        color: Material.dialogColor
-        radius: 12
-        border.color: Material.accent
-        border.width: 2
+        color: LudeloTheme.bgDialog
+        radius: LudeloTheme.radiusCard + 2
+        border.color: LudeloTheme.borderSubtle
+        border.width: 1
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 2
+            color: LudeloTheme.accentMint
+        }
     }
-    
-    onOpened: label.forceActiveFocus(Qt.TabFocusReason)
+
+    header: Item {
+        height: 50
+        width: parent.width
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 20
+            anchors.rightMargin: 20
+
+            Label {
+                text: dialog.title || qsTr("NOTICE")
+                font.family: LudeloTheme.fontFamily
+                font.pixelSize: 15
+                font.weight: Font.Black
+                color: LudeloTheme.textPrimary
+                Layout.fillWidth: true
+            }
+
+            Label {
+                text: "[ESC]"
+                font.family: LudeloTheme.fontFamilyMono
+                font.pixelSize: 10
+                font.weight: Font.Bold
+                color: LudeloTheme.textMuted
+            }
+        }
+
+        Rectangle {
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 1
+            color: LudeloTheme.borderSubtle
+        }
+    }
+
+    onOpened: {
+        okBtn.forceActiveFocus(Qt.TabFocusReason);
+    }
+
     onAccepted: {
         newDialogOpen = true;
         restoreFocus();
-        callback();
+        if (callback) callback();
     }
-    onClosed: if(!newDialogOpen) { restoreFocus() }
+
+    onClosed: {
+        if (!newDialogOpen) restoreFocus();
+    }
 
     function restoreFocus() {
         if (restoreFocusItem)
             restoreFocusItem.forceActiveFocus(Qt.TabFocusReason);
-        label.focus = false;
-    }
-
-    Component.onCompleted: {
-        header.horizontalAlignment = Text.AlignHCenter;
-        // Qt 6.6: Workaround dialog background becoming immediately transparent during close animation
-        header.background = null;
     }
 
     ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 12
         spacing: 20
 
         Label {
             id: label
-            Keys.onEscapePressed: dialog.accept()
-            Keys.onReturnPressed: dialog.accept()
+            Layout.fillWidth: true
+            font.family: LudeloTheme.fontFamily
+            font.pixelSize: 13
+            color: LudeloTheme.textSecondary
+            wrapMode: Text.Wrap
+            lineHeight: 1.3
         }
 
         RowLayout {
-            Layout.alignment: Qt.AlignCenter
+            Layout.fillWidth: true
 
-            Button {
+            LButton {
+                id: okBtn
+                Layout.fillWidth: true
+                Layout.preferredHeight: 44
+                variant: "mint"
+                keyHint: "[A]"
                 text: qsTr("OK")
-                Material.background: Material.accent
-                flat: true
-                leftPadding: 50
                 onClicked: dialog.accept()
-                Material.roundedScale: Material.SmallScale
-
-                Image {
-                    anchors {
-                        left: parent.left
-                        verticalCenter: parent.verticalCenter
-                        leftMargin: 12
-                    }
-                    width: 28
-                    height: 28
-                    sourceSize: Qt.size(width, height)
-                    source: root.controllerButton("cross")
-                }
             }
         }
     }
-}
 
+    Keys.onEscapePressed: dialog.accept()
+    Keys.onReturnPressed: dialog.accept()
+}
