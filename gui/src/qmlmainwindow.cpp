@@ -296,8 +296,11 @@ void QmlMainWindow::show()
     QQmlComponent component(qml_engine, QUrl(QStringLiteral("qrc:/Main.qml")));
     if (!component.isReady()) {
         qCCritical(chiakiGui) << "Component not ready\n" << component.errors();
-        QMetaObject::invokeMethod(QGuiApplication::instance(), &QGuiApplication::quit, Qt::QueuedConnection);
-        return;
+        fprintf(stderr, "FATAL: Root QML Component qrc:/Main.qml failed to load:\n");
+        for (const auto &err : component.errors()) {
+            fprintf(stderr, "  %s\n", qPrintable(err.toString()));
+        }
+        exit(1);
     }
 
     QVariantMap props;
@@ -305,8 +308,11 @@ void QmlMainWindow::show()
     quick_item = qobject_cast<QQuickItem*>(component.createWithInitialProperties(props));
     if (!quick_item) {
         qCCritical(chiakiGui) << "Failed to create root item\n" << component.errors();
-        QMetaObject::invokeMethod(QGuiApplication::instance(), &QGuiApplication::quit, Qt::QueuedConnection);
-        return;
+        fprintf(stderr, "FATAL: Failed to create root QML item from qrc:/Main.qml:\n");
+        for (const auto &err : component.errors()) {
+            fprintf(stderr, "  %s\n", qPrintable(err.toString()));
+        }
+        exit(1);
     }
     auto screen_size = QGuiApplication::primaryScreen()->availableSize();
     resize(screen_size);

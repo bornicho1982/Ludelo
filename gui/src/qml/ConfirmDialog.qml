@@ -160,6 +160,7 @@ Dialog {
         }
     }
 
-    Keys.onEscapePressed: dialog.reject()
-    Keys.onReturnPressed: dialog.accept()
+    Shortcut { sequence: "Escape"; enabled: dialog.visible; onActivated: dialog.reject() }
+    Shortcut { sequence: "Return"; enabled: dialog.visible; onActivated: dialog.accept() }
+    Shortcut { sequence: "Enter"; enabled: dialog.visible; onActivated: dialog.accept() }
 }

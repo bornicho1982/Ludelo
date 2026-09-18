@@ -14,6 +14,7 @@ int main(int argc, char *argv[]) { return real_main(argc, argv); }
 #include <QApplication>
 #include <QMessageBox>
 #include <QStyleHints>
+#include <QQmlComponent>
 #ifdef CHIAKI_ENABLE_STEAMWORKS
 #include <steamworks/steamworks_wrapper.h>
 #endif
@@ -249,6 +250,12 @@ int real_main(int argc, char *argv[])
 	QCommandLineOption entitlement_id_option("entitlement-id", "Entitlement ID of game to stream (for use with cloudGameLibrary command).", "entitlement-id");
 	parser.addOption(entitlement_id_option);
 
+	QCommandLineOption validate_qml_option("validate-qml", "Validate that all QML components compile and are ready without runtime errors.");
+	parser.addOption(validate_qml_option);
+
+	QCommandLineOption onboarding_option("onboarding", "Force initial onboarding welcome screen on launch.");
+	parser.addOption(onboarding_option);
+
 	parser.process(app);
 	QStringList args = parser.positionalArguments();
 
@@ -262,6 +269,53 @@ int real_main(int argc, char *argv[])
 	bool use_alt_settings = false;
 	if(!parser.isSet(profile_option))
 		use_alt_settings = true;
+
+	if (parser.isSet(validate_qml_option)) {
+		printf("=== Validating all QML components ===\n");
+		QmlMainWindow main_window(use_alt_settings ? &alt_settings : &settings, false);
+		QQmlEngine *engine = main_window.getQmlEngine();
+		if (!engine) {
+			fprintf(stderr, "FATAL: Could not get QQmlEngine from QmlMainWindow\n");
+			return 1;
+		}
+		const QStringList qml_components = {
+			QStringLiteral("qrc:/LudeloTheme.qml"),
+			QStringLiteral("qrc:/components/LButton.qml"),
+			QStringLiteral("qrc:/components/LCard.qml"),
+			QStringLiteral("qrc:/components/LPill.qml"),
+			QStringLiteral("qrc:/components/LNavTab.qml"),
+			QStringLiteral("qrc:/components/LTopBar.qml"),
+			QStringLiteral("qrc:/components/LToggle.qml"),
+			QStringLiteral("qrc:/components/LSlider.qml"),
+			QStringLiteral("qrc:/Main.qml"),
+			QStringLiteral("qrc:/OnboardingView.qml"),
+			QStringLiteral("qrc:/MainView.qml"),
+			QStringLiteral("qrc:/StreamView.qml"),
+			QStringLiteral("qrc:/SettingsDialog.qml"),
+			QStringLiteral("qrc:/AccountView.qml"),
+			QStringLiteral("qrc:/CloudPlayView.qml"),
+			QStringLiteral("qrc:/RegistDialog.qml"),
+			QStringLiteral("qrc:/ConfirmDialog.qml"),
+			QStringLiteral("qrc:/MessageDialog.qml"),
+			QStringLiteral("qrc:/RemindDialog.qml"),
+			QStringLiteral("qrc:/ManualHostDialog.qml"),
+			QStringLiteral("qrc:/ConsolePinDialog.qml")
+		};
+		bool all_ok = true;
+		for (const auto &comp_url : qml_components) {
+			QQmlComponent c(engine, QUrl(comp_url));
+			if (!c.isReady()) {
+				fprintf(stderr, "[QML ERROR] %s\n", qPrintable(comp_url));
+				for (const auto &err : c.errors()) {
+					fprintf(stderr, "   %s\n", qPrintable(err.toString()));
+				}
+				all_ok = false;
+			} else {
+				printf("[QML OK] %s\n", qPrintable(comp_url));
+			}
+		}
+		return all_ok ? 0 : 1;
+	}
 
 	if(args.length() == 0)
 		return RunMain(app, use_alt_settings ? &alt_settings : &settings, exit_app_on_stream_exit);

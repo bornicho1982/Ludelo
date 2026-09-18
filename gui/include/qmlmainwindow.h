@@ -103,6 +103,7 @@ public:
 
     void updatePlacebo();
     void show();
+    QQmlEngine *getQmlEngine() const { return qml_engine; }
     void presentFrame(AVFrame *frame, int32_t frames_lost);
     void startCloudStreaming(const QString &serviceType, const QString &gameIdentifier);
 

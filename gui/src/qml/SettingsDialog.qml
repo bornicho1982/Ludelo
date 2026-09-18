@@ -1135,7 +1135,9 @@ Rectangle {
                             Item { Layout.fillWidth: true }
                             LPill {
                                 text: Chiaki.session ? "LIVE STREAM" : "STANDBY"
-                                status: Chiaki.session ? "online" : "offline"
+                                dotColor: Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim
+                                glowColor: Chiaki.session ? LudeloTheme.accentMintGlow : "transparent"
+                                showDot: true
                             }
                         }
 

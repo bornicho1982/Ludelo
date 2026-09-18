@@ -44,10 +44,20 @@ while ($added) {
     $round++
 }
 
-Write-Host "=== 3. Smoke Test (isolated PATH without MSYS2) ==="
+Write-Host "=== 3. QML Validation & Smoke Test (isolated PATH without MSYS2) ==="
 $origPath = $env:PATH
 try {
     $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -notmatch 'msys64' }) -join ';'
+    
+    Write-Host "--- Validating Root QML & All UI Screens ---"
+    $qmlTest = Start-Process -FilePath $exePath -ArgumentList "--validate-qml" -NoNewWindow -PassThru -Wait
+    if ($qmlTest.ExitCode -ne 0) {
+        Write-Error "QML Validation FAILED! Exit Code: $($qmlTest.ExitCode)"
+        exit $qmlTest.ExitCode
+    }
+    Write-Host "QML Validation: ALL SCREENS READY AND COMPILED!"
+
+    Write-Host "--- Checking CLI Interface ---"
     $p = Start-Process -FilePath $exePath -ArgumentList "--help" -NoNewWindow -PassThru -Wait
     if ($p.ExitCode -ne 0) {
         Write-Error "Smoke test FAILED with Exit Code: $($p.ExitCode)"
@@ -56,4 +66,4 @@ try {
 } finally {
     $env:PATH = $origPath
 }
-Write-Host "=== Deploy & Smoke Test SUCCESSFUL (Exit Code 0) ==="
+Write-Host "=== Deploy, QML Validation & Smoke Test SUCCESSFUL (Exit Code 0) ==="

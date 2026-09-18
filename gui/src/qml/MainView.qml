@@ -699,10 +699,10 @@ Pane {
                         }
 
                         // Forward properties & actions to child item
-                        property bool canHide: item ? item.canHide : false
-                        property bool canWake: item ? item.canWake : false
-                        property bool canPin: item ? item.canPin : false
-                        property bool hasGames: item ? item.hasGames : false
+                        property bool canHide: (item && item.canHide) ? true : false
+                        property bool canWake: (item && item.canWake) ? true : false
+                        property bool canPin: (item && item.canPin) ? true : false
+                        property bool hasGames: (item && item.hasGames) ? true : false
 
                         function connectToHost() { if (item && item.connectToHost) item.connectToHost(); }
                         function wakeUpHost() { if (item && item.wakeUpHost) item.wakeUpHost(); }

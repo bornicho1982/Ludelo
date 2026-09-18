@@ -6,11 +6,28 @@ Rectangle {
 
     property string text: ""
     property string iconSource: ""
+    property string status: ""
     property color dotColor: LudeloTheme.accentMint
     property color glowColor: LudeloTheme.accentMintGlow
     property bool showDot: true
     property bool pulseDot: false
     property color textColor: LudeloTheme.textPrimary
+
+    onStatusChanged: {
+        if (status === "online" || status === "success") {
+            dotColor = LudeloTheme.accentMint;
+            glowColor = LudeloTheme.accentMintGlow;
+        } else if (status === "offline" || status === "dim") {
+            dotColor = LudeloTheme.textDim;
+            glowColor = "transparent";
+        } else if (status === "error" || status === "danger") {
+            dotColor = LudeloTheme.error;
+            glowColor = Qt.rgba(0xEF/255, 0x47/255, 0x6F/255, 0.35);
+        } else if (status === "warning") {
+            dotColor = LudeloTheme.warn;
+            glowColor = Qt.rgba(0xFF/255, 0xB7/255, 0x03/255, 0.35);
+        }
+    }
 
     implicitHeight: 28
     implicitWidth: contentRow.implicitWidth + 20
