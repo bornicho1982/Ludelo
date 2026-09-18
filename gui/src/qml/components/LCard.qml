@@ -17,7 +17,17 @@ Item {
     signal clicked()
 
     implicitWidth: 320
-    implicitHeight: 200
+    implicitHeight: {
+        var maxChildH = 0;
+        for (var i = 0; i < contentContainer.children.length; i++) {
+            var c = contentContainer.children[i];
+            var topM = c.anchors.topMargin || c.anchors.margins || 0;
+            var botM = c.anchors.bottomMargin || c.anchors.margins || 0;
+            var h = (c.implicitHeight > 0 ? c.implicitHeight : (c.childrenRect ? c.childrenRect.height : 0)) + topM + botM;
+            if (h > maxChildH) maxChildH = h;
+        }
+        return maxChildH > 0 ? maxChildH : 200;
+    }
 
     y: (hoverLift && (isHovered || isFocused)) ? -4 : 0
     Behavior on y {

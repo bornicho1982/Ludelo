@@ -311,13 +311,7 @@ Rectangle {
                             RowLayout {
                                 spacing: 12
                                 Text {
-                                    text: {
-                                        let acc = Chiaki.settings.psnAccountId;
-                                        if (acc && acc.length >= 8) {
-                                            return qsTr("Account ID: %1••••%2").arg(acc.substring(0, 4)).arg(acc.substring(acc.length - 4));
-                                        }
-                                        return acc ? qsTr("Account ID: %1").arg(acc) : qsTr("Account ID: None");
-                                    }
+                                    text: qsTr("Account ID: %1").arg(LudeloTheme.formatObfuscatedAccountId(Chiaki.settings.psnAccountId))
                                     font.family: LudeloTheme.fontFamilyMono
                                     font.pixelSize: 12
                                     color: LudeloTheme.textSecondary

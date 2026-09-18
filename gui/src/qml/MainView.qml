@@ -328,7 +328,7 @@ Pane {
                         id: psnPill
                         anchors.fill: parent
                         text: Chiaki.settings.psnAuthToken
-                            ? (Chiaki.settings.psnAccountId ? Chiaki.settings.psnAccountId : qsTr("PSN CONNECTED"))
+                            ? (Chiaki.settings.psnAccountId ? LudeloTheme.formatObfuscatedAccountId(Chiaki.settings.psnAccountId) : qsTr("PSN CONNECTED"))
                             : qsTr("SIGN IN PSN")
                         dotColor: Chiaki.settings.psnAuthToken ? LudeloTheme.accentMint : LudeloTheme.warn
                         glowColor: Chiaki.settings.psnAuthToken ? LudeloTheme.accentMintGlow : Qt.rgba(1, 0.7, 0, 0.4)
@@ -459,7 +459,7 @@ Pane {
                         }
 
                         Text {
-                            text: qsTr("Select a console device to initiate an ultra-low latency direct stream session")
+                            text: qsTr("Select a console device to initiate a direct stream session")
                             font.family: LudeloTheme.fontFamily
                             font.pixelSize: 13
                             color: LudeloTheme.textSecondary
@@ -485,7 +485,7 @@ Pane {
                             onClicked: Chiaki.discoveryEnabled = true
                         }
 
-                        // Filter Chips: All, PlayStation 5, PlayStation 4
+                        // Filter Chips: All, PS5, PS4
                         Row {
                             anchors.right: parent.right
                             spacing: 8
@@ -516,7 +516,7 @@ Pane {
                                 }
                             }
 
-                            // PlayStation 5 Filter Chip
+                            // PS5 Filter Chip
                             Rectangle {
                                 height: 26
                                 width: ps5ChipText.implicitWidth + 20
@@ -528,7 +528,7 @@ Pane {
                                 Text {
                                     id: ps5ChipText
                                     anchors.centerIn: parent
-                                    text: qsTr("PlayStation 5 (%1)").arg(consolePane.ps5Count)
+                                    text: qsTr("PS5 (%1)").arg(consolePane.ps5Count)
                                     font.family: LudeloTheme.fontFamilyMono
                                     font.pixelSize: 11
                                     font.weight: consolePane.activeFilter === "ps5" ? Font.Bold : Font.Normal
@@ -542,7 +542,7 @@ Pane {
                                 }
                             }
 
-                            // PlayStation 4 Filter Chip
+                            // PS4 Filter Chip
                             Rectangle {
                                 height: 26
                                 width: ps4ChipText.implicitWidth + 20
@@ -554,7 +554,7 @@ Pane {
                                 Text {
                                     id: ps4ChipText
                                     anchors.centerIn: parent
-                                    text: qsTr("PlayStation 4 (%1)").arg(consolePane.ps4Count)
+                                    text: qsTr("PS4 (%1)").arg(consolePane.ps4Count)
                                     font.family: LudeloTheme.fontFamilyMono
                                     font.pixelSize: 11
                                     font.weight: consolePane.activeFilter === "ps4" ? Font.Bold : Font.Normal
@@ -1036,7 +1036,7 @@ Pane {
                                 color: LudeloTheme.textDim
                             }
                             Text {
-                                text: modelData.state === "ready" ? qsTr("Ready (Online)") : (modelData.state === "standby" ? qsTr("Rest Mode (Sleep)") : modelData.state)
+                                text: modelData.state === "ready" ? qsTr("Ready (Online)") : (modelData.state === "standby" ? qsTr("Rest Mode (Sleep)") : (modelData.state ? modelData.state : qsTr("Standby / Sleep")))
                                 font.family: LudeloTheme.fontFamilyMono
                                 font.pixelSize: 11
                                 font.weight: Font.DemiBold
@@ -1281,7 +1281,11 @@ Pane {
                                 }
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    text: (Chiaki.settings.bitrate / 1000) + " Mbps"
+                                    text: {
+                                        let br = Chiaki.settings.bitrateLocalPS5;
+                                        if (!br || isNaN(br)) return "25 Mbps";
+                                        return Math.round(br / 1000) + " Mbps";
+                                    }
                                     font.family: LudeloTheme.fontFamilyMono
                                     font.pixelSize: 12
                                     font.weight: Font.Bold
@@ -1311,7 +1315,18 @@ Pane {
                             Text { text: qsTr("Resolution / FPS:"); font.pixelSize: 11; color: LudeloTheme.textDim }
                             Item { Layout.fillWidth: true }
                             Text {
-                                text: Chiaki.settings.resolution + "p @ " + Chiaki.settings.fps + " FPS"
+                                text: {
+                                    let res = Chiaki.settings.resolutionLocalPS5;
+                                    let resStr = "1080p";
+                                    if (res === 0) resStr = "360p";
+                                    else if (res === 1) resStr = "540p";
+                                    else if (res === 2) resStr = "720p";
+                                    else if (res === 3) resStr = "1080p";
+
+                                    let fps = Chiaki.settings.fpsLocalPS5;
+                                    let fpsStr = fps === 0 ? "30 FPS" : "60 FPS";
+                                    return resStr + " @ " + fpsStr;
+                                }
                                 font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textPrimary
                             }
                         }
@@ -1341,7 +1356,7 @@ Pane {
                         Layout.fillWidth: true
                         height: 40
                         variant: "ghost"
-                        text: qsTr("STREAMING PREFERENCES")
+                        text: qsTr("STREAM PREFERENCES")
                         keyHint: "[START]"
                         onClicked: root.showSettingsDialog()
                     }

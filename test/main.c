@@ -16,6 +16,7 @@ extern MunitTest tests_cloudcatalog_merge[];
 extern MunitTest tests_cloudsession_kamaji[];
 extern MunitTest tests_ps_chord[];
 extern MunitTest auth_classifier_tests[];
+extern MunitTest registered_hosts_tests[];
 
 static MunitSuite suites[] = {
 	{
@@ -112,6 +113,13 @@ static MunitSuite suites[] = {
 	{
 		"/auth_classifier",
 		auth_classifier_tests,
+		NULL,
+		1,
+		MUNIT_SUITE_OPTION_NONE
+	},
+	{
+		"/registered_hosts",
+		registered_hosts_tests,
 		NULL,
 		1,
 		MUNIT_SUITE_OPTION_NONE

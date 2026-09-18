@@ -67,4 +67,14 @@ QtObject {
     // Typography
     readonly property string fontFamily: "Inter"
     readonly property string fontFamilyMono: "JetBrains Mono"
+
+    // Helper: Uniform Account ID Obfuscation (P0.4: First 4 + Last 4, no '=', no quotes)
+    function formatObfuscatedAccountId(acc) {
+        if (!acc) return "";
+        var clean = acc.toString().replace(/[="]/g, "").trim();
+        if (clean.length >= 8) {
+            return clean.substring(0, 4) + "••••" + clean.substring(clean.length - 4);
+        }
+        return clean;
+    }
 }

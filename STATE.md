@@ -113,10 +113,20 @@
     - Eliminado claim ficticio de "4K HDR 60FPS" de `LTopBar.qml`, sustituido por `DIRECT P2P STREAM READY`.
   - Compilación exitosa con CMake + MinGW64 (`Ludelo.exe`, `chiaki-unit`). Tests unitarios 100% pasados en CTest.
 
-- **FASE 3 (Diseño Premium Gamer, QML Nativo & Stitch MCP): 100% COMPLETADA**.
-  - Las 8 pantallas del inventario UX implementadas y validadas con fidelidad visual gamer luxury.
-  - QR Login 100% erradicado.
-  - Zero Sony glyphs, zero unverified claims.
+- **FASE 3 (Diseño Premium Gamer, QML Nativo & Stitch MCP): REVISIÓN Y RETOQUES COMPLETADOS (18/09/2026)**.
+  - Implementación completa de todos los puntos P0 (Bloqueantes) y P1 (Importantes) del Informe de Retoques:
+    - **P0.1**: Panel derecho de telemetría de Ajustes restringido exclusivamente a la pestaña Network (`dialog.activeCategoryIndex === 2`). En estado sin sesión, muestra una única tarjeta de estado vacío sobria.
+    - **P0.2**: Corregidos solapes y cortes en Ajustes (`LCard.qml` y `LToggle.qml` con altura dinámica calculada y ajuste de texto; cálculo exacto de altura de scroll).
+    - **P0.3**: Persistencia y auto-sanación de consolas vinculadas ante corrupción `size=0` en `Ludelo.conf` (`Settings::LoadRegisteredHosts`, `Settings::SaveRegisteredHosts`). `QmlBackend::hosts()` muestra consolas vinculadas registradas en reposo/standby. Añadido test unitario de regresión en `test/registered_hosts_test.cpp`.
+    - **P0.4**: Ofuscación unificada y homogénea de Account ID (`XXXX••••YYYY`, sin padding ni sufijos `=`) en `LudeloTheme.formatObfuscatedAccountId()`, aplicado en `MainView`, `SettingsDialog` y `AccountView`.
+    - **P0.5**: Corregida telemetría de decodificador (latencia real en ms separada de motor HW `D3D11VA`), erradicado `NaN Mbps` en HUD de MainView, tipografía mínima garantizada >= 11px.
+    - **P1.1 / P1.2**: Un solo botón `RESET DEFAULTS` funcional en footer de Ajustes; footer depurado para atajos globales.
+    - **P1.3**: Contadores de Cloud Play unificados y precisos: `Catálogo: X • Mostrando: Y`.
+    - **P1.4**: Banner de autenticación Cloud Play con acción `[RE-AUTHENTICATE]`; Hero spotlight prioriza títulos jugables/instalados sobre conceptos de tienda; botón contextual de favoritos `FAVORITE`/`UNFAVORITE`.
+    - **P1.5**: Eliminado selector ficticio "Cloud Data Center Location: Auto" de Ajustes, sustituido por tarjeta informativa de arquitectura de transporte (Kamaji / WebRTC).
+    - **P1.6**: Base de internacionalización preparada con `qsTr()` y literales centralizados (traducción completa diferida a Fase 5).
+    - **P1.7**: Tarjetas de consola en Home con estados protegidos (sin campos en blanco); chips de filtro concisos `All (X)`, `PS5 (X)`, `PS4 (X)`; botón renombrado a `STREAM PREFERENCES`.
+  - Validación 100% exitosa de tests unitarios (`ctest`) y verificación completa de componentes QML y smoke test con `scripts/deploy-windows.ps1`.
 
 
 

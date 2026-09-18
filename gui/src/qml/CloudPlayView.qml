@@ -40,6 +40,11 @@ Pane {
             if (idx >= 0 && idx < filteredGames.length) {
                 return filteredGames[idx];
             }
+            for (let i = 0; i < filteredGames.length; ++i) {
+                if (isPlayableNow(filteredGames[i])) {
+                    return filteredGames[i];
+                }
+            }
             return filteredGames[0];
         }
         return null;
@@ -332,7 +337,7 @@ Pane {
                     }
 
                     LPill {
-                        text: qsTr("%1 TITLES").arg(allGames.length)
+                        text: qsTr("Catálogo: %1 • Mostrando: %2").arg(allGames.length).arg(filteredGames.length)
                         showDot: false
                     }
 
@@ -629,11 +634,15 @@ Pane {
 
                 LButton {
                     Layout.preferredHeight: 28
-                    Layout.preferredWidth: 100
+                    Layout.preferredWidth: 150
                     variant: "mint"
-                    text: qsTr("SETTINGS")
+                    text: qsTr("RE-AUTHENTICATE")
                     onClicked: {
-                        if (settingsButton) {
+                        if (Chiaki.settings.psnRefreshToken) {
+                            Chiaki.refreshPsnToken();
+                        } else if (typeof root !== "undefined" && typeof root.showPSNTokenDialog === "function") {
+                            root.showPSNTokenDialog("", false);
+                        } else if (settingsButton) {
                             settingsButton.clicked();
                         }
                     }
@@ -809,7 +818,7 @@ Pane {
                             text: {
                                 if (!selectedGame) return qsTr("FAVORITE");
                                 let pid = selectedGame.productId || selectedGame.product_id || selectedGame.id;
-                                return favoriteProductIds.indexOf(pid) !== -1 ? qsTr("UNFAVORITE") : qsTr("FAVORITE");
+                                return (pid && favoriteProductIds && favoriteProductIds.indexOf(pid) !== -1) ? qsTr("UNFAVORITE") : qsTr("FAVORITE");
                             }
                             onClicked: {
                                 if (selectedGame) {

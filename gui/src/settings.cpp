@@ -2388,16 +2388,44 @@ void Settings::LoadRegisteredHosts(QSettings *qsettings)
 	ps4s_registered = 0;
 
 	int count = qsettings->beginReadArray("registered_hosts");
+	bool healed_from_corruption = false;
+	if(count <= 0)
+	{
+		// Resilient fallback: detect entries if size was corrupted to 0 or missing in INI
+		int fallback_count = 0;
+		for(int i = 0; i < 100; i++)
+		{
+			qsettings->setArrayIndex(i);
+			if(qsettings->contains("server_mac") || qsettings->contains("server_nickname"))
+				fallback_count = i + 1;
+			else
+				break;
+		}
+		if(fallback_count > 0)
+		{
+			count = fallback_count;
+			healed_from_corruption = true;
+		}
+	}
+
 	for(int i=0; i<count; i++)
 	{
 		qsettings->setArrayIndex(i);
 		RegisteredHost host = RegisteredHost::LoadFromSettings(qsettings);
-		registered_hosts[host.GetServerMAC()] = host;
-		nickname_registered_hosts[host.GetServerNickname()] = host;
-		if(!chiaki_target_is_ps5(host.GetTarget()))
-			ps4s_registered++;
+		if(host.GetServerMAC().ToString() != "00:00:00:00:00:00" || !host.GetServerNickname().isEmpty())
+		{
+			registered_hosts[host.GetServerMAC()] = host;
+			nickname_registered_hosts[host.GetServerNickname()] = host;
+			if(!chiaki_target_is_ps5(host.GetTarget()))
+				ps4s_registered++;
+		}
 	}
 	qsettings->endArray();
+
+	if(healed_from_corruption && !registered_hosts.empty())
+	{
+		SaveRegisteredHosts(qsettings);
+	}
 	emit RegisteredHostsUpdated();
 }
 
@@ -2405,7 +2433,8 @@ void Settings::SaveRegisteredHosts(QSettings *qsettings)
 {
 	if(!qsettings)
 		qsettings = &settings;
-	qsettings->beginWriteArray("registered_hosts");
+	qsettings->remove("registered_hosts");
+	qsettings->beginWriteArray("registered_hosts", static_cast<int>(registered_hosts.size()));
 	int i=0;
 	for(const auto &host : registered_hosts)
 	{

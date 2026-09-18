@@ -20,7 +20,8 @@ add_executable(chiaki-unit
 		cloudcatalog_merge.c
 		cloudsession_kamaji.c
 		pschord.c
-		auth_classifier_test.cpp)
+		auth_classifier_test.cpp
+		registered_hosts_test.cpp)
 
 find_package(spdlog REQUIRED)
 set_target_properties(chiaki-unit PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)

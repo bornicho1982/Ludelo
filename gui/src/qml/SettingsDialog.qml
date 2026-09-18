@@ -342,17 +342,6 @@ Rectangle {
                     }
 
                     Item { Layout.fillWidth: true }
-
-                    // Reset Defaults Button
-                    LButton {
-                        height: 38
-                        implicitWidth: 160
-                        customRadius: 8
-                        variant: "ghost"
-                        text: qsTr("RESET DEFAULTS")
-                        keyHint: "[X]"
-                        onClicked: dialog.resetToDefaults()
-                    }
                 }
 
                 // Flickable Content Area
@@ -361,13 +350,14 @@ Rectangle {
                     Layout.fillHeight: true
                     clip: true
                     contentWidth: width
-                    contentHeight: currentCategoryContent.implicitHeight + 40
+                    contentHeight: currentCategoryContent.height + 40
                     boundsBehavior: Flickable.StopAtBounds
 
                     Item {
                         id: currentCategoryContent
                         width: parent.width
-                        implicitHeight: categoryStack.children[dialog.activeCategoryIndex].implicitHeight
+                        implicitHeight: categoryStack.children[dialog.activeCategoryIndex] ? categoryStack.children[dialog.activeCategoryIndex].implicitHeight : 600
+                        height: implicitHeight
 
                         StackLayout {
                             id: categoryStack
@@ -798,7 +788,7 @@ Rectangle {
                                     ColumnLayout {
                                         anchors.fill: parent
                                         anchors.margins: 20
-                                        spacing: 16
+                                        spacing: 12
 
                                         Text {
                                             text: qsTr("PlayStation Cloud Gaming Streaming")
@@ -808,13 +798,27 @@ Rectangle {
                                             color: LudeloTheme.textPrimary
                                         }
 
-                                        ColumnLayout {
-                                            spacing: 6
-                                            Text { text: qsTr("Cloud Data Center Location"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; color: LudeloTheme.textSecondary }
-                                            ComboBox {
-                                                Layout.preferredWidth: 320
-                                                model: [qsTr("Auto (Lowest Latency)"), qsTr("North America"), qsTr("Europe"), qsTr("Asia-Pacific")]
-                                                currentIndex: 0
+                                        Text {
+                                            text: qsTr("Cloud routing is automatically negotiated with Sony Kamaji edge servers based on your PSN account region and network topology.")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 12
+                                            color: LudeloTheme.textSecondary
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+
+                                        RowLayout {
+                                            spacing: 8
+                                            LPill {
+                                                text: "PROTOCOL: Kamaji / WebRTC"
+                                                dotColor: LudeloTheme.accentMint
+                                                glowColor: LudeloTheme.accentMintGlow
+                                                showDot: true
+                                            }
+                                            LPill {
+                                                text: "AUTO EDGE REGION"
+                                                dotColor: LudeloTheme.accentPrimary
+                                                showDot: false
                                             }
                                         }
                                     }
@@ -926,7 +930,7 @@ Rectangle {
                                                 color: Chiaki.settings.psnAccountId ? LudeloTheme.accentMint : LudeloTheme.textDim
                                             }
                                             Text {
-                                                text: Chiaki.settings.psnAccountId ? qsTr("Logged In (Account ID: %1)").arg(Chiaki.settings.psnAccountId) : qsTr("Not Connected to PSN")
+                                                text: Chiaki.settings.psnAccountId ? qsTr("Logged In (Account ID: %1)").arg(LudeloTheme.formatObfuscatedAccountId(Chiaki.settings.psnAccountId)) : qsTr("Not Connected to PSN")
                                                 font.family: LudeloTheme.fontFamilyMono
                                                 font.pixelSize: 13
                                                 font.weight: Font.DemiBold
@@ -1103,16 +1107,73 @@ Rectangle {
             }
 
             // -----------------------------------------------------------------
-            // RIGHT COLUMN: LIVE DIAGNOSTICS & TELEMETRY SIDEBAR
+            // -----------------------------------------------------------------
+            // RIGHT COLUMN: LIVE DIAGNOSTICS & TELEMETRY SIDEBAR (Network tab only)
             // -----------------------------------------------------------------
             ColumnLayout {
-                Layout.preferredWidth: 380
+                Layout.preferredWidth: visible ? 380 : 0
                 Layout.fillHeight: true
+                visible: dialog.activeCategoryIndex === 2
                 spacing: 16
 
-                // Diagnostics Card
+                // Single elegant Empty State Card when there is no active session
                 LCard {
                     Layout.fillWidth: true
+                    visible: !Chiaki.session
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 24
+                        spacing: 16
+
+                        RowLayout {
+                            spacing: 10
+                            Rectangle {
+                                width: 32; height: 32; radius: 8
+                                color: Qt.rgba(1.0, 1.0, 1.0, 0.05)
+                                Text { anchors.centerIn: parent; text: "📡"; font.pixelSize: 16 }
+                            }
+                            Column {
+                                Text {
+                                    text: qsTr("Stream Diagnostics")
+                                    font.family: LudeloTheme.fontFamily
+                                    font.pixelSize: 15
+                                    font.weight: Font.Bold
+                                    color: LudeloTheme.textPrimary
+                                }
+                                Text {
+                                    text: qsTr("Standby Mode")
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 11
+                                    color: LudeloTheme.textDim
+                                }
+                            }
+                            Item { Layout.fillWidth: true }
+                            LPill {
+                                text: "STANDBY"
+                                dotColor: LudeloTheme.textDim
+                                glowColor: "transparent"
+                                showDot: true
+                            }
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: LudeloTheme.borderSubtle }
+
+                        Text {
+                            text: qsTr("Real-time network telemetry (RTT ping, decoder latency, packet loss, and frame stability) is tracked live once a stream session is actively connected.")
+                            font.family: LudeloTheme.fontFamily
+                            font.pixelSize: 12
+                            color: LudeloTheme.textSecondary
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                            lineHeight: 1.3
+                        }
+                    }
+                }
+
+                // Live Diagnostics Card (Only rendered when session is active)
+                LCard {
+                    Layout.fillWidth: true
+                    visible: !!Chiaki.session
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 20
@@ -1123,7 +1184,7 @@ Rectangle {
                             Layout.fillWidth: true
                             Rectangle {
                                 width: 8; height: 8; radius: 4
-                                color: Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim
+                                color: LudeloTheme.accentMint
                             }
                             Text {
                                 text: qsTr("Network Diagnostics")
@@ -1134,16 +1195,16 @@ Rectangle {
                             }
                             Item { Layout.fillWidth: true }
                             LPill {
-                                text: Chiaki.session ? "LIVE STREAM" : "STANDBY"
-                                dotColor: Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim
-                                glowColor: Chiaki.session ? LudeloTheme.accentMintGlow : "transparent"
+                                text: "LIVE STREAM"
+                                dotColor: LudeloTheme.accentMint
+                                glowColor: LudeloTheme.accentMintGlow
                                 showDot: true
                             }
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: LudeloTheme.borderSubtle }
 
-                        // 2x2 Telemetry Grid (Honest: live if Chiaki.session, else "--")
+                        // 2x2 Telemetry Grid
                         GridLayout {
                             Layout.fillWidth: true
                             columns: 2
@@ -1153,57 +1214,57 @@ Rectangle {
                             // Metric 1: RTT
                             Column {
                                 spacing: 2
-                                Text { text: "ROUND-TRIP (RTT)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textSecondary }
+                                Text { text: "ROUND-TRIP (RTT)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                                 Text {
                                     text: Chiaki.session ? (Math.round(Chiaki.session.measuredRtt) + " ms") : "--"
                                     font.family: LudeloTheme.fontFamilyMono
                                     font.pixelSize: 20
                                     font.weight: Font.Bold
-                                    color: Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim
+                                    color: LudeloTheme.accentMint
                                 }
-                                Text { text: Chiaki.session ? "Live ping" : "No active session"; font.family: LudeloTheme.fontFamily; font.pixelSize: 10; color: LudeloTheme.textDim }
+                                Text { text: "Live ping"; font.family: LudeloTheme.fontFamily; font.pixelSize: 11; color: LudeloTheme.textDim }
                             }
 
-                            // Metric 2: Decoder Time
+                            // Metric 2: Decoder Latency
                             Column {
                                 spacing: 2
-                                Text { text: "DECODER TIME"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textSecondary }
+                                Text { text: "DECODER LATENCY"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                                 Text {
-                                    text: Chiaki.session ? (Chiaki.session.decoderTime ? (Chiaki.session.decoderTime.toFixed(1) + " ms") : "< 1.0 ms") : "--"
+                                    text: (Chiaki.session && Chiaki.session.decoderTime) ? (Chiaki.session.decoderTime.toFixed(1) + " ms") : "< 1.0 ms"
                                     font.family: LudeloTheme.fontFamilyMono
                                     font.pixelSize: 20
                                     font.weight: Font.Bold
-                                    color: Chiaki.session ? LudeloTheme.textPrimary : LudeloTheme.textDim
+                                    color: LudeloTheme.textPrimary
                                 }
-                                Text { text: Chiaki.settings.decoder || "d3d11va"; font.family: LudeloTheme.fontFamily; font.pixelSize: 10; color: LudeloTheme.textDim }
+                                Text { text: "Hardware accelerated"; font.family: LudeloTheme.fontFamily; font.pixelSize: 11; color: LudeloTheme.textDim }
                             }
 
                             // Metric 3: Jitter
                             Column {
                                 spacing: 2
-                                Text { text: "JITTER VARIANCE"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textSecondary }
+                                Text { text: "JITTER VARIANCE"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                                 Text {
                                     text: Chiaki.session ? (Math.round(Chiaki.session.jitter || 0) + " ms") : "--"
                                     font.family: LudeloTheme.fontFamilyMono
                                     font.pixelSize: 20
                                     font.weight: Font.Bold
-                                    color: Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim
+                                    color: LudeloTheme.accentMint
                                 }
-                                Text { text: "Packet variance"; font.family: LudeloTheme.fontFamily; font.pixelSize: 10; color: LudeloTheme.textDim }
+                                Text { text: "Packet variance"; font.family: LudeloTheme.fontFamily; font.pixelSize: 11; color: LudeloTheme.textDim }
                             }
 
                             // Metric 4: Packet Loss
                             Column {
                                 spacing: 2
-                                Text { text: "PACKET LOSS"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textSecondary }
+                                Text { text: "PACKET LOSS"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                                 Text {
                                     text: Chiaki.session ? ((Chiaki.session.averagePacketLoss * 100).toFixed(1) + " %") : "--"
                                     font.family: LudeloTheme.fontFamilyMono
                                     font.pixelSize: 20
                                     font.weight: Font.Bold
-                                    color: (Chiaki.session && Chiaki.session.averagePacketLoss > 0.01) ? LudeloTheme.error : (Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim)
+                                    color: (Chiaki.session && Chiaki.session.averagePacketLoss > 0.01) ? LudeloTheme.error : LudeloTheme.accentMint
                                 }
-                                Text { text: "FEC recovery active"; font.family: LudeloTheme.fontFamily; font.pixelSize: 10; color: LudeloTheme.textDim }
+                                Text { text: "FEC recovery active"; font.family: LudeloTheme.fontFamily; font.pixelSize: 11; color: LudeloTheme.textDim }
                             }
                         }
 
@@ -1220,7 +1281,7 @@ Rectangle {
                                 Item { Layout.fillWidth: true }
                                 Text {
                                     text: Chiaki.session ? (Math.round(Chiaki.session.measuredFps) + " FPS") : "--"
-                                    font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; font.weight: Font.Bold; color: Chiaki.session ? LudeloTheme.accentMint : LudeloTheme.textDim
+                                    font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.accentMint
                                 }
                             }
 
@@ -1230,17 +1291,17 @@ Rectangle {
                                 Item { Layout.fillWidth: true }
                                 Text {
                                     text: Chiaki.session ? (Chiaki.session.resolution || "1080p") : "--"
-                                    font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: Chiaki.session ? LudeloTheme.textPrimary : LudeloTheme.textDim
+                                    font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textPrimary
                                 }
                             }
 
                             RowLayout {
                                 Layout.fillWidth: true
-                                Text { text: "CONTROLLER POLLING:"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
+                                Text { text: "DECODER ENGINE:"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                                 Item { Layout.fillWidth: true }
                                 Text {
-                                    text: (Chiaki.controllers && Chiaki.controllers.length > 0) ? "1000 Hz / Synchronous" : "--"
-                                    font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: (Chiaki.controllers && Chiaki.controllers.length > 0) ? LudeloTheme.accentMint : LudeloTheme.textDim
+                                    text: (Chiaki.settings.decoder || "d3d11va").toUpperCase()
+                                    font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.accentMint
                                 }
                             }
 
@@ -1257,9 +1318,10 @@ Rectangle {
                     }
                 }
 
-                // Connected Host Card (Only real data from session or selected console)
+                // Connected Host Card (when session is active)
                 LCard {
                     Layout.fillWidth: true
+                    visible: !!Chiaki.session
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 16
@@ -1268,18 +1330,12 @@ Rectangle {
                         RowLayout {
                             spacing: 8
                             Rectangle {
-                                width: 24
-                                height: 24
-                                radius: 6
+                                width: 24; height: 24; radius: 6
                                 color: Qt.rgba(1.0, 1.0, 1.0, 0.05)
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "🎮"
-                                    font.pixelSize: 12
-                                }
+                                Text { anchors.centerIn: parent; text: "🎮"; font.pixelSize: 12 }
                             }
                             Text {
-                                text: Chiaki.session ? (Chiaki.session.targetName || "PlayStation Console") : qsTr("No Active Stream Session")
+                                text: Chiaki.session ? (Chiaki.session.targetName || "PlayStation Console") : ""
                                 font.family: LudeloTheme.fontFamily
                                 font.pixelSize: 13
                                 font.weight: Font.Bold
@@ -1288,7 +1344,7 @@ Rectangle {
                         }
 
                         Text {
-                            text: Chiaki.session ? qsTr("Direct connection established") : qsTr("Connect to a console from the home screen to view real-time host telemetry.")
+                            text: qsTr("Direct connection established")
                             font.family: LudeloTheme.fontFamily
                             font.pixelSize: 11
                             color: LudeloTheme.textDim
@@ -1336,12 +1392,12 @@ Rectangle {
                     Row {
                         spacing: 6
                         Rectangle {
-                            width: 20; height: 20; radius: 4
+                            width: 38; height: 20; radius: 4
                             color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
                             border.color: LudeloTheme.borderSubtle; border.width: 1
-                            Text { anchors.centerIn: parent; text: "A"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                            Text { anchors.centerIn: parent; text: "LB/RB"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                         }
-                        Text { anchors.verticalCenter: parent.verticalCenter; text: "SELECT"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "CATEGORIES"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                     }
 
                     Row {
@@ -1352,18 +1408,27 @@ Rectangle {
                             border.color: LudeloTheme.borderSubtle; border.width: 1
                             Text { anchors.centerIn: parent; text: "B"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                         }
-                        Text { anchors.verticalCenter: parent.verticalCenter; text: "BACK / CLOSE"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: "CLOSE"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                     }
 
-                    Row {
-                        spacing: 6
-                        Rectangle {
-                            width: 20; height: 20; radius: 4
-                            color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
-                            border.color: LudeloTheme.borderSubtle; border.width: 1
-                            Text { anchors.centerIn: parent; text: "X"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                    MouseArea {
+                        width: resetRow.implicitWidth
+                        height: 24
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: dialog.resetToDefaults()
+
+                        Row {
+                            id: resetRow
+                            spacing: 6
+                            anchors.verticalCenter: parent.verticalCenter
+                            Rectangle {
+                                width: 20; height: 20; radius: 4
+                                color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
+                                border.color: LudeloTheme.borderSubtle; border.width: 1
+                                Text { anchors.centerIn: parent; text: "X"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
+                            }
+                            Text { anchors.verticalCenter: parent.verticalCenter; text: "RESET DEFAULTS"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                         }
-                        Text { anchors.verticalCenter: parent.verticalCenter; text: "RESET DEFAULTS"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                     }
                 }
             }

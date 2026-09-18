@@ -1791,8 +1791,11 @@ QVariantList QmlSettings::registeredHosts() const
     for (const auto &host : settings->GetRegisteredHosts()) {
         QVariantMap m;
         m["name"] = host.GetServerNickname();
+        m["server_nickname"] = host.GetServerNickname();
         m["mac"] = host.GetServerMAC().ToString();
         m["ps5"] = chiaki_target_is_ps5(host.GetTarget());
+        m["target"] = (int)host.GetTarget();
+        m["last_host_ip"] = host.GetLastHostIP();
         out.append(m);
     }
     return out;

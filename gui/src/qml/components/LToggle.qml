@@ -10,6 +10,7 @@ Switch {
 
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
+    implicitHeight: Math.max(24, contentItem.implicitHeight) + topPadding + bottomPadding
 
     indicator: Rectangle {
         id: track
@@ -72,21 +73,26 @@ Switch {
         leftPadding: control.indicator.width + 12
         spacing: 2
         anchors.verticalCenter: parent.verticalCenter
+        width: control.availableWidth
 
         Text {
+            width: parent.width - parent.leftPadding
             text: control.label.length > 0 ? control.label : control.text
             font.family: LudeloTheme.fontFamily
             font.pixelSize: 14
             font.weight: Font.Medium
             color: control.enabled ? LudeloTheme.textPrimary : LudeloTheme.textDim
+            wrapMode: Text.WordWrap
         }
 
         Text {
             visible: control.description.length > 0
+            width: parent.width - parent.leftPadding
             text: control.description
             font.family: LudeloTheme.fontFamily
             font.pixelSize: 11
             color: LudeloTheme.textSecondary
+            wrapMode: Text.WordWrap
         }
     }
 

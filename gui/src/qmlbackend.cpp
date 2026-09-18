@@ -1012,6 +1012,33 @@ QVariantList QmlBackend::hosts() const
         m["ps5"] = host.IsPS5();
         out.append(m);
     }
+    for (const auto &reg_host : settings->GetRegisteredHosts()) {
+        bool already_listed = false;
+        QString reg_mac = reg_host.GetServerMAC().ToString();
+        for (int i = 0; i < out.size(); ++i) {
+            QVariantMap item = out.at(i).toMap();
+            if (item.value("mac").toString() == reg_mac || item.value("name").toString() == reg_host.GetServerNickname()) {
+                already_listed = true;
+                break;
+            }
+        }
+        if (!already_listed && !settings->GetHiddenHostHidden(reg_host.GetServerMAC())) {
+            QVariantMap m;
+            m["discovered"] = false;
+            m["manual"] = false;
+            m["display"] = true;
+            m["name"] = reg_host.GetServerNickname();
+            m["duid"] = "";
+            m["address"] = reg_host.GetLastHostIP();
+            m["registered"] = true;
+            m["ps5"] = chiaki_target_is_ps5(reg_host.GetTarget());
+            m["mac"] = reg_mac;
+            m["state"] = "standby";
+            m["app"] = "";
+            m["titleId"] = "";
+            out.append(m);
+        }
+    }
     return out;
 }
 
