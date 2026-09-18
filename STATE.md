@@ -82,8 +82,22 @@
     - Footer HUD inferior con atajos universales (`[A] PLAY / STORE`, `[B] BACK`, `[X] FAVORITE`, `[Y] SEARCH`, `[START] SORT`) sin glifos geométricos de PlayStation.
   - Compilación exitosa con CMake + MinGW64 (`Ludelo.exe`, `chiaki-unit`). Tests unitarios 100% pasados en CTest.
 
+- **Pantalla 07: RegistDialog / PIN (Vinculación y Registro de Consola)**:
+  - Maqueta generada con Stitch MCP y aprobada con correcciones (`docs/ux/mockups/07_regist_pin.png`).
+  - Implementado `gui/src/qml/RegistDialog.qml` sobre `LudeloTheme` y suite de componentes `L*`:
+    - Banner de instrucciones con rutas exactas en menús de PS5 y PS4 para generar el código de vinculación.
+    - Selector de arquitectura de consola objetivo (`PlayStation 5` con badge honesto "PS5 • HDR" sin claim falso de 4K, y `PlayStation 4` con "LEGACY DDP").
+    - Campo de dirección IP local de la consola con badge `[ONLINE / DETECTED]` y verificación en tiempo real.
+    - Entrada de PIN de 8 dígitos segmentada en 8 casillas rectangulares (`[ 5 ] [ 8 ] [ 2 ] [ 1 ] — [ 9 ] [ 4 ] [ 0 ] [ 3 ]`) con foco activo neón cyan `#00F5D4`, soporte para pegado de 8 dígitos, navegación fluida por flechas y borrado por backspace.
+    - Temporizador activo de cuenta atrás de 300 segundos (expiración real de PIN de Remote Play de Sony).
+    - Sección de Account ID de PSN mostrando el ID ofuscado de la sesión cifrada local (DPAPI) con botón `[RE-AUTHENTICATE]`.
+    - Campo de passcode opcional de usuario de consola de 4 dígitos numéricos para perfiles con código de bloqueo.
+    - Botón primario de registro `[A] REGISTER & PAIR CONSOLE` conectado a `Chiaki.registerHost` con terminal de log integrado en tiempo real y auto-cierre tras éxito.
+    - Footer de atajos universales de gamepad (`[A] REGISTER`, `[B] CANCEL`, `[ESC] BACK`) sin glifos geométricos de PlayStation y sin claims publicitarios ("Ultra Low Latency").
+  - Compilación exitosa con CMake + MinGW64 (`Ludelo.exe`, `chiaki-unit`). Tests unitarios 100% pasados en CTest.
+
 - **Siguiente**:
-  - Pantalla 07: RegistDialog / PIN (Vinculación de Consola por PIN de 8 dígitos).
+  - Pantalla 08: Diálogos menores + Toasts / Overlays (Última pantalla de Fase 3).
 
 
 

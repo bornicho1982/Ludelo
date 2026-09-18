@@ -8,7 +8,7 @@
 | 04 | Ajustes | ✅ Aprobada | `docs/ux/mockups/04_settings.png` | ✅ Implementada |
 | 05 | Cuenta PSN | ✅ Aprobada | `docs/ux/mockups/05_account.png` | ✅ Implementada |
 | 06 | Cloud Play | ✅ Aprobada (con correcciones) | `docs/ux/mockups/06_cloudplay.png` (privada, no commitear) | ✅ Implementada |
-| 07 | RegistDialog / PIN | ⏳ Pendiente | `docs/ux/mockups/07_regist_pin.png` | Pendiente |
+| 07 | RegistDialog / PIN | ✅ Aprobada (con correcciones) | `docs/ux/mockups/07_regist_pin.png` | ✅ Implementada |
 | 08 | Diálogos menores + Toasts | ⏳ Pendiente | `docs/ux/mockups/08_dialogs_toasts.png` | Pendiente |
 
 ---
@@ -33,6 +33,20 @@
   - Manejo honesto de falta de suscripción PS Plus Premium: títulos no reproducibles muestran badge "REQUIRES PS PLUS" y botón `[A] PS PLUS` que abre el navegador externo a la web oficial de PlayStation (`https://www.playstation.com/ps-plus`), sin cobrar ni engañar dentro de la app.
   - Carátulas dinámicas cargadas únicamente desde la cuenta y catálogo PSN del usuario autenticado vía `getImageUrl()`. Prohibido empaquetar arte comercial en el repo.
   - Cero glifos PlayStation: controles universales y nomenclatura Xbox (`[A]`, `[B]`, `[X]`, `[Y]`, `[START]`).
+
+---
+
+## 07. RegistDialog / PIN (Vinculación y Registro de Consola por PIN)
+- **Prompt Stitch**: `"Design 'Ludelo - Screen 07: Console Registration & 8-Digit PIN Pairing Modal Dialog'. Aesthetic: Cyber-minimalist gaming luxury, matching Steam Big Picture and Razer Synapse dark UI. Dark obsidian background #0B0E14 with soft ambient radial glow in electric indigo #6C5CE7. Center Modal Card: Frosted glass panel #151923, 1px subtle border, rounded corners. Form content: 1. Instructions banner with console navigation path. 2. Target console selector [PlayStation 5] (PS5 • HDR) and [PlayStation 4]. 3. Console IP address with [ONLINE / DETECTED] badge. 4. Segmented 8-box digit input with 300s countdown timer. 5. PSN Account ID section with DPAPI verification badge and [RE-AUTHENTICATE] button. 6. Optional 4-digit console user passcode. 7. Actions [A] REGISTER & PAIR CONSOLE and [B] CANCEL."`
+- **Maqueta Generada**: `docs/ux/mockups/07_regist_pin.png`
+- **Estado**: ✅ Aprobada con correcciones e Implementada (`gui/src/qml/RegistDialog.qml`).
+- **Pautas y Correcciones Aplicadas**:
+  - PIN de vinculación de 8 dígitos estrictamente numéricos (0-9) repartidos en 8 casillas con avance de foco y gestión fluida de backspace.
+  - Temporizador de 300 segundos activo (expiración real de PIN de Remote Play de Sony).
+  - Passcode opcional de usuario de consola de 4 dígitos numéricos para perfiles con código de bloqueo de inicio de sesión.
+  - Selector de consola con etiqueta honesta "PS5 • HDR" (sin claim falso de "4K", ya que Remote Play es hasta 1080p).
+  - Eliminado claim publicitario "Ultra Low Latency" del footer.
+  - Cero glifos PlayStation: solo controles universales (`[A]`, `[B]`, `[ESC]`).
 
 
 
