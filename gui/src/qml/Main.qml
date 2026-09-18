@@ -555,35 +555,25 @@ Item {
         }
 
         function onError(title, text, durationMs) {
-            errorTitleLabel.text = title;
-            errorTextLabel.text = text;
-            // Use red color for errors (instead of blue Material.accent)
-            errorToast.color = "#F44336";
-            // Use provided duration or default to 2 seconds
-            errorHideTimer.interval = durationMs !== undefined ? durationMs : 2000;
-            errorHideTimer.start();
+            root.showToast(title, text, "#F44336");
+            if (durationMs !== undefined)
+                errorHideTimer.interval = durationMs;
         }
 
         function onPsnGamesSynced(newGamesCount) {
-            errorTitleLabel.text = qsTr("Games Synced");
-            errorTextLabel.text = newGamesCount === 1 
+            var msg = newGamesCount === 1 
                 ? qsTr("1 game added") 
                 : qsTr("%1 games added").arg(newGamesCount);
-            // Use a success green color for positive notifications
-            errorToast.color = "#4CAF50";
-            errorHideTimer.start();
+            root.showToast(qsTr("Games Synced"), msg, "#4CAF50");
         }
 
         function onPsnGamesCleared(gamesCount) {
-            errorTitleLabel.text = qsTr("Games Cleared");
-            errorTextLabel.text = gamesCount === 0 
+            var msg = gamesCount === 0 
                 ? qsTr("No saved games to clear")
                 : gamesCount === 1 
                     ? qsTr("1 game cleared") 
                     : qsTr("%1 games cleared").arg(gamesCount);
-            // Use a blue color for informational notifications
-            errorToast.color = "#2196F3";
-            errorHideTimer.start();
+            root.showToast(qsTr("Games Cleared"), msg, "#2196F3");
         }
 
         function onRegistDialogRequested(host, ps5, duid) {
