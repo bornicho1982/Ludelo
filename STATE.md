@@ -128,9 +128,29 @@
     - **P1.7**: Tarjetas de consola en Home con estados protegidos (sin campos en blanco); chips de filtro concisos `All (X)`, `PS5 (X)`, `PS4 (X)`; botón renombrado a `STREAM PREFERENCES`.
   - Validación 100% exitosa de tests unitarios (`ctest`) y verificación completa de componentes QML y smoke test con `scripts/deploy-windows.ps1`.
 
-
-
-
-
-
-
+- **AUDITORÍA COMPARATIVA PXPlay vs LUDELO + CORRECCIÓN P0 COMPLETA (20/09/2026)**:
+  - Generado documento exhaustivo `docs/analisis_pxplay_vs_ludelo.md` (456 líneas) comparando las 54 capturas de PXPlay vs las 19 de Ludelo: inventario completo de opciones, defaults, matriz de paridad y plan P0/P1/P2.
+  - Verificación de los 8 P0 contra el código actual: **todos 8 seguían activos**. Corrección implementada en commit `2bac22ef`:
+    - **P0.1**: Tarjeta de consola en blanco — `consoleCardComponent` ahora recibe `hostData` del Loader parent en vez de `modelData` fuera de scope léxico.
+    - **P0.2**: `LToggle.qml` texto invisible — añadido `implicitWidth`, eliminado `anchors.verticalCenter` conflictivo del `contentItem`.
+    - **P0.3**: `LButton.qml` conflicto de anclajes — eliminado `anchors.centerIn` del `contentItem Row`.
+    - **P0.4**: Doble footer solapado en Cloud Play — footer global oculto cuando `mainTabBar.currentIndex === 1`.
+    - **P0.5**: Bitrate 0/NaN — defaults C++ cambiados a 15000/10000 kbps (paridad PXPlay), guards NaN en todos los displays QML.
+    - **P0.6**: Dispositivos de audio vacíos — `refreshAudioDevices()` invocado en constructor `QmlSettings` + trigger en pestaña Audio.
+    - **P0.7**: AccountView incoherencia de estado — badge de seguridad condicionado a `psnAuthToken`, región de tienda desde locale del sistema.
+    - **P0.8**: Claim falso "Stream Engine: Ludelo Low-Latency Core" eliminado, reemplazado con telemetría real de decodificador HW.
+  - Build OK (MinGW64), tests 100%, deploy + smoke test exitoso.
+- **FASE P1: IMPLEMENTACIÓN DE CARACTERÍSTICAS COMERCIALES CLAVE (20/09/2026)**:
+  - **P1.1 · Doble Columna Local (LAN) vs Remote (Internet) en Ajustes de Stream (`SettingsDialog.qml`)**:
+    - Rediseñada la tarjeta de calidad de stream en dos columnas paralelas claramente identificadas (`⚡ LOCAL (LAN)` en acento primario y `🌐 REMOTE (INTERNET)` en acento mint).
+    - Controles desacoplados e independientes para:
+      - Resolución Local (`resolutionLocalPS5/4`) vs Remote (`resolutionRemotePS5/4`).
+      - FPS Local (`fpsLocalPS5/4`) vs Remote (`fpsRemotePS5/4`).
+      - Códec Local (`codecLocalPS5`) vs Remote (`codecRemotePS5`).
+      - Bitrate Local (`bitrateLocalPS5/4`, 5-30 Mbps) vs Remote (`bitrateRemotePS5/4`, 2-20 Mbps).
+    - Ajustes globales/compartidos unificados debajo (Decodificador HW, HDR Rec.2020 passthrough, In-Game HUD, Acceso directo a Display Settings).
+  - **P1.2 · Diálogo Display Settings Avanzado (libplacebo)**:
+    - Verificada la integración del diálogo modal de calibración (`DisplaySettingsDialog.qml`) invocado mediante el botón `DISPLAY SETTINGS` [X] en `SettingsDialog.qml`.
+    - Añadido `DisplaySettingsDialog.qml` a la suite de validación QML estricta en `main.cpp` (`--validate-qml`).
+    - Soporte completo para Target Primaries (Auto, Rec.709, Rec.2020, DCI-P3, etc.), Target Transfer (sRGB, BT.1886, PQ HDR, HLG, etc.), Target Peak (nits) y Target Contrast (Auto, Infinity OLED, valor numérico).
+  - Build OK (MinGW64), tests unitarios 100% pasando (`ctest`), validación de 22 componentes QML y smoke test `deploy-windows.ps1` exitoso (Exit Code 0).

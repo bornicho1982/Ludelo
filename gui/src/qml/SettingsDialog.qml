@@ -407,7 +407,7 @@ Rectangle {
                                     }
                                 }
 
-                                // Card: Display & Resolution
+                                // ===== P1.1: DUAL COLUMN LOCAL vs REMOTE STREAM SETTINGS =====
                                 LCard {
                                     Layout.fillWidth: true
                                     ColumnLayout {
@@ -416,39 +416,85 @@ Rectangle {
                                         spacing: 16
 
                                         Text {
-                                            text: qsTr("Display & Resolution")
+                                            text: qsTr("Stream Quality Configuration")
                                             font.family: LudeloTheme.fontFamily
                                             font.pixelSize: 16
                                             font.weight: Font.Bold
                                             color: LudeloTheme.textPrimary
                                         }
 
-                                        // Resolution Selection
-                                        ColumnLayout {
-                                            spacing: 6
-                                            Text {
-                                                text: qsTr("Target Resolution (Local Stream)")
-                                                font.family: LudeloTheme.fontFamily
-                                                font.pixelSize: 12
-                                                color: LudeloTheme.textSecondary
+                                        Text {
+                                            text: qsTr("Configure independent quality profiles for Local (LAN) and Remote (Internet) connections.")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 11
+                                            color: LudeloTheme.textDim
+                                        }
+
+                                        // Dual Column Headers
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 16
+
+                                            Rectangle {
+                                                Layout.fillWidth: true
+                                                height: 32
+                                                radius: 6
+                                                color: Qt.rgba(0x6C/255, 0x5C/255, 0xE7/255, 0.15)
+                                                border.color: LudeloTheme.accentPrimary
+                                                border.width: 1
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: qsTr("LOCAL (LAN)")
+                                                    font.family: LudeloTheme.fontFamilyMono
+                                                    font.pixelSize: 12
+                                                    font.weight: Font.Bold
+                                                    color: LudeloTheme.accentPrimary
+                                                }
                                             }
+
+                                            Rectangle {
+                                                Layout.fillWidth: true
+                                                height: 32
+                                                radius: 6
+                                                color: Qt.rgba(0x00/255, 0xF5/255, 0xD4/255, 0.10)
+                                                border.color: LudeloTheme.accentMint
+                                                border.width: 1
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: qsTr("REMOTE (INTERNET)")
+                                                    font.family: LudeloTheme.fontFamilyMono
+                                                    font.pixelSize: 12
+                                                    font.weight: Font.Bold
+                                                    color: LudeloTheme.accentMint
+                                                }
+                                            }
+                                        }
+
+                                        // ---- RESOLUTION ROW ----
+                                        Text {
+                                            text: qsTr("Target Resolution")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 12
+                                            color: LudeloTheme.textSecondary
+                                        }
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 16
+
                                             RowLayout {
-                                                spacing: 8
+                                                Layout.fillWidth: true
+                                                spacing: 6
                                                 Repeater {
                                                     model: [
-                                                        { text: "1080p", res: 3, label: "1920x1080 (Recommended)" },
-                                                        { text: "720p", res: 2, label: "1280x720" },
-                                                        { text: "540p", res: 1, label: "960x540" }
+                                                        { text: "1080p", res: 3 },
+                                                        { text: "720p", res: 2 },
+                                                        { text: "540p", res: 1 }
                                                     ]
                                                     delegate: LButton {
-                                                        height: 42
-                                                        implicitWidth: 170
-                                                        customRadius: 8
+                                                        height: 36; implicitWidth: 90; customRadius: 6
                                                         variant: {
-                                                            let cur = (dialog.selectedConsole === SettingsDialog.Console.PS5)
-                                                                ? Chiaki.settings.resolutionLocalPS5
-                                                                : Chiaki.settings.resolutionLocalPS4;
-                                                            return cur === modelData.res ? "mint" : "secondary";
+                                                            let cur = (dialog.selectedConsole === SettingsDialog.Console.PS5) ? Chiaki.settings.resolutionLocalPS5 : Chiaki.settings.resolutionLocalPS4;
+                                                            return cur === modelData.res ? "primary" : "secondary";
                                                         }
                                                         text: modelData.text
                                                         onClicked: {
@@ -460,51 +506,84 @@ Rectangle {
                                                     }
                                                 }
                                             }
-                                        }
 
-                                        // Target Refresh Rate
-                                        ColumnLayout {
-                                            spacing: 6
-                                            Text {
-                                                text: qsTr("Target Refresh Rate")
-                                                font.family: LudeloTheme.fontFamily
-                                                font.pixelSize: 12
-                                                color: LudeloTheme.textSecondary
-                                            }
                                             RowLayout {
-                                                spacing: 8
-                                                LButton {
-                                                    height: 38
-                                                    implicitWidth: 150
-                                                    customRadius: 8
-                                                    variant: ((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.fpsLocalPS5 : Chiaki.settings.fpsLocalPS4) === 1) ? "mint" : "secondary"
-                                                    text: "60 FPS"
-                                                    onClicked: {
-                                                        if (dialog.selectedConsole === SettingsDialog.Console.PS5)
-                                                            Chiaki.settings.fpsLocalPS5 = 1;
-                                                        else
-                                                            Chiaki.settings.fpsLocalPS4 = 1;
-                                                    }
-                                                }
-                                                LButton {
-                                                    height: 38
-                                                    implicitWidth: 150
-                                                    customRadius: 8
-                                                    variant: ((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.fpsLocalPS5 : Chiaki.settings.fpsLocalPS4) === 0) ? "mint" : "secondary"
-                                                    text: "30 FPS"
-                                                    onClicked: {
-                                                        if (dialog.selectedConsole === SettingsDialog.Console.PS5)
-                                                            Chiaki.settings.fpsLocalPS5 = 0;
-                                                        else
-                                                            Chiaki.settings.fpsLocalPS4 = 0;
+                                                Layout.fillWidth: true
+                                                spacing: 6
+                                                Repeater {
+                                                    model: [
+                                                        { text: "1080p", res: 3 },
+                                                        { text: "720p", res: 2 },
+                                                        { text: "540p", res: 1 }
+                                                    ]
+                                                    delegate: LButton {
+                                                        height: 36; implicitWidth: 90; customRadius: 6
+                                                        variant: {
+                                                            let cur = (dialog.selectedConsole === SettingsDialog.Console.PS5) ? Chiaki.settings.resolutionRemotePS5 : Chiaki.settings.resolutionRemotePS4;
+                                                            return cur === modelData.res ? "mint" : "secondary";
+                                                        }
+                                                        text: modelData.text
+                                                        onClicked: {
+                                                            if (dialog.selectedConsole === SettingsDialog.Console.PS5)
+                                                                Chiaki.settings.resolutionRemotePS5 = modelData.res;
+                                                            else
+                                                                Chiaki.settings.resolutionRemotePS4 = modelData.res;
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
 
-                                        // Video Codec
+                                        // ---- FPS ROW ----
+                                        Text {
+                                            text: qsTr("Target Refresh Rate")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 12
+                                            color: LudeloTheme.textSecondary
+                                        }
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 16
+
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 6
+                                                LButton {
+                                                    height: 36; implicitWidth: 90; customRadius: 6
+                                                    variant: ((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.fpsLocalPS5 : Chiaki.settings.fpsLocalPS4) === 1) ? "primary" : "secondary"
+                                                    text: "60 FPS"
+                                                    onClicked: { if (dialog.selectedConsole === SettingsDialog.Console.PS5) Chiaki.settings.fpsLocalPS5 = 1; else Chiaki.settings.fpsLocalPS4 = 1; }
+                                                }
+                                                LButton {
+                                                    height: 36; implicitWidth: 90; customRadius: 6
+                                                    variant: ((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.fpsLocalPS5 : Chiaki.settings.fpsLocalPS4) === 0) ? "primary" : "secondary"
+                                                    text: "30 FPS"
+                                                    onClicked: { if (dialog.selectedConsole === SettingsDialog.Console.PS5) Chiaki.settings.fpsLocalPS5 = 0; else Chiaki.settings.fpsLocalPS4 = 0; }
+                                                }
+                                            }
+
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 6
+                                                LButton {
+                                                    height: 36; implicitWidth: 90; customRadius: 6
+                                                    variant: ((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.fpsRemotePS5 : Chiaki.settings.fpsRemotePS4) === 1) ? "mint" : "secondary"
+                                                    text: "60 FPS"
+                                                    onClicked: { if (dialog.selectedConsole === SettingsDialog.Console.PS5) Chiaki.settings.fpsRemotePS5 = 1; else Chiaki.settings.fpsRemotePS4 = 1; }
+                                                }
+                                                LButton {
+                                                    height: 36; implicitWidth: 90; customRadius: 6
+                                                    variant: ((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.fpsRemotePS5 : Chiaki.settings.fpsRemotePS4) === 0) ? "mint" : "secondary"
+                                                    text: "30 FPS"
+                                                    onClicked: { if (dialog.selectedConsole === SettingsDialog.Console.PS5) Chiaki.settings.fpsRemotePS5 = 0; else Chiaki.settings.fpsRemotePS4 = 0; }
+                                                }
+                                            }
+                                        }
+
+                                        // ---- CODEC ROW (PS5 only) ----
                                         ColumnLayout {
-                                            spacing: 6
+                                            spacing: 4
+                                            visible: dialog.selectedConsole === SettingsDialog.Console.PS5
                                             Text {
                                                 text: qsTr("Video Stream Codec (PS5)")
                                                 font.family: LudeloTheme.fontFamily
@@ -512,22 +591,41 @@ Rectangle {
                                                 color: LudeloTheme.textSecondary
                                             }
                                             RowLayout {
-                                                spacing: 8
-                                                LButton {
-                                                    height: 38
-                                                    implicitWidth: 170
-                                                    customRadius: 8
-                                                    variant: (Chiaki.settings.codecLocalPS5 >= 1) ? "mint" : "secondary"
-                                                    text: "HEVC / H.265"
-                                                    onClicked: Chiaki.settings.codecLocalPS5 = 1
+                                                Layout.fillWidth: true
+                                                spacing: 16
+
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    spacing: 6
+                                                    LButton {
+                                                        height: 36; implicitWidth: 130; customRadius: 6
+                                                        variant: (Chiaki.settings.codecLocalPS5 >= 1) ? "primary" : "secondary"
+                                                        text: "HEVC / H.265"
+                                                        onClicked: Chiaki.settings.codecLocalPS5 = 1
+                                                    }
+                                                    LButton {
+                                                        height: 36; implicitWidth: 130; customRadius: 6
+                                                        variant: (Chiaki.settings.codecLocalPS5 === 0) ? "primary" : "secondary"
+                                                        text: "AVC / H.264"
+                                                        onClicked: Chiaki.settings.codecLocalPS5 = 0
+                                                    }
                                                 }
-                                                LButton {
-                                                    height: 38
-                                                    implicitWidth: 170
-                                                    customRadius: 8
-                                                    variant: (Chiaki.settings.codecLocalPS5 === 0) ? "mint" : "secondary"
-                                                    text: "AVC / H.264"
-                                                    onClicked: Chiaki.settings.codecLocalPS5 = 0
+
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    spacing: 6
+                                                    LButton {
+                                                        height: 36; implicitWidth: 130; customRadius: 6
+                                                        variant: (Chiaki.settings.codecRemotePS5 >= 1) ? "mint" : "secondary"
+                                                        text: "HEVC / H.265"
+                                                        onClicked: Chiaki.settings.codecRemotePS5 = 1
+                                                    }
+                                                    LButton {
+                                                        height: 36; implicitWidth: 130; customRadius: 6
+                                                        variant: (Chiaki.settings.codecRemotePS5 === 0) ? "mint" : "secondary"
+                                                        text: "AVC / H.264"
+                                                        onClicked: Chiaki.settings.codecRemotePS5 = 0
+                                                    }
                                                 }
                                             }
                                             Text {
@@ -538,110 +636,124 @@ Rectangle {
                                             }
                                         }
 
-                                        // Hardware Decoder
-                                        ColumnLayout {
-                                            spacing: 6
-                                            Text {
-                                                text: qsTr("Hardware Accelerated Decoder")
-                                                font.family: LudeloTheme.fontFamily
-                                                font.pixelSize: 12
-                                                color: LudeloTheme.textSecondary
-                                            }
-                                            RowLayout {
-                                                spacing: 12
-                                                ComboBox {
-                                                    id: decoderCombo
-                                                    Layout.preferredWidth: 320
-                                                    model: Chiaki.settings.availableDecoders
-                                                    currentIndex: Math.max(0, model.indexOf(Chiaki.settings.decoder))
-                                                    onActivated: (index) => Chiaki.settings.decoder = model[index]
-                                                }
+                                        // ---- BITRATE ROW ----
+                                        Text {
+                                            text: qsTr("Bitrate Allocation")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 12
+                                            color: LudeloTheme.textSecondary
+                                        }
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 16
+
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 4
                                                 Text {
-                                                    text: qsTr("Active engine: %1").arg(Chiaki.settings.decoder || "d3d11va")
+                                                    text: {
+                                                        var br = dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateLocalPS5 : Chiaki.settings.bitrateLocalPS4;
+                                                        var brMbps = (br && !isNaN(br) && br > 0) ? Math.round(br / 1000) : 15;
+                                                        return qsTr("%1 Mbps").arg(brMbps);
+                                                    }
                                                     font.family: LudeloTheme.fontFamilyMono
-                                                    font.pixelSize: 11
+                                                    font.pixelSize: 12
+                                                    font.weight: Font.Bold
+                                                    color: LudeloTheme.accentPrimary
+                                                }
+                                                LSlider {
+                                                    Layout.fillWidth: true
+                                                    from: 5000; to: 30000; stepSize: 1000
+                                                    value: dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateLocalPS5 : Chiaki.settings.bitrateLocalPS4
+                                                    onMoved: {
+                                                        if (dialog.selectedConsole === SettingsDialog.Console.PS5)
+                                                            Chiaki.settings.bitrateLocalPS5 = Math.round(value);
+                                                        else
+                                                            Chiaki.settings.bitrateLocalPS4 = Math.round(value);
+                                                    }
+                                                }
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    Text { text: "5"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; color: LudeloTheme.textDim }
+                                                    Item { Layout.fillWidth: true }
+                                                    Text { text: "30 Mbps"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; color: LudeloTheme.textDim }
+                                                }
+                                            }
+
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 4
+                                                Text {
+                                                    text: {
+                                                        var br = dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateRemotePS5 : Chiaki.settings.bitrateRemotePS4;
+                                                        var brMbps = (br && !isNaN(br) && br > 0) ? Math.round(br / 1000) : 10;
+                                                        return qsTr("%1 Mbps").arg(brMbps);
+                                                    }
+                                                    font.family: LudeloTheme.fontFamilyMono
+                                                    font.pixelSize: 12
+                                                    font.weight: Font.Bold
                                                     color: LudeloTheme.accentMint
                                                 }
-                                            }
-                                        }
-
-                                        // HDR Stream Output Toggle (Honest: only active when H.265 is selected)
-                                        LToggle {
-                                            label: qsTr("HDR Stream Output (10-bit Rec.2020)")
-                                            description: (Chiaki.settings.codecLocalPS5 === 0)
-                                                ? qsTr("HDR disponible en streams H.265 compatibles")
-                                                : qsTr("Direct 10-bit HDR metadata passthrough to compatible displays")
-                                            enabled: dialog.selectedConsole === SettingsDialog.Console.PS5 && Chiaki.settings.codecLocalPS5 >= 1
-                                            checked: Chiaki.settings.codecLocalPS5 === 2
-                                            onToggled: {
-                                                if (checked) {
-                                                    Chiaki.settings.codecLocalPS5 = 2; // H265 HDR
-                                                } else {
-                                                    Chiaki.settings.codecLocalPS5 = 1; // H265 Standard
+                                                LSlider {
+                                                    Layout.fillWidth: true
+                                                    from: 2000; to: 20000; stepSize: 500
+                                                    value: dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateRemotePS5 : Chiaki.settings.bitrateRemotePS4
+                                                    onMoved: {
+                                                        if (dialog.selectedConsole === SettingsDialog.Console.PS5)
+                                                            Chiaki.settings.bitrateRemotePS5 = Math.round(value);
+                                                        else
+                                                            Chiaki.settings.bitrateRemotePS4 = Math.round(value);
+                                                    }
+                                                }
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    Text { text: "2"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; color: LudeloTheme.textDim }
+                                                    Item { Layout.fillWidth: true }
+                                                    Text { text: "20 Mbps"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; color: LudeloTheme.textDim }
                                                 }
                                             }
-                                        }
-                                    }
-                                }
-
-                                // Card: Bitrate & Network Allocation
-                                LCard {
-                                    Layout.fillWidth: true
-                                    ColumnLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 20
-                                        spacing: 16
-
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            Text {
-                                                text: qsTr("Bitrate & Network Allocation")
-                                                font.family: LudeloTheme.fontFamily
-                                                font.pixelSize: 16
-                                                font.weight: Font.Bold
-                                                color: LudeloTheme.textPrimary
-                                            }
-                                            Item { Layout.fillWidth: true }
-                                            Text {
-                                                text: {
-                                                    var br = dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateLocalPS5 : Chiaki.settings.bitrateLocalPS4;
-                                                    var brMbps = (br && !isNaN(br) && br > 0) ? Math.round(br / 1000) : 15;
-                                                    var label = (br >= 25000) ? qsTr("High Quality / Recommended for LAN") : qsTr("Standard");
-                                                    return qsTr("%1 Mbps (%2)").arg(brMbps).arg(label);
-                                                }
-                                                font.family: LudeloTheme.fontFamilyMono
-                                                font.pixelSize: 12
-                                                font.weight: Font.Bold
-                                                color: LudeloTheme.accentMint
-                                            }
-                                        }
-
-                                        LSlider {
-                                            Layout.fillWidth: true
-                                            from: 5000
-                                            to: 30000
-                                            stepSize: 1000
-                                            value: dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateLocalPS5 : Chiaki.settings.bitrateLocalPS4
-                                            onMoved: {
-                                                if (dialog.selectedConsole === SettingsDialog.Console.PS5)
-                                                    Chiaki.settings.bitrateLocalPS5 = Math.round(value);
-                                                else
-                                                    Chiaki.settings.bitrateLocalPS4 = Math.round(value);
-                                            }
-                                        }
-
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            Text { text: "5 Mbps (Eco)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textDim }
-                                            Item { Layout.fillWidth: true }
-                                            Text { text: "15 Mbps (Standard)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textDim }
-                                            Item { Layout.fillWidth: true }
-                                            Text { text: "30 Mbps (High Quality / LAN)"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; color: LudeloTheme.textDim }
                                         }
 
                                         Rectangle { Layout.fillWidth: true; height: 1; color: LudeloTheme.borderSubtle }
 
-                                        // Diagnostics HUD Toggle
+                                        // ---- SHARED SETTINGS ----
+                                        Text {
+                                            text: qsTr("Shared Settings (both profiles)")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 12
+                                            color: LudeloTheme.textSecondary
+                                        }
+
+                                        RowLayout {
+                                            spacing: 12
+                                            ComboBox {
+                                                id: decoderCombo
+                                                Layout.preferredWidth: 280
+                                                model: Chiaki.settings.availableDecoders
+                                                currentIndex: Math.max(0, model.indexOf(Chiaki.settings.decoder))
+                                                onActivated: (index) => Chiaki.settings.decoder = model[index]
+                                            }
+                                            Text {
+                                                text: qsTr("HW Decoder: %1").arg(Chiaki.settings.decoder || "d3d11va")
+                                                font.family: LudeloTheme.fontFamilyMono
+                                                font.pixelSize: 11
+                                                color: LudeloTheme.accentMint
+                                            }
+                                        }
+
+                                        LToggle {
+                                            label: qsTr("HDR Stream Output (10-bit Rec.2020)")
+                                            description: (Chiaki.settings.codecLocalPS5 === 0)
+                                                ? qsTr("HDR available with H.265 codec on PS5 streams")
+                                                : qsTr("Direct 10-bit HDR metadata passthrough to compatible displays")
+                                            enabled: dialog.selectedConsole === SettingsDialog.Console.PS5 && Chiaki.settings.codecLocalPS5 >= 1
+                                            checked: Chiaki.settings.codecLocalPS5 === 2
+                                            onToggled: {
+                                                if (checked) Chiaki.settings.codecLocalPS5 = 2;
+                                                else Chiaki.settings.codecLocalPS5 = 1;
+                                            }
+                                        }
+
                                         LToggle {
                                             label: qsTr("In-Game Diagnostics HUD Overlay")
                                             description: qsTr("Display live RTT latency, packet loss, and frame drop metrics during stream [TAB]")
@@ -649,7 +761,6 @@ Rectangle {
                                             onToggled: Chiaki.settings.showStreamStats = checked
                                         }
 
-                                        // Advanced Display Pipeline Button
                                         RowLayout {
                                             spacing: 12
                                             LButton {
@@ -657,14 +768,15 @@ Rectangle {
                                                 implicitWidth: 220
                                                 customRadius: 8
                                                 variant: "secondary"
-                                                text: qsTr("ADVANCED RENDERER")
+                                                text: qsTr("DISPLAY SETTINGS")
+                                                keyHint: "[X]"
                                                 onClicked: {
                                                     if (typeof root !== "undefined" && root.showDisplaySettingsDialog)
                                                         root.showDisplaySettingsDialog();
                                                 }
                                             }
                                             Text {
-                                                text: qsTr("Adjust tone mapping, sharpening, and color grading")
+                                                text: qsTr("Color primaries, transfer curve, peak nits, contrast (libplacebo)")
                                                 font.family: LudeloTheme.fontFamily
                                                 font.pixelSize: 11
                                                 color: LudeloTheme.textDim
