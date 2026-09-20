@@ -100,6 +100,9 @@ public:
 
     Q_INVOKABLE void grabInput();
     Q_INVOKABLE void releaseInput();
+    Q_INVOKABLE void releaseMouseCapture();
+    Q_INVOKABLE void captureMouse();
+    Q_INVOKABLE bool isMouseCaptured() const { return mouse_captured; }
 
     void updatePlacebo();
     void show();
@@ -119,6 +122,7 @@ signals:
     void menuRequested();
     void directStreamChanged();
     void userActivity();
+    void mouseCapturedChanged();
 
 private:
     void init(Settings *settings, bool exit_app_on_stream_exit = false, SteamworksWrapper *steamworks = nullptr);
@@ -141,6 +145,7 @@ private:
     bool amd_card = false;
     bool direct_stream = false;
     bool keep_video = false;
+    bool mouse_captured = true;
     int grab_input = 0;
     int dropped_frames = 0;
     bool is_window_adjustable = false;

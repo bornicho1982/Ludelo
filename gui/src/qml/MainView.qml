@@ -120,10 +120,9 @@ Pane {
         if (Chiaki.autoConnect || Chiaki.window.directStream)
             return;
 
-        if (!root.steamShortcutChecked && (typeof Chiaki.ensureLudeloSteamShortcut === "function" || typeof Chiaki.ensurePyluxSteamShortcut === "function")) {
+        if (!root.steamShortcutChecked && typeof Chiaki.ensureLudeloSteamShortcut === "function") {
             root.steamShortcutChecked = true;
-            var ensureShortcut = typeof Chiaki.ensureLudeloSteamShortcut === "function" ? Chiaki.ensureLudeloSteamShortcut : Chiaki.ensurePyluxSteamShortcut;
-            ensureShortcut((created) => {
+            Chiaki.ensureLudeloSteamShortcut((created) => {
                 if (created)
                     gamingModeAddedDialog.open();
             });

@@ -411,7 +411,9 @@ Rectangle {
                                 LCard {
                                     Layout.fillWidth: true
                                     ColumnLayout {
-                                        anchors.fill: parent
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
                                         anchors.margins: 20
                                         spacing: 16
 
@@ -795,7 +797,9 @@ Rectangle {
                                 LCard {
                                     Layout.fillWidth: true
                                     ColumnLayout {
-                                        anchors.fill: parent
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
                                         anchors.margins: 20
                                         spacing: 16
 
@@ -863,7 +867,9 @@ Rectangle {
                                 LCard {
                                     Layout.fillWidth: true
                                     ColumnLayout {
-                                        anchors.fill: parent
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
                                         anchors.margins: 20
                                         spacing: 16
 
@@ -902,7 +908,9 @@ Rectangle {
                                 LCard {
                                     Layout.fillWidth: true
                                     ColumnLayout {
-                                        anchors.fill: parent
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
                                         anchors.margins: 20
                                         spacing: 12
 
@@ -950,7 +958,9 @@ Rectangle {
                                 LCard {
                                     Layout.fillWidth: true
                                     ColumnLayout {
-                                        anchors.fill: parent
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
                                         anchors.margins: 20
                                         spacing: 16
 
@@ -1027,7 +1037,9 @@ Rectangle {
                                 LCard {
                                     Layout.fillWidth: true
                                     ColumnLayout {
-                                        anchors.fill: parent
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
                                         anchors.margins: 20
                                         spacing: 16
 
@@ -1085,7 +1097,9 @@ Rectangle {
                                 LCard {
                                     Layout.fillWidth: true
                                     ColumnLayout {
-                                        anchors.fill: parent
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
                                         anchors.margins: 20
                                         spacing: 16
 
@@ -1139,7 +1153,9 @@ Rectangle {
                                 LCard {
                                     Layout.fillWidth: true
                                     ColumnLayout {
-                                        anchors.fill: parent
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
                                         anchors.margins: 20
                                         spacing: 16
 
@@ -1197,7 +1213,9 @@ Rectangle {
                                 LCard {
                                     Layout.fillWidth: true
                                     ColumnLayout {
-                                        anchors.fill: parent
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
                                         anchors.margins: 20
                                         spacing: 8
 
@@ -1237,7 +1255,9 @@ Rectangle {
                     Layout.fillWidth: true
                     visible: !Chiaki.session
                     ColumnLayout {
-                        anchors.fill: parent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
                         anchors.margins: 24
                         spacing: 16
 
@@ -1291,7 +1311,9 @@ Rectangle {
                     Layout.fillWidth: true
                     visible: !!Chiaki.session
                     ColumnLayout {
-                        anchors.fill: parent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
                         anchors.margins: 20
                         spacing: 16
 
@@ -1439,7 +1461,9 @@ Rectangle {
                     Layout.fillWidth: true
                     visible: !!Chiaki.session
                     ColumnLayout {
-                        anchors.fill: parent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
                         anchors.margins: 16
                         spacing: 6
 

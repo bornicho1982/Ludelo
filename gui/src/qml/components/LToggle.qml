@@ -10,15 +10,22 @@ Switch {
 
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
-    implicitWidth: Math.max(200, indicator.width + 12 + contentColumn.implicitWidth + leftPadding + rightPadding)
-    implicitHeight: Math.max(24, contentItem.implicitHeight) + topPadding + bottomPadding
+    
+    // Clean non-circular padding
+    leftPadding: indicator.width + 16
+    rightPadding: 12
+    topPadding: 6
+    bottomPadding: 6
+
+    implicitWidth: Math.max(240, leftPadding + contentColumn.implicitWidth + rightPadding)
+    implicitHeight: Math.max(indicator.implicitHeight, contentColumn.implicitHeight) + topPadding + bottomPadding
 
     indicator: Rectangle {
         id: track
         implicitWidth: 46
         implicitHeight: 24
-        x: control.leftPadding
-        y: parent.height / 2 - height / 2
+        x: 0
+        y: Math.round((control.height - height) / 2)
         radius: 12
         color: control.checked ? LudeloTheme.accentMint : Qt.rgba(0x1C/255, 0x22/255, 0x30/255, 0.9)
         border.color: {
@@ -72,12 +79,10 @@ Switch {
 
     contentItem: Column {
         id: contentColumn
-        leftPadding: control.indicator.width + 12
         spacing: 2
-        width: control.availableWidth
 
         Text {
-            width: parent.width - parent.leftPadding
+            width: contentColumn.width
             text: control.label.length > 0 ? control.label : control.text
             font.family: LudeloTheme.fontFamily
             font.pixelSize: 14
@@ -88,7 +93,7 @@ Switch {
 
         Text {
             visible: control.description.length > 0
-            width: parent.width - parent.leftPadding
+            width: contentColumn.width
             text: control.description
             font.family: LudeloTheme.fontFamily
             font.pixelSize: 11

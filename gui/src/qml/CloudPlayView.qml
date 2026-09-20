@@ -165,30 +165,31 @@ Pane {
     }
 
     function sortGames(games) {
-        let sorted = games.slice();
+        if (!games || games.length === 0) return [];
+        let items = new Array(games.length);
+        for (let i = 0; i < games.length; i++) {
+            let g = games[i];
+            items[i] = {
+                game: g,
+                nameLower: gameName(g).toLowerCase(),
+                playable: isPlayableNow(g) ? 1 : 0
+            };
+        }
         if (sortState === 1) {
-            sorted.sort((a, b) => {
-                let na = gameName(a).toLowerCase();
-                let nb = gameName(b).toLowerCase();
-                return na < nb ? -1 : (na > nb ? 1 : 0);
-            });
+            items.sort((a, b) => (a.nameLower < b.nameLower ? -1 : (a.nameLower > b.nameLower ? 1 : 0)));
         } else if (sortState === 2) {
-            sorted.sort((a, b) => {
-                let na = gameName(a).toLowerCase();
-                let nb = gameName(b).toLowerCase();
-                return na > nb ? -1 : (na < nb ? 1 : 0);
-            });
+            items.sort((a, b) => (a.nameLower > b.nameLower ? -1 : (a.nameLower < b.nameLower ? 1 : 0)));
         } else {
-            sorted.sort((a, b) => {
-                let pa = isPlayableNow(a) ? 1 : 0;
-                let pb = isPlayableNow(b) ? 1 : 0;
-                if (pa !== pb) return pb - pa;
-                let na = gameName(a).toLowerCase();
-                let nb = gameName(b).toLowerCase();
-                return na < nb ? -1 : (na > nb ? 1 : 0);
+            items.sort((a, b) => {
+                if (a.playable !== b.playable) return b.playable - a.playable;
+                return a.nameLower < b.nameLower ? -1 : (a.nameLower > b.nameLower ? 1 : 0);
             });
         }
-        return sorted;
+        let result = new Array(items.length);
+        for (let i = 0; i < items.length; i++) {
+            result[i] = items[i].game;
+        }
+        return result;
     }
 
     function gameName(game) {

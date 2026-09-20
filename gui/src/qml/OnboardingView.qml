@@ -139,7 +139,7 @@ Item {
                             anchors.centerIn: parent
                             width: 32
                             height: 32
-                            source: "qrc:/res/chiaki.svg"
+                            source: "qrc:/icons/logo_square_1024.png"
                             fillMode: Image.PreserveAspectFit
                         }
                     }

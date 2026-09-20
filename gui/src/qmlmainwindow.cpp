@@ -235,10 +235,31 @@ void QmlMainWindow::releaseInput()
     if (!grab_input)
         return;
     grab_input--;
-    if (!grab_input && has_video && settings->GetHideCursor())
+    if (!grab_input && has_video && mouse_captured && settings->GetHideCursor())
         setCursor(Qt::BlankCursor);
     if (session)
         session->BlockInput(grab_input);
+}
+
+void QmlMainWindow::releaseMouseCapture()
+{
+    if (!mouse_captured)
+        return;
+    mouse_captured = false;
+    if (mouse_hide_timer)
+        mouse_hide_timer->stop();
+    setCursor(Qt::ArrowCursor);
+    emit mouseCapturedChanged();
+}
+
+void QmlMainWindow::captureMouse()
+{
+    if (mouse_captured)
+        return;
+    mouse_captured = true;
+    if (!grab_input && has_video && settings && settings->GetHideCursor() && mouse_hide_timer)
+        mouse_hide_timer->start(3000);
+    emit mouseCapturedChanged();
 }
 
 bool QmlMainWindow::directStream() const
@@ -553,7 +574,7 @@ void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit, Steam
     mouse_hide_timer = new QTimer(this);
     mouse_hide_timer->setSingleShot(true);
     connect(mouse_hide_timer, &QTimer::timeout, this, [this]() {
-        if (has_video && !grab_input && this->settings->GetHideCursor()) {
+        if (has_video && !grab_input && mouse_captured && this->settings->GetHideCursor()) {
             setCursor(Qt::BlankCursor);
         }
     });
@@ -1245,24 +1266,30 @@ bool QmlMainWindow::event(QEvent *event)
             return true;
         if (session && !grab_input) {
             setCursor(Qt::ArrowCursor);
-            if (settings->GetHideCursor() && mouse_hide_timer)
-                mouse_hide_timer->start(3000);
-            emit userActivity();
+            if (mouse_captured) {
+                if (settings->GetHideCursor() && mouse_hide_timer)
+                    mouse_hide_timer->start(3000);
+                emit userActivity();
 
-            if (event->type() == QEvent::MouseMove) {
-                session->HandleMouseMoveEvent(static_cast<QMouseEvent*>(event), width(), height());
-                QGuiApplication::sendEvent(quick_window, event);
-                return true;
-            } else {
-                QMouseEvent *mouse_event = static_cast<QMouseEvent*>(event);
-                QGuiApplication::sendEvent(quick_window, event);
-                if (event->isAccepted()) {
+                if (event->type() == QEvent::MouseMove) {
+                    session->HandleMouseMoveEvent(static_cast<QMouseEvent*>(event), width(), height());
+                    QGuiApplication::sendEvent(quick_window, event);
+                    return true;
+                } else {
+                    QMouseEvent *mouse_event = static_cast<QMouseEvent*>(event);
+                    QGuiApplication::sendEvent(quick_window, event);
+                    if (event->isAccepted()) {
+                        return true;
+                    }
+                    if (event->type() == QEvent::MouseButtonPress)
+                        session->HandleMousePressEvent(mouse_event);
+                    else
+                        session->HandleMouseReleaseEvent(mouse_event);
                     return true;
                 }
-                if (event->type() == QEvent::MouseButtonPress)
-                    session->HandleMousePressEvent(mouse_event);
-                else
-                    session->HandleMouseReleaseEvent(mouse_event);
+            } else {
+                // In-stream dock / overlay active: keep mouse released from console and route directly to UI
+                QGuiApplication::sendEvent(quick_window, event);
                 return true;
             }
         }

@@ -82,7 +82,7 @@ inline void init_logging() {
     auto default_logger = std::make_shared<spdlog::logger>("ludelo", sinks.begin(), sinks.end());
     default_logger->set_level(spdlog::level::info);
     default_logger->flush_on(spdlog::level::debug);
-    default_logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%n] %v");
+    default_logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [thread %t] [%^%l%$] [%n] %v");
     spdlog::register_logger(default_logger);
     spdlog::set_default_logger(default_logger);
 
@@ -91,7 +91,7 @@ inline void init_logging() {
         auto l = std::make_shared<spdlog::logger>(name, sinks.begin(), sinks.end());
         l->set_level(lvl);
         l->flush_on(spdlog::level::debug);
-        l->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%n] %v");
+        l->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [thread %t] [%^%l%$] [%n] %v");
         spdlog::register_logger(l);
         return l;
     };

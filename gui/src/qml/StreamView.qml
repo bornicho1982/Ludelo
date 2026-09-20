@@ -86,14 +86,23 @@ Item {
         repeat: false
         onTriggered: {
             if (!dockMouseArea.containsMouse && !sessionStopDialog.opened && !sessionPinDialog.opened) {
-                hudDock.opacity = 0.0;
+                view.hideHudDock();
             }
         }
     }
 
     function showHudDock() {
         hudDock.opacity = 1.0;
+        if (Chiaki.window && typeof Chiaki.window.releaseMouseCapture === "function")
+            Chiaki.window.releaseMouseCapture();
         dockAutoHideTimer.restart();
+    }
+
+    function hideHudDock() {
+        hudDock.opacity = 0.0;
+        if (Chiaki.window && typeof Chiaki.window.captureMouse === "function")
+            Chiaki.window.captureMouse();
+        dockAutoHideTimer.stop();
     }
 
     // Connect to C++ user activity signals (mouse move, stick move, chord shortcut)
@@ -106,8 +115,7 @@ Item {
             if (sessionPinDialog.opened || sessionStopDialog.opened)
                 return;
             if (hudDock.opacity > 0.0) {
-                hudDock.opacity = 0.0;
-                dockAutoHideTimer.stop();
+                view.hideHudDock();
             } else {
                 view.showHudDock();
             }
@@ -565,6 +573,7 @@ Item {
             border.color: LudeloTheme.borderFocus
             border.width: 1
             opacity: 1.0
+            visible: opacity > 0.0
 
             Behavior on opacity {
                 NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
@@ -584,6 +593,7 @@ Item {
                 id: dockMouseArea
                 anchors.fill: parent
                 hoverEnabled: true
+                acceptedButtons: Qt.NoButton
                 onEntered: dockAutoHideTimer.stop()
                 onExited: dockAutoHideTimer.restart()
             }
