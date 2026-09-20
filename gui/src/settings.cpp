@@ -645,22 +645,22 @@ void Settings::SetFPSRemotePS5(ChiakiVideoFPSPreset fps)
 
 unsigned int Settings::GetBitrateLocalPS4() const
 {
-	return settings.value("settings/bitrate_local_ps4", 0).toUInt();
+	return settings.value("settings/bitrate_local_ps4", 10000).toUInt();
 }
 
 unsigned int Settings::GetBitrateRemotePS4() const
 {
-	return settings.value("settings/bitrate_remote_ps4", 0).toUInt();
+	return settings.value("settings/bitrate_remote_ps4", 10000).toUInt();
 }
 
 unsigned int Settings::GetBitrateLocalPS5() const
 {
-	return settings.value("settings/bitrate_local_ps5", 0).toUInt();
+	return settings.value("settings/bitrate_local_ps5", 15000).toUInt();
 }
 
 unsigned int Settings::GetBitrateRemotePS5() const
 {
-	return settings.value("settings/bitrate_remote_ps5", 0).toUInt();
+	return settings.value("settings/bitrate_remote_ps5", 10000).toUInt();
 }
 
 void Settings::SetBitrateLocalPS4(unsigned int bitrate)

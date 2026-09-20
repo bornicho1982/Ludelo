@@ -104,7 +104,6 @@ Button {
 
     contentItem: Row {
         id: contentRow
-        anchors.centerIn: parent
         spacing: 12
 
         Image {

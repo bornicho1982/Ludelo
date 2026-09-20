@@ -10,6 +10,7 @@ Switch {
 
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
+    implicitWidth: Math.max(200, indicator.width + 12 + contentColumn.implicitWidth + leftPadding + rightPadding)
     implicitHeight: Math.max(24, contentItem.implicitHeight) + topPadding + bottomPadding
 
     indicator: Rectangle {
@@ -70,9 +71,9 @@ Switch {
     }
 
     contentItem: Column {
+        id: contentColumn
         leftPadding: control.indicator.width + 12
         spacing: 2
-        anchors.verticalCenter: parent.verticalCenter
         width: control.availableWidth
 
         Text {

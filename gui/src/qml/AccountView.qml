@@ -320,7 +320,8 @@ Rectangle {
                                 Rectangle { width: 1; height: 12; color: LudeloTheme.borderSubtle }
 
                                 Text {
-                                    text: qsTr("Store Region: ES")
+                                    visible: Chiaki.settings.psnAuthToken ? true : false
+                                    text: qsTr("Store Region: %1").arg(Qt.locale().name.split("_")[1] || "—")
                                     font.family: LudeloTheme.fontFamilyMono
                                     font.pixelSize: 12
                                     color: LudeloTheme.textSecondary
@@ -333,19 +334,25 @@ Rectangle {
                                 Rectangle {
                                     height: 24
                                     radius: 6
-                                    color: Qt.rgba(0x00/255, 0xF5/255, 0xD4/255, 0.12)
-                                    border.color: Qt.rgba(0x00/255, 0xF5/255, 0xD4/255, 0.35)
+                                    color: Chiaki.settings.psnAuthToken
+                                        ? Qt.rgba(0x00/255, 0xF5/255, 0xD4/255, 0.12)
+                                        : Qt.rgba(1.0, 1.0, 1.0, 0.06)
+                                    border.color: Chiaki.settings.psnAuthToken
+                                        ? Qt.rgba(0x00/255, 0xF5/255, 0xD4/255, 0.35)
+                                        : LudeloTheme.borderSubtle
                                     border.width: 1
                                     implicitWidth: securityText.implicitWidth + 16
 
                                     Text {
                                         id: securityText
                                         anchors.centerIn: parent
-                                        text: qsTr("CONNECTED TO PSN • ENCRYPTED LOCAL STORAGE (DPAPI)")
+                                        text: Chiaki.settings.psnAuthToken
+                                            ? qsTr("CONNECTED TO PSN • ENCRYPTED LOCAL STORAGE (DPAPI)")
+                                            : qsTr("LOCAL STORAGE ONLY • ENCRYPTED (DPAPI)")
                                         font.family: LudeloTheme.fontFamilyMono
                                         font.pixelSize: 10
                                         font.weight: Font.DemiBold
-                                        color: LudeloTheme.accentMint
+                                        color: Chiaki.settings.psnAuthToken ? LudeloTheme.accentMint : LudeloTheme.textSecondary
                                     }
                                 }
 

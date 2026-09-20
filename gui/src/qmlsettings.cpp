@@ -29,6 +29,9 @@ QmlSettings::QmlSettings(Settings *settings, QObject *parent)
     connect(settings, &Settings::ProfilesUpdated, this, &QmlSettings::profilesChanged);
     connect(settings, &Settings::CloudDatacentersJsonPSCloudChanged, this, &QmlSettings::cloudDatacentersJsonPSCloudChanged);
     connect(settings, &Settings::CloudDatacentersJsonPSNOWChanged, this, &QmlSettings::cloudDatacentersJsonPSNOWChanged);
+
+    // Populate audio device lists on startup (P0.6 fix)
+    refreshAudioDevices();
 }
 
 bool QmlSettings::remotePlayAsk() const

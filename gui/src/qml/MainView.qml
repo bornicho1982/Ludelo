@@ -859,19 +859,20 @@ Pane {
             width: hostsView.cellWidth
             height: hostsView.cellHeight
 
-            property var hostData: modelData
-            property int hostIndex: modelData.originalIndex !== undefined ? modelData.originalIndex : index
+            // Source hostData from the Loader parent (P0.1 fix: modelData is not in lexical scope for root-level Components)
+            property var hostData: parent ? parent.hostData : ({})
+            property int hostIndex: hostData.originalIndex !== undefined ? hostData.originalIndex : (parent ? parent.itemIndex : 0)
 
-            property bool canHide: modelData.manual || (modelData.discovered && !modelData.registered)
-            property bool canWake: modelData.registered && !modelData.duid && !modelData.discovered
-            property bool canPin: modelData.registered
+            property bool canHide: hostData.manual || (hostData.discovered && !hostData.registered)
+            property bool canWake: hostData.registered && !hostData.duid && !hostData.discovered
+            property bool canPin: hostData.registered
             property bool hasGames: {
-                if (!modelData.duid) return false;
+                if (!hostData.duid) return false;
                 var gamesJson = Chiaki.getPsnInstalledGames();
                 if (!gamesJson || gamesJson === "{}") return false;
                 try {
                     var devices = JSON.parse(gamesJson);
-                    var device = devices[modelData.duid];
+                    var device = devices[hostData.duid];
                     return device && device.games && device.games.length > 0;
                 } catch (e) {
                     return false;
@@ -879,22 +880,22 @@ Pane {
             }
 
             function connectToHost() {
-                if (modelData.discovered)
-                    Chiaki.connectToHost(hostIndex, modelData.name);
+                if (hostData.discovered)
+                    Chiaki.connectToHost(hostIndex, hostData.name);
                 else
                     Chiaki.connectToHost(hostIndex);
             }
 
             function wakeUpHost() {
-                if (!modelData.discovered && !modelData.duid)
+                if (!hostData.discovered && !hostData.duid)
                     Chiaki.wakeUpHost(hostIndex);
             }
 
             function deleteHost() {
-                if (modelData.manual)
+                if (hostData.manual)
                     root.showConfirmDialog(qsTr("Delete Console"), qsTr("Are you sure you want to delete this console?"), () => Chiaki.deleteHost(hostIndex));
-                else if (modelData.discovered && !modelData.registered)
-                    root.showConfirmDialog(qsTr("Hide Console"), qsTr("Are you sure you want to hide this console?") + "\n\n" + qsTr("Note: You can unhide from the Consoles section of the Settings under Hidden Consoles"), () => Chiaki.hideHost(modelData.mac, modelData.name));
+                else if (hostData.discovered && !hostData.registered)
+                    root.showConfirmDialog(qsTr("Hide Console"), qsTr("Are you sure you want to hide this console?") + "\n\n" + qsTr("Note: You can unhide from the Consoles section of the Settings under Hidden Consoles"), () => Chiaki.hideHost(hostData.mac, hostData.name));
             }
 
             function setConsolePin() {
@@ -902,8 +903,8 @@ Pane {
             }
 
             function viewGames() {
-                if (modelData.duid) {
-                    root.showGamesView(modelData.duid, modelData.name, hostIndex);
+                if (hostData.duid) {
+                    root.showGamesView(hostData.duid, hostData.name, hostIndex);
                 }
             }
 
@@ -928,11 +929,12 @@ Pane {
                 customRadius: 16
                 hoverLift: true
                 cardColor: LudeloTheme.bgCard
-                glowColor: modelData.state === "ready" ? LudeloTheme.accentGlow : (modelData.state === "standby" ? Qt.rgba(1, 0.7, 0, 0.3) : LudeloTheme.accentGlow)
-                borderColor: hostsView.selectedIndex === index ? LudeloTheme.borderFocus : LudeloTheme.borderSubtle
+                glowColor: hostData.state === "ready" ? LudeloTheme.accentGlow : (hostData.state === "standby" ? Qt.rgba(1, 0.7, 0, 0.3) : LudeloTheme.accentGlow)
+                borderColor: hostsView.selectedIndex === (parent ? parent.itemIndex : -1) ? LudeloTheme.borderFocus : LudeloTheme.borderSubtle
                 onClicked: {
-                    hostsView.currentIndex = index;
-                    hostsView.selectedIndex = index;
+                    var idx = cardDelegateRoot.parent ? cardDelegateRoot.parent.itemIndex : 0;
+                    hostsView.currentIndex = idx;
+                    hostsView.selectedIndex = idx;
                     hostsView.forceActiveFocus();
                     cardDelegateRoot.connectToHost();
                 }
@@ -959,7 +961,7 @@ Pane {
                                 anchors.centerIn: parent
                                 width: 28
                                 height: 28
-                                source: "image://svg/console-ps" + (modelData.ps5 ? "5" : "4") + (modelData.state === "standby" ? "#light_standby" : "#light_on")
+                                source: "image://svg/console-ps" + (hostData.ps5 ? "5" : "4") + (hostData.state === "standby" ? "#light_standby" : "#light_on")
                                 fillMode: Image.PreserveAspectFit
                             }
                         }
@@ -969,21 +971,21 @@ Pane {
                         // Status Pill (Online, Standby, Offline)
                         LPill {
                             text: {
-                                if (modelData.state === "ready") return qsTr("ONLINE");
-                                if (modelData.state === "standby") return qsTr("STANDBY (REST MODE)");
+                                if (hostData.state === "ready") return qsTr("ONLINE");
+                                if (hostData.state === "standby") return qsTr("STANDBY (REST MODE)");
                                 return qsTr("OFFLINE");
                             }
                             dotColor: {
-                                if (modelData.state === "ready") return LudeloTheme.accentMint;
-                                if (modelData.state === "standby") return LudeloTheme.warn;
+                                if (hostData.state === "ready") return LudeloTheme.accentMint;
+                                if (hostData.state === "standby") return LudeloTheme.warn;
                                 return LudeloTheme.textDim;
                             }
                             glowColor: {
-                                if (modelData.state === "ready") return LudeloTheme.accentMintGlow;
-                                if (modelData.state === "standby") return Qt.rgba(1, 0.7, 0, 0.4);
+                                if (hostData.state === "ready") return LudeloTheme.accentMintGlow;
+                                if (hostData.state === "standby") return Qt.rgba(1, 0.7, 0, 0.4);
                                 return "transparent";
                             }
-                            pulseDot: modelData.state === "ready"
+                            pulseDot: hostData.state === "ready"
                             showDot: true
                         }
                     }
@@ -995,7 +997,7 @@ Pane {
 
                         Text {
                             width: parent.width
-                            text: modelData.name || (modelData.ps5 ? "PlayStation 5" : "PlayStation 4")
+                            text: hostData.name || (hostData.ps5 ? "PlayStation 5" : "PlayStation 4")
                             font.family: LudeloTheme.fontFamily
                             font.pixelSize: 18
                             font.weight: Font.Bold
@@ -1005,7 +1007,7 @@ Pane {
 
                         Text {
                             width: parent.width
-                            text: (modelData.address ? (Chiaki.settings.streamerMode ? "IP: hidden" : modelData.address) : "Remote P2P") + (modelData.discovered ? " • Local DDP Subnet" : " • Manual / Remote")
+                            text: (hostData.address ? (Chiaki.settings.streamerMode ? "IP: hidden" : hostData.address) : "Remote P2P") + (hostData.discovered ? " • Local DDP Subnet" : " • Manual / Remote")
                             font.family: LudeloTheme.fontFamilyMono
                             font.pixelSize: 11
                             color: LudeloTheme.textSecondary
@@ -1036,11 +1038,11 @@ Pane {
                                 color: LudeloTheme.textDim
                             }
                             Text {
-                                text: modelData.state === "ready" ? qsTr("Ready (Online)") : (modelData.state === "standby" ? qsTr("Rest Mode (Sleep)") : (modelData.state ? modelData.state : qsTr("Standby / Sleep")))
+                                text: hostData.state === "ready" ? qsTr("Ready (Online)") : (hostData.state === "standby" ? qsTr("Rest Mode (Sleep)") : (hostData.state ? hostData.state : qsTr("Standby / Sleep")))
                                 font.family: LudeloTheme.fontFamilyMono
                                 font.pixelSize: 11
                                 font.weight: Font.DemiBold
-                                color: modelData.state === "ready" ? LudeloTheme.accentMint : (modelData.state === "standby" ? LudeloTheme.warn : LudeloTheme.textSecondary)
+                                color: hostData.state === "ready" ? LudeloTheme.accentMint : (hostData.state === "standby" ? LudeloTheme.warn : LudeloTheme.textSecondary)
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
                             }
@@ -1052,10 +1054,10 @@ Pane {
                                 color: LudeloTheme.textDim
                             }
                             Text {
-                                text: modelData.registered ? qsTr("Paired & Registered") : qsTr("PIN Pairing Required")
+                                text: hostData.registered ? qsTr("Paired & Registered") : qsTr("PIN Pairing Required")
                                 font.family: LudeloTheme.fontFamilyMono
                                 font.pixelSize: 11
-                                color: modelData.registered ? LudeloTheme.textPrimary : LudeloTheme.warn
+                                color: hostData.registered ? LudeloTheme.textPrimary : LudeloTheme.warn
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
                             }
@@ -1067,10 +1069,10 @@ Pane {
                                 color: LudeloTheme.textDim
                             }
                             Text {
-                                text: modelData.app ? modelData.app : qsTr("Home Screen / Idle")
+                                text: hostData.app ? hostData.app : qsTr("Home Screen / Idle")
                                 font.family: LudeloTheme.fontFamilyMono
                                 font.pixelSize: 11
-                                color: modelData.app ? LudeloTheme.accentMint : LudeloTheme.textSecondary
+                                color: hostData.app ? LudeloTheme.accentMint : LudeloTheme.textSecondary
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
                             }
@@ -1081,16 +1083,16 @@ Pane {
                     LButton {
                         Layout.fillWidth: true
                         height: 44
-                        variant: modelData.state === "ready" ? "primary" : (modelData.state === "standby" ? "secondary" : (modelData.registered ? "primary" : "mint"))
+                        variant: hostData.state === "ready" ? "primary" : (hostData.state === "standby" ? "secondary" : (hostData.registered ? "primary" : "mint"))
                         text: {
-                            if (modelData.state === "ready") return qsTr("CONNECT DIRECT");
-                            if (modelData.state === "standby") return qsTr("WAKE CONSOLE");
-                            if (!modelData.registered) return qsTr("PAIR CONSOLE");
+                            if (hostData.state === "ready") return qsTr("CONNECT DIRECT");
+                            if (hostData.state === "standby") return qsTr("WAKE CONSOLE");
+                            if (!hostData.registered) return qsTr("PAIR CONSOLE");
                             return qsTr("CONNECT");
                         }
-                        keyHint: modelData.state === "standby" ? "[Y] WAKE" : "[A] CONNECT"
+                        keyHint: hostData.state === "standby" ? "[Y] WAKE" : "[A] CONNECT"
                         onClicked: {
-                            if (modelData.state === "standby")
+                            if (hostData.state === "standby")
                                 cardDelegateRoot.wakeUpHost();
                             else
                                 cardDelegateRoot.connectToHost();
@@ -1283,7 +1285,7 @@ Pane {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: {
                                         let br = Chiaki.settings.bitrateLocalPS5;
-                                        if (!br || isNaN(br)) return "25 Mbps";
+                                        if (!br || isNaN(br) || br <= 0) return "15 Mbps";
                                         return Math.round(br / 1000) + " Mbps";
                                     }
                                     font.family: LudeloTheme.fontFamilyMono
@@ -1343,11 +1345,15 @@ Pane {
 
                         RowLayout {
                             width: parent.width
-                            Text { text: qsTr("Stream Engine:"); font.pixelSize: 11; color: LudeloTheme.textDim }
+                            Text { text: qsTr("HW Decoder:"); font.pixelSize: 11; color: LudeloTheme.textDim }
                             Item { Layout.fillWidth: true }
                             Text {
-                                text: "Ludelo Low-Latency Core"
-                                font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.accentMint
+                                text: {
+                                    var dec = Chiaki.settings.decoder;
+                                    if (dec && dec.length > 0) return dec.toUpperCase();
+                                    return "AUTO (D3D11VA)";
+                                }
+                                font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary
                             }
                         }
                     }
@@ -1366,8 +1372,10 @@ Pane {
     }
 
     // Button Hints Footer (Xbox / Text Nomenclature ONLY - NO Sony Glyphs)
+    // P0.4: Hidden when Cloud Play tab is active (it has its own footer)
     Rectangle {
         id: buttonHintsFooter
+        visible: mainTabBar.currentIndex !== 1
         anchors {
             left: parent.left
             right: parent.right
@@ -1444,7 +1452,13 @@ Pane {
             // Center Bitrate & Engine Telemetry
             Text {
                 anchors.centerIn: parent
-                text: qsTr("BITRATE: %1 Mbps • DECODER: %2").arg(Chiaki.settings.bitrate / 1000).arg(Chiaki.settings.decoder ? Chiaki.settings.decoder.toUpperCase() : "D3D11VA")
+                text: {
+                    var br = Chiaki.settings.bitrateLocalPS5;
+                    var brMbps = (br && !isNaN(br) && br > 0) ? Math.round(br / 1000) : 15;
+                    var dec = Chiaki.settings.decoder;
+                    var decStr = (dec && dec.length > 0) ? dec.toUpperCase() : "D3D11VA";
+                    return qsTr("BITRATE: %1 Mbps • DECODER: %2").arg(brMbps).arg(decStr);
+                }
                 font.family: LudeloTheme.fontFamilyMono
                 font.pixelSize: 11
                 color: LudeloTheme.textDim

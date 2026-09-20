@@ -24,6 +24,11 @@ Rectangle {
     property int selectedCloudService: SettingsDialog.CloudService.PSCloud
     property bool quitControllerMapping: true
     property int activeCategoryIndex: 0
+    onActiveCategoryIndexChanged: {
+        // P0.6: Refresh audio device lists when user enters Audio tab
+        if (activeCategoryIndex === 1)
+            Chiaki.settings.refreshAudioDevices();
+    }
 
     readonly property var categoryTitles: [
         qsTr("Video & Stream"),
@@ -598,13 +603,12 @@ Rectangle {
                                             }
                                             Item { Layout.fillWidth: true }
                                             Text {
-                                                text: qsTr("%1 Mbps (%2)").arg(
-                                                    Math.round((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateLocalPS5 : Chiaki.settings.bitrateLocalPS4) / 1000)
-                                                ).arg(
-                                                    ((dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateLocalPS5 : Chiaki.settings.bitrateLocalPS4) >= 25000)
-                                                        ? qsTr("High Quality / Recommended for LAN")
-                                                        : qsTr("Standard")
-                                                )
+                                                text: {
+                                                    var br = dialog.selectedConsole === SettingsDialog.Console.PS5 ? Chiaki.settings.bitrateLocalPS5 : Chiaki.settings.bitrateLocalPS4;
+                                                    var brMbps = (br && !isNaN(br) && br > 0) ? Math.round(br / 1000) : 15;
+                                                    var label = (br >= 25000) ? qsTr("High Quality / Recommended for LAN") : qsTr("Standard");
+                                                    return qsTr("%1 Mbps (%2)").arg(brMbps).arg(label);
+                                                }
                                                 font.family: LudeloTheme.fontFamilyMono
                                                 font.pixelSize: 12
                                                 font.weight: Font.Bold
