@@ -19,6 +19,7 @@ Pane {
     property var allGames: []
     property var filteredGames: []
     property var currentPageGames: []
+    property int renderedCount: 48
     property bool isLoading: false
     property string searchQuery: ""
     property string authErrorMessage: ""
@@ -166,15 +167,25 @@ Pane {
     function sortGames(games) {
         let sorted = games.slice();
         if (sortState === 1) {
-            sorted.sort((a, b) => gameName(a).localeCompare(gameName(b)));
+            sorted.sort((a, b) => {
+                let na = gameName(a).toLowerCase();
+                let nb = gameName(b).toLowerCase();
+                return na < nb ? -1 : (na > nb ? 1 : 0);
+            });
         } else if (sortState === 2) {
-            sorted.sort((a, b) => gameName(b).localeCompare(gameName(a)));
+            sorted.sort((a, b) => {
+                let na = gameName(a).toLowerCase();
+                let nb = gameName(b).toLowerCase();
+                return na > nb ? -1 : (na < nb ? 1 : 0);
+            });
         } else {
             sorted.sort((a, b) => {
                 let pa = isPlayableNow(a) ? 1 : 0;
                 let pb = isPlayableNow(b) ? 1 : 0;
                 if (pa !== pb) return pb - pa;
-                return gameName(a).localeCompare(gameName(b));
+                let na = gameName(a).toLowerCase();
+                let nb = gameName(b).toLowerCase();
+                return na < nb ? -1 : (na > nb ? 1 : 0);
             });
         }
         return sorted;
@@ -261,7 +272,15 @@ Pane {
         }
 
         filteredGames = sortGames(gamesToFilter);
-        currentPageGames = filteredGames.slice();
+        renderedCount = Math.min(48, filteredGames.length);
+        currentPageGames = filteredGames.slice(0, renderedCount);
+    }
+
+    function loadMoreGames() {
+        if (renderedCount < filteredGames.length) {
+            renderedCount = Math.min(renderedCount + 48, filteredGames.length);
+            currentPageGames = filteredGames.slice(0, renderedCount);
+        }
     }
 
     function toggleFavorite(productId) {
@@ -604,7 +623,7 @@ Pane {
         // Auth / NPSSO Warning
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: authErrorMessage.length > 0 ? 44 : 0
+            Layout.preferredHeight: authErrorMessage.length > 0 ? 52 : 0
             visible: authErrorMessage.length > 0
             color: Qt.rgba(0.94, 0.28, 0.44, 0.15)
             border.color: LudeloTheme.colorDanger
@@ -613,9 +632,9 @@ Pane {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 24
-                anchors.rightMargin: 24
-                spacing: 12
+                anchors.leftMargin: 20
+                anchors.rightMargin: 20
+                spacing: 16
 
                 Text {
                     text: "⚠"
@@ -630,11 +649,14 @@ Pane {
                     font.weight: Font.DemiBold
                     color: LudeloTheme.textPrimary
                     Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
                 }
 
                 LButton {
-                    Layout.preferredHeight: 28
-                    Layout.preferredWidth: 150
+                    Layout.preferredHeight: 34
+                    Layout.preferredWidth: 175
+                    implicitWidth: 175
+                    customRadius: 6
                     variant: "mint"
                     text: qsTr("RE-AUTHENTICATE")
                     onClicked: {
@@ -890,84 +912,87 @@ Pane {
                 }
             }
 
-            // Scrollable Grid
-            ScrollView {
-                id: scrollView
+            // Direct Recycled Grid (no redundant ScrollView)
+            GridView {
+                id: gamesGrid
                 anchors.fill: parent
                 anchors.margins: 16
+                cellWidth: 215
+                cellHeight: 295
+                focus: true
                 clip: true
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                model: currentPageGames
+                highlightFollowsCurrentItem: true
+                keyNavigationEnabled: true
+                keyNavigationWraps: false
                 visible: !isLoading && filteredGames.length > 0
 
-                GridView {
-                    id: gamesGrid
-                    anchors.fill: parent
-                    cellWidth: 215
-                    cellHeight: 295
-                    focus: true
-                    clip: true
-                    model: currentPageGames
-                    highlightFollowsCurrentItem: true
-                    keyNavigationEnabled: true
-                    keyNavigationWraps: false
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
 
-                    delegate: CloudGameCard {
-                        required property int index
-                        required property var modelData
+                onContentYChanged: {
+                    if (contentHeight > 0 && contentY + height >= contentHeight - 400) {
+                        root.loadMoreGames();
+                    }
+                }
 
-                        width: gamesGrid.cellWidth - 14
-                        height: gamesGrid.cellHeight - 14
-                        gameData: modelData
-                        focus: false
+                delegate: CloudGameCard {
+                    required property int index
+                    required property var modelData
 
-                        Binding on isFavorite {
-                            value: {
-                                if (!modelData) return false;
-                                let pid = modelData.productId || modelData.product_id || modelData.id;
-                                return root.favoriteProductIds.indexOf(pid) !== -1;
-                            }
-                        }
+                    width: gamesGrid.cellWidth - 14
+                    height: gamesGrid.cellHeight - 14
+                    gameData: modelData
+                    focus: false
 
-                        onToggleFavorite: (productId) => {
-                            root.toggleFavorite(productId);
-                        }
-
-                        onStreamGame: (streamingId, platform, serviceType) => {
-                            launchCloudStreamSession(streamingId, platform, serviceType);
-                        }
-
-                        onCreateShortcut: (productId, entitlementId, platform, serviceType, gameName) => {
-                            cloudShortcutDialog.showCloudDialog(gameName, entitlementId, serviceType, "cloudGameLibrary", productId);
+                    Binding on isFavorite {
+                        value: {
+                            if (!modelData) return false;
+                            let pid = modelData.productId || modelData.product_id || modelData.id;
+                            return root.favoriteProductIds.indexOf(pid) !== -1;
                         }
                     }
 
-                    // Keyboard / Gamepad Navigation within grid
-                    Keys.onPressed: (event) => {
-                        let cols = Math.floor(gamesGrid.width / gamesGrid.cellWidth);
-                        if (cols < 1) cols = 1;
+                    onToggleFavorite: (productId) => {
+                        root.toggleFavorite(productId);
+                    }
 
-                        if (event.key === Qt.Key_Left) {
-                            if (currentIndex % cols !== 0) {
-                                currentIndex = Math.max(0, currentIndex - 1);
-                            }
+                    onStreamGame: (streamingId, platform, serviceType) => {
+                        launchCloudStreamSession(streamingId, platform, serviceType);
+                    }
+
+                    onCreateShortcut: (productId, entitlementId, platform, serviceType, gameName) => {
+                        cloudShortcutDialog.showCloudDialog(gameName, entitlementId, serviceType, "cloudGameLibrary", productId);
+                    }
+                }
+
+                // Keyboard / Gamepad Navigation within grid
+                Keys.onPressed: (event) => {
+                    let cols = Math.floor(gamesGrid.width / gamesGrid.cellWidth);
+                    if (cols < 1) cols = 1;
+
+                    if (event.key === Qt.Key_Left) {
+                        if (currentIndex % cols !== 0) {
+                            currentIndex = Math.max(0, currentIndex - 1);
+                        }
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Right) {
+                        if (currentIndex + 1 < model.length && (currentIndex % cols) !== cols - 1) {
+                            currentIndex = Math.min(model.length - 1, currentIndex + 1);
+                        }
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Up) {
+                        if (currentIndex - cols >= 0) {
+                            currentIndex -= cols;
+                            positionViewAtIndex(currentIndex, GridView.Contain);
                             event.accepted = true;
-                        } else if (event.key === Qt.Key_Right) {
-                            if (currentIndex + 1 < model.length && (currentIndex % cols) !== cols - 1) {
-                                currentIndex = Math.min(model.length - 1, currentIndex + 1);
-                            }
+                        }
+                    } else if (event.key === Qt.Key_Down) {
+                        if (currentIndex + cols < model.length) {
+                            currentIndex += cols;
+                            positionViewAtIndex(currentIndex, GridView.Contain);
                             event.accepted = true;
-                        } else if (event.key === Qt.Key_Up) {
-                            if (currentIndex - cols >= 0) {
-                                currentIndex -= cols;
-                                positionViewAtIndex(currentIndex, GridView.Contain);
-                                event.accepted = true;
-                            }
-                        } else if (event.key === Qt.Key_Down) {
-                            if (currentIndex + cols < model.length) {
-                                currentIndex += cols;
-                                positionViewAtIndex(currentIndex, GridView.Contain);
-                                event.accepted = true;
-                            }
                         }
                     }
                 }

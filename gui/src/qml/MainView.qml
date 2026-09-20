@@ -120,14 +120,6 @@ Pane {
         if (Chiaki.autoConnect || Chiaki.window.directStream)
             return;
 
-        if (!Chiaki.settings.setupGuideShown) {
-            Qt.callLater(() => {
-                root.showConsoleSetupWalkthrough();
-                Chiaki.settings.setupGuideShown = true;
-            });
-            return;
-        }
-
         if (!root.steamShortcutChecked && (typeof Chiaki.ensureLudeloSteamShortcut === "function" || typeof Chiaki.ensurePyluxSteamShortcut === "function")) {
             root.steamShortcutChecked = true;
             var ensureShortcut = typeof Chiaki.ensureLudeloSteamShortcut === "function" ? Chiaki.ensureLudeloSteamShortcut : Chiaki.ensurePyluxSteamShortcut;

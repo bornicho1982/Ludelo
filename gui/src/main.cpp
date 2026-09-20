@@ -300,7 +300,8 @@ int real_main(int argc, char *argv[])
 			QStringLiteral("qrc:/RemindDialog.qml"),
 			QStringLiteral("qrc:/ManualHostDialog.qml"),
 			QStringLiteral("qrc:/ConsolePinDialog.qml"),
-			QStringLiteral("qrc:/DisplaySettingsDialog.qml")
+			QStringLiteral("qrc:/DisplaySettingsDialog.qml"),
+			QStringLiteral("qrc:/ConsoleSetupWalkthrough.qml")
 		};
 		bool all_ok = true;
 		for (const auto &comp_url : qml_components) {

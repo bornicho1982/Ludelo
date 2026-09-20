@@ -4,6 +4,7 @@
 #include <SDL.h>
 #include <QFile>
 #include <QFileInfo>
+#include <QDir>
 #include <QUrl>
 #include <QKeySequence>
 #include <QCoreApplication>
@@ -2421,6 +2422,60 @@ void Settings::LoadRegisteredHosts(QSettings *qsettings)
 		}
 	}
 	qsettings->endArray();
+
+	if(registered_hosts.empty())
+	{
+		// Try migrating from legacy configs (vortex.conf, pylux.conf, chiaki.conf)
+		QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+		QDir appDataDir(appData);
+		appDataDir.cdUp();
+		appDataDir.cdUp();
+		QStringList legacyPaths = {
+			appDataDir.absoluteFilePath("vortex/vortex/vortex.conf"),
+			appDataDir.absoluteFilePath("pylux/pylux/pylux.conf"),
+			appDataDir.absoluteFilePath("Chiaki/Chiaki/Chiaki.conf"),
+			appDataDir.absoluteFilePath("Chiaki/Chiaki.conf")
+		};
+		for(const auto &path : legacyPaths)
+		{
+			if(QFile::exists(path))
+			{
+				QSettings legacySettings(path, QSettings::IniFormat);
+				int legacyCount = legacySettings.beginReadArray("registered_hosts");
+				if(legacyCount > 0)
+				{
+					for(int i = 0; i < legacyCount; ++i)
+					{
+						legacySettings.setArrayIndex(i);
+						RegisteredHost host = RegisteredHost::LoadFromSettings(&legacySettings);
+						if(host.GetServerMAC().ToString() != "00:00:00:00:00:00" || !host.GetServerNickname().isEmpty())
+						{
+							registered_hosts[host.GetServerMAC()] = host;
+							nickname_registered_hosts[host.GetServerNickname()] = host;
+							if(!chiaki_target_is_ps5(host.GetTarget()))
+								ps4s_registered++;
+						}
+					}
+					legacySettings.endArray();
+					if(!registered_hosts.empty())
+					{
+						SaveRegisteredHosts(qsettings);
+						if(GetNpssoToken().isEmpty())
+						{
+							QString npsso = legacySettings.value("settings/psn_npsso_token").toString();
+							if(!npsso.isEmpty())
+								SetNpssoToken(npsso);
+						}
+						break;
+					}
+				}
+				else
+				{
+					legacySettings.endArray();
+				}
+			}
+		}
+	}
 
 	if(healed_from_corruption && !registered_hosts.empty())
 	{

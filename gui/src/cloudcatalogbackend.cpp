@@ -22,6 +22,7 @@
 #include <QEventLoop>
 #include <QTimer>
 #include <QCoreApplication>
+#include <QThreadPool>
 #include <QPointer>
 #include <QProcessEnvironment>
 #include <QImageReader>
@@ -239,7 +240,7 @@ void CloudCatalogBackend::fetchUnifiedCatalog(const QJSValue &callback)
         (settings ? settings->GetCloudStoreLocale() : QStringLiteral("en-US")).toUtf8();
     const QByteArray cacheDir = cacheDirectory.toUtf8();
 
-    std::thread([self, reqId, gen, npsso, locale, cacheDir]() mutable {
+    QThreadPool::globalInstance()->start([self, reqId, gen, npsso, locale, cacheDir]() mutable {
         ChiakiLog log;
         chiaki_log_init(&log, CHIAKI_LOG_INFO | CHIAKI_LOG_WARNING | CHIAKI_LOG_ERROR,
                         chiaki_log_cb_print, nullptr);
@@ -316,7 +317,7 @@ void CloudCatalogBackend::fetchUnifiedCatalog(const QJSValue &callback)
                 if (pcb.isCallable())
                     pcb.call({ success, message, payload });
         }, Qt::QueuedConnection);
-    }).detach();
+    });
 }
 
 void CloudCatalogBackend::fetchGameDetails(const QString &productId, const QJSValue &callback)

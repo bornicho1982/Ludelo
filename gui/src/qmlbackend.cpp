@@ -897,6 +897,16 @@ QVariantList QmlBackend::hosts() const
         QVariantMap m;
         HostMAC host_mac = host.GetHostMAC();
         bool registered = settings->GetRegisteredHostRegistered(host_mac);
+        if(!registered && !host.host_name.isEmpty() && settings->GetNicknameRegisteredHostRegistered(host.host_name))
+        {
+            registered = true;
+            auto reg_host = settings->GetNicknameRegisteredHost(host.host_name);
+            if(reg_host.GetServerMAC().ToString() == "00:00:00:00:00:00" || reg_host.GetServerMAC() != host_mac)
+            {
+                reg_host.SetServerMAC(host_mac);
+                settings->AddRegisteredHost(reg_host);
+            }
+        }
         bool hidden = settings->GetHiddenHostHidden(host_mac);
         if(registered && hidden)
         {

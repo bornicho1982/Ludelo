@@ -19,6 +19,7 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QUrlQuery>
+#include <QThreadPool>
 #include <functional>
 #include <thread>
 #include <cstring>
@@ -160,7 +161,7 @@ void CloudStreamingBackend::continueCloudSessionAfterAuth(QString serviceType, Q
     pending_callbacks.insert(reqId, callback);
     QPointer<CloudStreamingBackend> self(this);
 
-    std::thread([self, reqId, svc, gameId, npsso, storeCountry, storeLang, gameLang,
+    QThreadPool::globalInstance()->start([self, reqId, svc, gameId, npsso, storeCountry, storeLang, gameLang,
                  forcedDc, priorDc, resolution, bitrate, isForeign, attrPassed, ownedEnt, ownedPlat]() mutable {
         ChiakiLog log;
         chiaki_log_init(&log, CHIAKI_LOG_INFO | CHIAKI_LOG_WARNING | CHIAKI_LOG_ERROR,
@@ -226,7 +227,7 @@ void CloudStreamingBackend::continueCloudSessionAfterAuth(QString serviceType, Q
                 self->handleProvisionError(serviceTypeStr, errMsg, callback);
             }
         }, Qt::QueuedConnection);
-    }).detach();
+    });
 }
 
 // Build StreamSessionConnectInfo from the C result and start the StreamSession.

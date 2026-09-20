@@ -62,6 +62,69 @@ void RegisteredHost::SaveToSettings(QSettings *settings) const
 	settings->setValue("last_host_ip", last_host_ip);
 }
 
+static QByteArray ParseBinarySettingsValue(const QVariant &var)
+{
+	if(!var.isValid())
+		return QByteArray();
+	if(var.userType() == QMetaType::QByteArray) {
+		QByteArray ba = var.toByteArray();
+		if(!ba.startsWith("@ByteArray("))
+			return ba;
+	}
+	QString str = var.toString().trimmed();
+	if(str.startsWith(u'\"') && str.endsWith(u'\"') && str.length() >= 2)
+		str = str.mid(1, str.length() - 2).trimmed();
+	if(str.startsWith(QStringLiteral("@ByteArray(")) && str.endsWith(u')')) {
+		QString inner = str.mid(11, str.length() - 12);
+		QByteArray decoded;
+		for(int i = 0; i < inner.length(); ++i) {
+			if(inner[i] == u'\\' && i + 1 < inner.length()) {
+				QChar next = inner[i + 1];
+				if(next == u'x' && i + 3 < inner.length()) {
+					bool ok = false;
+					int val = inner.mid(i + 2, 2).toInt(&ok, 16);
+					if(ok) {
+						decoded.append((char)val);
+						i += 3;
+						continue;
+					}
+				} else if(next == u'0') {
+					decoded.append('\0');
+					i += 1;
+					continue;
+				} else if(next == u't') {
+					decoded.append('\t');
+					i += 1;
+					continue;
+				} else if(next == u'r') {
+					decoded.append('\r');
+					i += 1;
+					continue;
+				} else if(next == u'n') {
+					decoded.append('\n');
+					i += 1;
+					continue;
+				} else if(next == u'\\') {
+					decoded.append('\\');
+					i += 1;
+					continue;
+				}
+			}
+			decoded.append(inner[i].toLatin1());
+		}
+		return decoded;
+	}
+	if(str.length() == 32 || str.length() == 16 || str.length() == 12) {
+		QByteArray hex = QByteArray::fromHex(str.toLatin1());
+		if(hex.length() == str.length() / 2)
+			return hex;
+	}
+	QByteArray b64 = QByteArray::fromBase64(str.toLatin1(), QByteArray::AbortOnBase64DecodingErrors);
+	if(!b64.isEmpty() && (b64.size() == 16 || b64.size() == 6))
+		return b64;
+	return var.toByteArray();
+}
+
 RegisteredHost RegisteredHost::LoadFromSettings(QSettings *settings)
 {
 	RegisteredHost r;
@@ -71,16 +134,32 @@ RegisteredHost RegisteredHost::LoadFromSettings(QSettings *settings)
 	r.ap_key = settings->value("ap_key").toString();
 	r.ap_name = settings->value("ap_name").toString();
 	r.server_nickname = settings->value("server_nickname").toString();
-	auto server_mac = settings->value("server_mac").toByteArray();
-	if(server_mac.size() == 6)
-		r.server_mac = HostMAC((const uint8_t *)server_mac.constData());
-	auto rp_regist_key = settings->value("rp_regist_key").toByteArray();
+
+	auto server_mac_raw = ParseBinarySettingsValue(settings->value("server_mac"));
+	if(server_mac_raw.size() == 6)
+		r.server_mac = HostMAC((const uint8_t *)server_mac_raw.constData());
+	else if(server_mac_raw.size() == 12)
+		r.server_mac = HostMAC((const uint8_t *)QByteArray::fromHex(server_mac_raw).constData());
+	else if(server_mac_raw.size() == 17 && server_mac_raw.contains(':')) {
+		QByteArray clean = server_mac_raw;
+		clean.replace(':', "");
+		r.server_mac = HostMAC((const uint8_t *)QByteArray::fromHex(clean).constData());
+	}
+
+	auto rp_regist_key = ParseBinarySettingsValue(settings->value("rp_regist_key"));
 	if(rp_regist_key.size() == sizeof(r.rp_regist_key))
 		memcpy(r.rp_regist_key, rp_regist_key.constData(), sizeof(r.rp_regist_key));
+	else if(rp_regist_key.size() > 0 && rp_regist_key.size() < (int)sizeof(r.rp_regist_key))
+		memcpy(r.rp_regist_key, rp_regist_key.constData(), rp_regist_key.size());
+
 	r.rp_key_type = settings->value("rp_key_type").toUInt();
-	auto rp_key = settings->value("rp_key").toByteArray();
+
+	auto rp_key = ParseBinarySettingsValue(settings->value("rp_key"));
 	if(rp_key.size() == sizeof(r.rp_key))
 		memcpy(r.rp_key, rp_key.constData(), sizeof(r.rp_key));
+	else if(rp_key.size() > 0 && rp_key.size() < (int)sizeof(r.rp_key))
+		memcpy(r.rp_key, rp_key.constData(), rp_key.size());
+
 	r.console_pin = settings->value("console_pin").toString();
 	r.last_host_ip = settings->value("last_host_ip").toString();
 	return r;

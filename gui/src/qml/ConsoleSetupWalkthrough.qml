@@ -15,8 +15,21 @@ DialogView {
     
     onAccepted: nextStep()
     
-    // Reset to first step when dialog is pushed onto the stack
-    StackView.onActivated: currentStep = 0
+    function close() {
+        if (typeof root !== "undefined" && root && root.closeDialog) {
+            root.closeDialog();
+        } else if (typeof stack !== "undefined" && stack) {
+            stack.pop();
+        }
+    }
+
+    // Reset to first step and grant active focus when dialog is pushed onto the stack
+    StackView.onActivated: {
+        currentStep = 0;
+        Qt.callLater(() => {
+            walkthroughDialog.forceActiveFocus();
+        });
+    }
     
     function nextStep() {
         if (currentStep < totalSteps - 1) {

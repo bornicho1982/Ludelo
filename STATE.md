@@ -153,4 +153,23 @@
     - Verificada la integración del diálogo modal de calibración (`DisplaySettingsDialog.qml`) invocado mediante el botón `DISPLAY SETTINGS` [X] en `SettingsDialog.qml`.
     - Añadido `DisplaySettingsDialog.qml` a la suite de validación QML estricta en `main.cpp` (`--validate-qml`).
     - Soporte completo para Target Primaries (Auto, Rec.709, Rec.2020, DCI-P3, etc.), Target Transfer (sRGB, BT.1886, PQ HDR, HLG, etc.), Target Peak (nits) y Target Contrast (Auto, Infinity OLED, valor numérico).
-  - Build OK (MinGW64), tests unitarios 100% pasando (`ctest`), validación de 22 componentes QML y smoke test `deploy-windows.ps1` exitoso (Exit Code 0).
+- **RESOLUCIÓN BLOQUEANTE P0 (CUELGUES) + DETALLES UI Y PERSISTENCIA (20/09/2026)**:
+  - **Bloqueante 1 · Guía de setup en arranque y usuario atrapado**:
+    - Eliminado el trigger automático obsoleto de `showConsoleSetupWalkthrough()` en `MainView.qml` (`setup_guide_shown` establecido en `true` por defecto en `settings.h`).
+    - En `ConsoleSetupWalkthrough.qml`: corregida la gestión de foco (`walkthroughDialog.forceActiveFocus()` en `StackView.onActivated`), control de cierre seguro y mapeo de teclas/gamepad.
+    - Añadido `ConsoleSetupWalkthrough.qml` a la lista de validación estricta en `main.cpp` (23 componentes QML validados).
+  - **Bloqueante 2 · Cuelgue en Cloud Play ("No responde")**:
+    - Eliminado el envoltorio redundante `ScrollView` alrededor de `GridView` que provocaba cálculo forzado de altura infinita y creación masiva de 4.102 delegados `CloudGameCard`.
+    - Implementada paginación y renderizado progresivo (`renderedCount = 48`, recarga de bloques de 48 al hacer scroll cerca del final con `onContentYChanged`), garantizando reciclaje de vistas (`GridView` directo con `ScrollBar.vertical`).
+    - Optimizado algoritmo `sortGames()`: reemplazadas 50.000 llamadas a `localeCompare` en el hilo GUI por comparaciones directas en minúsculas precomputadas (aceleración >100x).
+    - Eliminado `std::thread().detach()` en `cloudcatalogbackend.cpp` y `cloudstreamingbackend.cpp`, sustituido por el pool administrado de Qt (`QThreadPool::globalInstance()->start()`).
+  - **Detalle 1 · PS5 "Registration: PIN Pairing Required" vs rp_key existente**:
+    - En `host.cpp` (`RegisteredHost::LoadFromSettings`): añadido parser robusto `ParseBinarySettingsValue` para decodificar cadenas de texto escapadas `@ByteArray(\x...)`, valores hexadecimales y base64.
+    - En `settings.cpp` (`Settings::LoadRegisteredHosts`): añadido soporte para migración automática transparente desde configuraciones previas (`vortex.conf`, `pylux.conf`, `Chiaki.conf`).
+    - En `qmlbackend.cpp` (`QmlBackend::hosts()`): verificación dual por MAC y por nickname (`GetNicknameRegisteredHostRegistered`); si coincide por nombre, se marca `registered = true` y se vincula automáticamente la MAC física.
+    - Añadidos setters `SetServerMAC` y `SetServerNickname` a `RegisteredHost` en `host.h`.
+  - **Detalle 2 · Botón RE-AUTHENTICATE cortado en Cloud Play**:
+    - Aumentada la altura del banner a 52px y fijado el ancho del botón a 175px con padding interno holgado y márgenes ajustados para evitar cortes visuales.
+  - **Detalle 3 · Nomenclatura de hint en Onboarding**:
+    - Modificado `keyHint` en `OnboardingView.qml` de `"[X] ENTER"` a `"[A] ENTER"`.
+  - Validación 100% exitosa: 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, empaquetado y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).

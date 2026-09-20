@@ -238,7 +238,7 @@ class Settings : public QObject
 
 		bool GetRemotePlayAsk() const           { return settings.value("settings/remote_play_ask", true).toBool(); }
 		void SetRemotePlayAsk(bool asked)       { settings.setValue("settings/remote_play_ask", asked); }
-		bool GetSetupGuideShown() const         { return settings.value("settings/setup_guide_shown", false).toBool(); }
+		bool GetSetupGuideShown() const         { return settings.value("settings/setup_guide_shown", true).toBool(); }
 		void SetSetupGuideShown(bool shown)     { settings.setValue("settings/setup_guide_shown", shown); }
 		bool GetControllerOverlayShown() const   { return settings.value("settings/controller_overlay_shown", false).toBool(); }
 		void SetControllerOverlayShown(bool shown) { settings.setValue("settings/controller_overlay_shown", shown); }

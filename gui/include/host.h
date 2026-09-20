@@ -82,6 +82,8 @@ class RegisteredHost
 		const QByteArray GetRPKey() const		{ return QByteArray((const char *)rp_key, sizeof(rp_key)); }
 		const QString GetConsolePin() const				{ return console_pin; }
 		const QString &GetLastHostIP() const	{ return last_host_ip; }
+		void SetServerMAC(const HostMAC &mac)   { server_mac = mac; }
+		void SetServerNickname(const QString &nickname) { server_nickname = nickname; }
 		void SetLastHostIP(const QString &ip)	{ last_host_ip = ip; }
 
 		void SaveToSettings(QSettings *settings) const;

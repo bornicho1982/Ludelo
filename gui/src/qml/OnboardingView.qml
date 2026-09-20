@@ -208,7 +208,7 @@ Item {
                     Layout.preferredHeight: 52
                     variant: "primary"
                     text: qsTr("Sign in with PlayStation Network")
-                    keyHint: "[X] ENTER"
+                    keyHint: "[A] ENTER"
                     glowEnabled: true
 
                     onClicked: {
