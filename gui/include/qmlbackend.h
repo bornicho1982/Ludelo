@@ -423,4 +423,5 @@ private:
 #endif
     bool m_isGamepadActive = false;
     QString m_inputMode = QStringLiteral("keyboard");
+    bool m_webView2LoginActive = false;
 };

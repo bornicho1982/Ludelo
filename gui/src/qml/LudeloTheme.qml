@@ -83,16 +83,33 @@ QtObject {
     readonly property string inputMode: (typeof Chiaki !== "undefined" ? Chiaki.inputMode : "keyboard")
 
     function hint(action) {
+        var gp = isGamepad; // Force QML binding re-evaluation on change
         if (typeof Chiaki !== "undefined" && typeof Chiaki.getKeyHint === "function") {
             return Chiaki.getKeyHint(action);
         }
-        return action;
+        var rawHint = hintKey(action);
+        return gp ? "[" + rawHint + "]" : rawHint;
     }
 
     function hintKey(action) {
+        var gp = isGamepad; // Force QML binding re-evaluation on change
         if (typeof Chiaki !== "undefined" && typeof Chiaki.getKeyHintRaw === "function") {
             return Chiaki.getKeyHintRaw(action);
         }
-        return isGamepad ? "A" : "ENTER";
+        var act = action.toLowerCase().trim();
+        if (act === "b" || act === "circle" || act === "moon" || act === "back" || act === "cancel" || act === "skip" || act === "close" || act === "esc") {
+            return gp ? "B" : "ESC";
+        }
+        if (act === "x" || act === "box" || act === "square" || act === "details" || act === "reset" || act === "favorite") {
+            return "X";
+        }
+        if (act === "y" || act === "pyramid" || act === "triangle" || act === "wake" || act === "reauth" || act === "search" || act === "refresh") {
+            if (act === "search" || act === "refresh") return "F5";
+            return "Y";
+        }
+        if (act === "start" || act === "options" || act === "settings" || act === "menu" || act === "sort") {
+            return gp ? "START" : "F10";
+        }
+        return gp ? "A" : "ENTER";
     }
 }

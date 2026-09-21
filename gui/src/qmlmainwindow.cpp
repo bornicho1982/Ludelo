@@ -266,13 +266,7 @@ void QmlMainWindow::captureMouse()
 
 bool QmlMainWindow::startDrag()
 {
-#if defined(Q_OS_WIN)
-    ReleaseCapture();
-    SendMessageW(reinterpret_cast<HWND>(winId()), WM_NCLBUTTONDOWN, HTCAPTION, 0);
-    return true;
-#else
     return startSystemMove();
-#endif
 }
 
 void QmlMainWindow::toggleMaximize()

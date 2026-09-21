@@ -1858,10 +1858,16 @@ QString QmlBackend::maskAuthUrl(const QString &url) const
 void QmlBackend::startWebView2Login()
 {
 #ifdef _WIN32
+    if (m_webView2LoginActive) {
+        spdlog::info("[auth] startWebView2Login ignored, login already in progress");
+        return;
+    }
+    m_webView2LoginActive = true;
     spdlog::info("[auth] startWebView2Login invoked from QML");
     QThread *loginThread = QThread::create([this]() {
         auto res = ludelo::auth::WebView2LoginWin32::login();
         QMetaObject::invokeMethod(this, [this, res]() {
+            m_webView2LoginActive = false;
             if (res.status == ludelo::auth::WebView2LoginStatus::Success) {
                 QString code = QString::fromStdString(res.code);
                 PSNAccountID *psnId = new PSNAccountID(settings, this);
