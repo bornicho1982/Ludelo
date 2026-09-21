@@ -13,11 +13,18 @@
 - **Sistema de Diseño Propio (`LudeloTheme` + Componentes `L*`)**:
   - Singleton `gui/src/qml/LudeloTheme.qml` registrado en `org.streetpea.chiaking` y módulo `Ludelo 1.0` con paleta gaming (`#0B0E14`, `#151923`, `#6C5CE7`, `#00F5D4`), radios, glows y curvas de animación.
   - Suite de componentes `L*` en `gui/src/qml/components/`: `LButton.qml`, `LCard.qml`, `LPill.qml`, `LNavTab.qml`, `LTopBar.qml`.
-- **Pantalla 01: Onboarding**:
+- **Pantalla 01: Onboarding & Configuración**:
   - Maqueta generada con Stitch MCP y aprobada por el usuario (`docs/ux/mockups/01_onboarding.png`).
   - Implementado `gui/src/qml/OnboardingView.qml` con fidelidad exacta a la maqueta: tarjeta central translúcida, glow índigo, botón CTA primario, enlace ghost y badge honesto "Encrypted Local Storage (DPAPI)".
-  - Integración en `Main.qml` como vista de bienvenida inicial para usuarios sin cuenta PSN y soporte de invocación de prueba con argumento `--onboarding`.
-  - Corregido contenedor de `Connections` en `RegistDialog.qml` dentro de elemento `Item`.
+  - Ventana frameless: `Qt::FramelessWindowHint` activado en `QmlMainWindow`, eliminando la doble barra de título nativa de Windows; barra propia `LTopBar` maneja arrastre de ventana (`startSystemMove`) y doble clic para maximizar/restaurar.
+  - Corregido handler de inicio de sesión: resuelta la ausencia del import de `org.streetpea.chiaking` en `OnboardingView.qml` que impedía invocar `Chiaki.startWebView2Login()`.
+  - Píldoras de telemetría de red ocultas en onboarding (`showTelemetry: false`) y footer simplificado contextual (`[A] SELECT`, `[ESC] SKIP`).
+  - Emblema de marca agrandado a 76x76 con halo índigo/cian y logo vectorial `ludelo_logo.svg`.
+  - Fondo animado con gradiente oscuro cinemático (`#07090E` a `#0F131D`) y auras radiales de índigo y cian con animación de respiración suave (SequentialAnimation de escala y opacidad).
+  - Guía de configuración propia de Ludelo:
+    - Reemplazada la antigua `ConsoleSetupWalkthrough` heredada de Chiaki/Pylux (archivada en `docs/notes/ConsoleSetupWalkthrough.qml.bak`).
+    - Creada nueva `gui/src/qml/ConsoleSetupWalkthrough.qml` 100% nativa con `LudeloTheme`, `LCard`, `LButton`, paginador de puntos y 5 pasos adaptados a la experiencia de Ludelo (Login PSN con DPAPI, Uso a distancia en PS5/PS4, Emparejamiento por PIN de 8 dígitos y passcode de 4 dígitos, Wake-on-LAN y Dock con combo `L1+R1+L3+R3` y HUD `[TAB]`, DualSense a 1000Hz y Steam Deck).
+    - Acceso a demanda desde Ajustes > General mediante tarjeta y botón "GUÍA DE CONFIGURACIÓN", sin ejecución automática en arranque.
 - **Pantalla 02: Home / Consolas**:
   - Maqueta generada con Stitch MCP y aprobada por el usuario (`docs/ux/mockups/02_home.png`).
   - Implementado `gui/src/qml/MainView.qml` con diseño gamer premium sobre `LudeloTheme` y componentes `L*`:
