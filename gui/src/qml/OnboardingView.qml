@@ -256,7 +256,7 @@ Item {
                     Layout.preferredHeight: 52
                     variant: "primary"
                     text: qsTr("Sign in with PlayStation Network")
-                    keyHint: "[A] ENTER"
+                    keyHint: LudeloTheme.hint("select")
                     glowEnabled: true
 
                     onClicked: {
@@ -301,7 +301,7 @@ Item {
         }
     }
 
-    // Contextual Footer HUD (Cleaned: Only [A] SELECT and [ESC] SKIP)
+    // Contextual Footer HUD (Dynamic hints: [A] SELECT / [B] SKIP vs ENTER SELECT / ESC SKIP)
     Rectangle {
         id: footerHUD
         anchors.bottom: parent.bottom
@@ -317,31 +317,84 @@ Item {
             anchors.leftMargin: 24
             anchors.rightMargin: 24
 
-            // Left: Clean Contextual Navigation Prompts
+            // Left: Dynamic Contextual Navigation Prompts
             Row {
                 Layout.alignment: Qt.AlignVCenter
                 spacing: 16
 
-                Row {
-                    spacing: 6
-                    Rectangle {
-                        width: 20; height: 20; radius: 4
-                        color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
-                        border.color: LudeloTheme.accentMint
-                        border.width: 1
-                        Text { anchors.centerIn: parent; text: "A"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.accentMint }
+                MouseArea {
+                    width: selectHintRow.implicitWidth
+                    height: 24
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: signInButton.clicked()
+
+                    Row {
+                        id: selectHintRow
+                        spacing: 6
+                        anchors.verticalCenter: parent.verticalCenter
+                        Rectangle {
+                            width: Math.max(20, selectKeyText.implicitWidth + 8)
+                            height: 20
+                            radius: 4
+                            color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
+                            border.color: LudeloTheme.accentMint
+                            border.width: 1
+                            Text {
+                                id: selectKeyText
+                                anchors.centerIn: parent
+                                text: LudeloTheme.hintKey("select")
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 10
+                                font.weight: Font.Bold
+                                color: LudeloTheme.accentMint
+                            }
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("SELECT")
+                            font.family: LudeloTheme.fontFamilyMono
+                            font.pixelSize: 11
+                            font.weight: Font.Bold
+                            color: LudeloTheme.textPrimary
+                        }
                     }
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("SELECT"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                 }
 
-                Row {
-                    spacing: 6
-                    Rectangle {
-                        width: 28; height: 20; radius: 4
-                        color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
-                        Text { anchors.centerIn: parent; text: "ESC"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textSecondary }
+                MouseArea {
+                    width: skipHintRow.implicitWidth
+                    height: 24
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: onboardingRoot.skipRequested()
+
+                    Row {
+                        id: skipHintRow
+                        spacing: 6
+                        anchors.verticalCenter: parent.verticalCenter
+                        Rectangle {
+                            width: Math.max(20, skipKeyText.implicitWidth + 8)
+                            height: 20
+                            radius: 4
+                            color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
+                            border.color: LudeloTheme.borderSubtle
+                            border.width: 1
+                            Text {
+                                id: skipKeyText
+                                anchors.centerIn: parent
+                                text: LudeloTheme.hintKey("skip")
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 9
+                                font.weight: Font.Bold
+                                color: LudeloTheme.textSecondary
+                            }
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("SKIP")
+                            font.family: LudeloTheme.fontFamilyMono
+                            font.pixelSize: 11
+                            color: LudeloTheme.textSecondary
+                        }
                     }
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("SKIP"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                 }
             }
 
@@ -378,12 +431,26 @@ Item {
         }
     }
 
-    // Gamepad / Keyboard Navigation Handling
+    // Direct Shortcuts for Dead-Proof Key Support
+    Shortcut { sequence: "Return"; onActivated: signInButton.clicked() }
+    Shortcut { sequence: "Enter"; onActivated: signInButton.clicked() }
+    Shortcut { sequence: "Space"; onActivated: signInButton.clicked() }
+    Shortcut { sequence: "A"; onActivated: signInButton.clicked() }
+    Shortcut { sequence: "Esc"; onActivated: onboardingRoot.skipRequested() }
+    Shortcut { sequence: "Escape"; onActivated: onboardingRoot.skipRequested() }
+    Shortcut { sequence: "B"; onActivated: onboardingRoot.skipRequested() }
+    Shortcut { sequence: "Back"; onActivated: onboardingRoot.skipRequested() }
+
+    Component.onCompleted: {
+        onboardingRoot.forceActiveFocus();
+    }
+
+    // Gamepad / Keyboard Navigation Handling fallback
     Keys.onPressed: function(event) {
-        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space || event.key === Qt.Key_A) {
             signInButton.clicked();
             event.accepted = true;
-        } else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Back) {
+        } else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Back || event.key === Qt.Key_B || event.key === Qt.Key_Backspace) {
             onboardingRoot.skipRequested();
             event.accepted = true;
         }

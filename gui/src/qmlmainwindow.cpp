@@ -26,6 +26,8 @@
 #include <QTimer>
 #if defined(Q_OS_MACOS)
 #include <objc/message.h>
+#elif defined(Q_OS_WIN)
+#include <windows.h>
 #endif
 
 Q_LOGGING_CATEGORY(chiakiGui, "chiaki.gui");
@@ -264,12 +266,18 @@ void QmlMainWindow::captureMouse()
 
 bool QmlMainWindow::startDrag()
 {
+#if defined(Q_OS_WIN)
+    ReleaseCapture();
+    SendMessageW(reinterpret_cast<HWND>(winId()), WM_NCLBUTTONDOWN, HTCAPTION, 0);
+    return true;
+#else
     return startSystemMove();
+#endif
 }
 
 void QmlMainWindow::toggleMaximize()
 {
-    if (windowState() == Qt::WindowMaximized) {
+    if (windowState() == Qt::WindowMaximized || windowStates().testFlag(Qt::WindowMaximized)) {
         showNormal();
     } else {
         showMaximized();
@@ -1279,6 +1287,8 @@ bool QmlMainWindow::event(QEvent *event)
     case QEvent::MouseButtonRelease:
         if (static_cast<QMouseEvent*>(event)->source() != Qt::MouseEventNotSynthesized)
             return true;
+        if (backend)
+            backend->setInputModeKeyboard();
         if (session && !grab_input) {
             setCursor(Qt::ArrowCursor);
             if (mouse_captured) {
@@ -1321,6 +1331,13 @@ bool QmlMainWindow::event(QEvent *event)
         }
         break;
     case QEvent::KeyPress:
+        if (backend) {
+            QKeyEvent *ke = static_cast<QKeyEvent*>(event);
+            if (ke->timestamp() != 0)
+                backend->setInputModeKeyboard();
+            else
+                backend->setInputModeGamepad();
+        }
         if (handleShortcut(static_cast<QKeyEvent*>(event)))
             return true;
     case QEvent::KeyRelease:

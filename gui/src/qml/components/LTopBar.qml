@@ -24,8 +24,9 @@ Rectangle {
 
     // Background drag and double-click maximize area
     MouseArea {
+        id: bgDragArea
         anchors.fill: parent
-        z: -1
+        z: 0
         acceptedButtons: Qt.LeftButton
         onPressed: {
             if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
@@ -38,6 +39,7 @@ Rectangle {
     }
 
     RowLayout {
+        z: 1
         anchors.fill: parent
         anchors.leftMargin: 24
         anchors.rightMargin: 16
@@ -90,7 +92,22 @@ Rectangle {
             }
         }
 
-        Item { Layout.fillWidth: true } // Spacer
+        Item {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                onPressed: {
+                    if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
+                        Chiaki.window.startDrag();
+                    }
+                }
+                onDoubleClicked: {
+                    topBarRoot.maximizeClicked();
+                }
+            }
+        }
 
         // Telemetry Badges
         Row {

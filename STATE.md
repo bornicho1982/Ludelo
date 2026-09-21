@@ -180,3 +180,22 @@
   - **Detalle 3 · Nomenclatura de hint en Onboarding**:
     - Modificado `keyHint` en `OnboardingView.qml` de `"[X] ENTER"` a `"[A] ENTER"`.
   - Validación 100% exitosa: 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, empaquetado y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).
+
+- **PANTALLA 01 (ONBOARDING) + SISTEMA DE HINTS DINÁMICOS GLOBAL (21/09/2026)**:
+  - **Bug 1 · Arrastre de ventana frameless y maximizar/restaurar**:
+    - En `qmlmainwindow.cpp`: implementado arrastre nativo en Windows mediante Win32 `ReleaseCapture()` y `SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0)` con soporte para Aero Snap. `toggleMaximize()` sincronizado con `windowStates().testFlag(Qt::WindowMaximized)`.
+    - En `LTopBar.qml`: corregido z-index del `MouseArea` de fondo (`z: 0`, `RowLayout` con `z: 1`), y añadido `MouseArea` interactivo en el espaciador flexible para capturar arrastre y doble clic en todo el área vacía.
+    - En `MainView.qml`: `headerBar` adaptado con zona de arrastre idéntica y añadidos botones de ventana minimizar (`—`) y maximizar/restaurar (`□`).
+  - **Bug 2 · Atajos de teclado en OnboardingView**:
+    - Implementados elementos `Shortcut` globales en `OnboardingView.qml` para `Return`, `Enter`, `Space`, `A` (ejecutan `Sign in with PlayStation Network`) y `Esc`, `Escape`, `Back`, `B` (ejecutan `Skip`).
+    - Añadido `forceActiveFocus()` en `Component.onCompleted` y soporte directo en `Keys.onPressed`.
+  - **Feature 3 · Sistema de hints dinámicos según dispositivo activo (Teclado/Ratón vs Mando)**:
+    - Centralizado en `QmlBackend` (`isGamepadActive`, `inputMode`, `getKeyHint`, `getKeyHintRaw`) y expuesto globalmente en `LudeloTheme.qml` (`LudeloTheme.isGamepad`, `LudeloTheme.hint()`, `LudeloTheme.hintKey()`).
+    - Detección automática en tiempo real sin reinicio:
+      - Eventos de ratón o teclado físico con timestamp de OS conmutan a modo teclado (`ENTER`, `ESC`, `F10`, `X`, `Y`, `PGUP/PGDN`).
+      - Eventos de mando SDL (`ControllerMoved` o teclas sintetizadas con timestamp 0) conmutan a modo gamepad (`[A]`, `[B]`, `[X]`, `[Y]`, `[START]`, `[LB/RB]`).
+    - `LButton.qml`: propiedad reactiva `displayKeyHint` que traduce automáticamente los hints declarados (`[A]`, `[B]`, `[X]`, `[Y]`, `[START]`, etc.) según el dispositivo activo en toda la app.
+    - Actualizados footers y prompts en `OnboardingView`, `MainView`, `SettingsDialog`, `AccountView`, `CloudPlayView` y `RegistDialog`.
+  - **Feature 4 · Fundación para mapeo configurable (P2)**:
+    - `QmlBackend::getKeyHintRaw` consulta `Settings::GetControllerMapping()` para resolver las teclas asignadas por el usuario a cada acción (`CHIAKI_CONTROLLER_BUTTON_CROSS`, `MOON`, `BOX`, `PYRAMID`, etc.), permitiendo que futuras personalizaciones en la pestaña de controles se reflejen automáticamente en los hints visuales.
+  - Validación 100% exitosa: 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, empaquetado y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).

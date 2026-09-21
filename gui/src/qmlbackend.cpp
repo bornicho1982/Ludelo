@@ -349,6 +349,7 @@ QmlBackend::QmlBackend(Settings *settings, QmlMainWindow *window, SteamworksWrap
     discovery_manager.SetSettings(settings);
     setDiscoveryEnabled(true);
     connect(ControllerManager::GetInstance(), &ControllerManager::AvailableControllersUpdated, this, &QmlBackend::updateControllers);
+    connect(ControllerManager::GetInstance(), &ControllerManager::ControllerMoved, this, &QmlBackend::setInputModeGamepad);
     connect(settings_qml, &QmlSettings::allowJoystickBackgroundEventsChanged, this, &QmlBackend::setAllowJoystickBackgroundEvents);
     connect(window, &QmlMainWindow::activeChanged, this, &QmlBackend::setIsAppActive);
     setAllowJoystickBackgroundEvents();
@@ -357,6 +358,7 @@ QmlBackend::QmlBackend(Settings *settings, QmlMainWindow *window, SteamworksWrap
     updateControllers();
     updateControllerMappings();
     connect(settings, &Settings::ControllerMappingsUpdated, this, &QmlBackend::updateControllerMappings);
+    connect(settings, &Settings::ControllerMappingsUpdated, this, &QmlBackend::inputModeChanged);
     connect(this, &QmlBackend::controllersChanged, this, &QmlBackend::updateControllerMappings);
     auto_connect_mac = settings->GetAutoConnectHost().GetServerMAC();
     auto_connect_nickname = settings->GetAutoConnectHost().GetServerNickname();
@@ -3749,5 +3751,117 @@ void QmlBackend::handleWebViewDom(const QString &domContent)
         qCWarning(chiakiGui) << "WebView2Auth: fatal OAuth error detected in DOM";
         emit psnLoginAccountIdError(errMsg);
     }
+}
+
+void QmlBackend::setInputModeGamepad()
+{
+    if (!m_isGamepadActive) {
+        m_isGamepadActive = true;
+        m_inputMode = QStringLiteral("gamepad");
+        emit inputModeChanged();
+    }
+}
+
+void QmlBackend::setInputModeKeyboard()
+{
+    if (m_isGamepadActive) {
+        m_isGamepadActive = false;
+        m_inputMode = QStringLiteral("keyboard");
+        emit inputModeChanged();
+    }
+}
+
+QString QmlBackend::getKeyHintRaw(const QString &action) const
+{
+    QString act = action.trimmed().toLower();
+    bool is_gp = m_isGamepadActive;
+
+    if (act == "a" || act == "cross" || act == "select" || act == "enter" || act == "confirm") {
+        if (is_gp) return QStringLiteral("A");
+        if (settings) {
+            auto km = settings->GetControllerMapping();
+            if (km.contains(CHIAKI_CONTROLLER_BUTTON_CROSS)) {
+                Qt::Key k = km.value(CHIAKI_CONTROLLER_BUTTON_CROSS);
+                if (k == Qt::Key_Return || k == Qt::Key_Enter) return QStringLiteral("ENTER");
+                return QKeySequence(k).toString().toUpper();
+            }
+        }
+        return QStringLiteral("ENTER");
+    }
+
+    if (act == "b" || act == "circle" || act == "moon" || act == "back" || act == "cancel" || act == "skip" || act == "close" || act == "esc") {
+        if (is_gp) return QStringLiteral("B");
+        if (settings) {
+            auto km = settings->GetControllerMapping();
+            if (km.contains(CHIAKI_CONTROLLER_BUTTON_MOON)) {
+                Qt::Key k = km.value(CHIAKI_CONTROLLER_BUTTON_MOON);
+                if (k == Qt::Key_Escape) return QStringLiteral("ESC");
+                if (k == Qt::Key_Backspace) return QStringLiteral("BACKSPACE");
+                return QKeySequence(k).toString().toUpper();
+            }
+        }
+        return QStringLiteral("ESC");
+    }
+
+    if (act == "x" || act == "box" || act == "square" || act == "details" || act == "reset" || act == "favorite") {
+        if (is_gp) return QStringLiteral("X");
+        if (settings) {
+            auto km = settings->GetControllerMapping();
+            if (km.contains(CHIAKI_CONTROLLER_BUTTON_BOX)) {
+                Qt::Key k = km.value(CHIAKI_CONTROLLER_BUTTON_BOX);
+                return QKeySequence(k).toString().toUpper();
+            }
+        }
+        return QStringLiteral("X");
+    }
+
+    if (act == "y" || act == "pyramid" || act == "triangle" || act == "wake" || act == "reauth" || act == "search" || act == "refresh") {
+        if (is_gp) return QStringLiteral("Y");
+        if (act == "search" || act == "refresh") return QStringLiteral("F5");
+        if (settings) {
+            auto km = settings->GetControllerMapping();
+            if (km.contains(CHIAKI_CONTROLLER_BUTTON_PYRAMID)) {
+                Qt::Key k = km.value(CHIAKI_CONTROLLER_BUTTON_PYRAMID);
+                return QKeySequence(k).toString().toUpper();
+            }
+        }
+        return QStringLiteral("Y");
+    }
+
+    if (act == "start" || act == "options" || act == "settings" || act == "menu" || act == "sort") {
+        if (is_gp) return QStringLiteral("START");
+        return QStringLiteral("F10");
+    }
+
+    if (act == "lb/rb" || act == "lb_rb" || act == "tabs" || act == "categories") {
+        if (is_gp) return QStringLiteral("LB/RB");
+        return QStringLiteral("PGUP/PGDN");
+    }
+
+    if (act == "lb" || act == "l1") {
+        if (is_gp) return QStringLiteral("LB");
+        return QStringLiteral("PGUP");
+    }
+
+    if (act == "rb" || act == "r1") {
+        if (is_gp) return QStringLiteral("RB");
+        return QStringLiteral("PGDN");
+    }
+
+    if (act == "tab" || act == "hud" || act == "hud_stats" || act == "stats") {
+        if (is_gp) return QStringLiteral("SELECT");
+        return QStringLiteral("TAB");
+    }
+
+    return action.toUpper();
+}
+
+QString QmlBackend::getKeyHint(const QString &action) const
+{
+    QString raw = getKeyHintRaw(action);
+    if (m_isGamepadActive) {
+        return QStringLiteral("[%1]").arg(raw);
+    }
+    return raw;
 }
 

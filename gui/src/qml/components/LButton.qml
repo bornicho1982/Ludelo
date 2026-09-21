@@ -8,6 +8,17 @@ Button {
 
     property string variant: "primary" // "primary", "secondary", "ghost", "danger", "mint"
     property string keyHint: ""
+    readonly property string displayKeyHint: {
+        if (!keyHint || keyHint === "") return "";
+        if (keyHint === "[A]" || keyHint === "A") return LudeloTheme.hint("select");
+        if (keyHint === "[B]" || keyHint === "B") return LudeloTheme.hint("back");
+        if (keyHint === "[X]" || keyHint === "X") return LudeloTheme.hint("details");
+        if (keyHint === "[Y]" || keyHint === "Y") return LudeloTheme.hint("wake");
+        if (keyHint === "[ESC]" || keyHint === "ESC") return LudeloTheme.hint("back");
+        if (keyHint === "[START]" || keyHint === "START") return LudeloTheme.hint("settings");
+        if (keyHint === "[TAB]" || keyHint === "TAB") return LudeloTheme.hint("stats");
+        return keyHint;
+    }
     property string iconSource: ""
     property bool glowEnabled: true
     property real customRadius: LudeloTheme.radiusButton
@@ -133,7 +144,7 @@ Button {
         // Keycap badge (e.g. [X] ENTER)
         Rectangle {
             id: keyHintBadge
-            visible: control.keyHint !== ""
+            visible: control.displayKeyHint !== ""
             anchors.verticalCenter: parent.verticalCenter
             height: 22
             width: hintText.implicitWidth + 12
@@ -145,7 +156,7 @@ Button {
             Text {
                 id: hintText
                 anchors.centerIn: parent
-                text: control.keyHint
+                text: control.displayKeyHint
                 font.family: LudeloTheme.fontFamilyMono
                 font.pixelSize: 11
                 font.weight: Font.Bold

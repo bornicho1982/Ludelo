@@ -107,6 +107,8 @@ class QmlBackend : public QObject
     Q_PROPERTY(CloudStreamingBackend* cloudStreaming READ cloudStreaming CONSTANT)
     Q_PROPERTY(CloudCatalogBackend* cloudCatalog READ cloudCatalog CONSTANT)
     Q_PROPERTY(bool cloudSteamShortcutEnabled READ cloudSteamShortcutEnabled CONSTANT)
+    Q_PROPERTY(bool isGamepadActive READ isGamepadActive NOTIFY inputModeChanged)
+    Q_PROPERTY(QString inputMode READ inputMode NOTIFY inputModeChanged)
 
 public:
 
@@ -250,6 +252,12 @@ public:
     Q_INVOKABLE void controllerMappingButtonQuit();
     Q_INVOKABLE void controllerMappingApply();
     Q_INVOKABLE void autoRegister();
+    bool isGamepadActive() const { return m_isGamepadActive; }
+    QString inputMode() const { return m_inputMode; }
+    Q_INVOKABLE void setInputModeGamepad();
+    Q_INVOKABLE void setInputModeKeyboard();
+    Q_INVOKABLE QString getKeyHint(const QString &action) const;
+    Q_INVOKABLE QString getKeyHintRaw(const QString &action) const;
 #if CHIAKI_GUI_ENABLE_STEAM_SHORTCUT
     Q_INVOKABLE QString getSteamBaseDir();
     QString getSteamUserId();
@@ -312,6 +320,7 @@ signals:
     void registDialogRequested(const QString &host, bool ps5, const QString &duid);
     void psnLoginAccountIdDone(const QString &accountId);
     void psnLoginAccountIdError(const QString &error);
+    void inputModeChanged();
 
 
 private:
@@ -412,5 +421,6 @@ private:
 #ifdef CHIAKI_ENABLE_STEAMWORKS
     SteamworksWrapper * steamworks_wrapper = {};
 #endif
-
+    bool m_isGamepadActive = false;
+    QString m_inputMode = QStringLiteral("keyboard");
 };

@@ -821,10 +821,10 @@ Rectangle {
                     Row {
                         spacing: 6
                         Rectangle {
-                            width: 20; height: 20; radius: 4
+                            width: Math.max(20, aKeyText.implicitWidth + 8); height: 20; radius: 4
                             color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
                             border.color: LudeloTheme.borderSubtle; border.width: 1
-                            Text { anchors.centerIn: parent; text: "A"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                            Text { id: aKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("select"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                         }
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "SELECT GAME"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                     }
@@ -832,10 +832,10 @@ Rectangle {
                     Row {
                         spacing: 6
                         Rectangle {
-                            width: 20; height: 20; radius: 4
+                            width: Math.max(20, bKeyText.implicitWidth + 8); height: 20; radius: 4
                             color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
                             border.color: LudeloTheme.borderSubtle; border.width: 1
-                            Text { anchors.centerIn: parent; text: "B"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                            Text { id: bKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("back"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                         }
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "BACK"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                     }
@@ -843,10 +843,10 @@ Rectangle {
                     Row {
                         spacing: 6
                         Rectangle {
-                            width: 20; height: 20; radius: 4
+                            width: Math.max(20, yKeyText.implicitWidth + 8); height: 20; radius: 4
                             color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
                             border.color: LudeloTheme.borderSubtle; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Y"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                            Text { id: yKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("wake"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                         }
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "RE-AUTHENTICATE"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                     }
@@ -854,10 +854,10 @@ Rectangle {
                     Row {
                         spacing: 6
                         Rectangle {
-                            width: 20; height: 20; radius: 4
+                            width: Math.max(20, xKeyText.implicitWidth + 8); height: 20; radius: 4
                             color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
                             border.color: LudeloTheme.borderSubtle; border.width: 1
-                            Text { anchors.centerIn: parent; text: "X"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                            Text { id: xKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("details"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                         }
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "SIGN OUT"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                     }

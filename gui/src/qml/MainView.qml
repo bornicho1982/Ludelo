@@ -203,7 +203,25 @@ Pane {
             color: LudeloTheme.borderSubtle
         }
 
+        // Background drag and double-click maximize area
+        MouseArea {
+            anchors.fill: parent
+            z: 0
+            acceptedButtons: Qt.LeftButton
+            onPressed: {
+                if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
+                    Chiaki.window.startDrag();
+                }
+            }
+            onDoubleClicked: {
+                if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
+                    Chiaki.window.toggleMaximize();
+                }
+            }
+        }
+
         RowLayout {
+            z: 1
             anchors.fill: parent
             anchors.leftMargin: 24
             anchors.rightMargin: 20
@@ -255,7 +273,24 @@ Pane {
                 }
             }
 
-            Item { Layout.fillWidth: true } // Spacer
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton
+                    onPressed: {
+                        if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
+                            Chiaki.window.startDrag();
+                        }
+                    }
+                    onDoubleClicked: {
+                        if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
+                            Chiaki.window.toggleMaximize();
+                        }
+                    }
+                }
+            }
 
             // Center Navigation Tabs
             Row {
@@ -293,12 +328,29 @@ Pane {
                 }
             }
 
-            Item { Layout.fillWidth: true } // Spacer
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton
+                    onPressed: {
+                        if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
+                            Chiaki.window.startDrag();
+                        }
+                    }
+                    onDoubleClicked: {
+                        if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
+                            Chiaki.window.toggleMaximize();
+                        }
+                    }
+                }
+            }
 
             // Right Actions & Telemetry Badges
             Row {
                 Layout.alignment: Qt.AlignVCenter
-                spacing: 12
+                spacing: 10
 
                 // Stream Ready / Decoder Pill
                 LPill {
@@ -364,6 +416,66 @@ Pane {
                     }
                 }
 
+                // Minimize Button
+                Rectangle {
+                    width: 36
+                    height: 36
+                    radius: 8
+                    color: minMouse.containsMouse ? LudeloTheme.bgElevated : "transparent"
+                    border.color: minMouse.containsMouse ? LudeloTheme.borderHover : "transparent"
+                    border.width: 1
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "—"
+                        font.pixelSize: 12
+                        font.weight: Font.Bold
+                        color: minMouse.containsMouse ? LudeloTheme.textPrimary : LudeloTheme.textSecondary
+                    }
+
+                    MouseArea {
+                        id: minMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (typeof Chiaki !== "undefined" && Chiaki.window) Chiaki.window.showMinimized();
+                        }
+                    }
+                }
+
+                // Maximize / Restore Button
+                Rectangle {
+                    width: 36
+                    height: 36
+                    radius: 8
+                    color: maxMouse.containsMouse ? LudeloTheme.bgElevated : "transparent"
+                    border.color: maxMouse.containsMouse ? LudeloTheme.borderHover : "transparent"
+                    border.width: 1
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "□"
+                        font.pixelSize: 14
+                        color: maxMouse.containsMouse ? LudeloTheme.textPrimary : LudeloTheme.textSecondary
+                    }
+
+                    MouseArea {
+                        id: maxMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (typeof Chiaki !== "undefined" && Chiaki.window) {
+                                if (typeof Chiaki.window.toggleMaximize === "function")
+                                    Chiaki.window.toggleMaximize();
+                                else
+                                    Chiaki.window.showMaximized();
+                            }
+                        }
+                    }
+                }
+
                 // Exit Button
                 Rectangle {
                     width: 36
@@ -385,7 +497,10 @@ Pane {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: Qt.quit()
+                        onClicked: {
+                            if (typeof Chiaki !== "undefined" && Chiaki.window) Chiaki.window.close();
+                            else Qt.quit();
+                        }
                     }
                 }
             }
@@ -1081,7 +1196,7 @@ Pane {
                             if (!hostData.registered) return qsTr("PAIR CONSOLE");
                             return qsTr("CONNECT");
                         }
-                        keyHint: hostData.state === "standby" ? "[Y] WAKE" : "[A] CONNECT"
+                        keyHint: hostData.state === "standby" ? (LudeloTheme.hint("wake") + " WAKE") : (LudeloTheme.hint("select") + " CONNECT")
                         onClicked: {
                             if (hostData.state === "standby")
                                 cardDelegateRoot.wakeUpHost();
@@ -1354,7 +1469,7 @@ Pane {
                         height: 40
                         variant: "ghost"
                         text: qsTr("STREAM PREFERENCES")
-                        keyHint: "[START]"
+                        keyHint: LudeloTheme.hint("settings")
                         onClicked: root.showSettingsDialog()
                     }
                 }
@@ -1383,58 +1498,58 @@ Pane {
             anchors.leftMargin: 24
             anchors.rightMargin: 24
 
-            // Left Side Gamepad Hints
+            // Left Side Gamepad / Keyboard Dynamic Hints
             Row {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 18
 
-                // [A] SELECT
+                // SELECT
                 Row {
                     spacing: 6
                     Rectangle {
-                        width: 20; height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
-                        Text { anchors.centerIn: parent; text: "A"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
+                        width: Math.max(20, aKeyText.implicitWidth + 8); height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
+                        Text { id: aKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("select"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
                     }
                     Text { text: qsTr("SELECT"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }
 
-                // [Y] WAKE
+                // WAKE
                 Row {
                     spacing: 6
                     Rectangle {
-                        width: 20; height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
-                        Text { anchors.centerIn: parent; text: "Y"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.warn }
+                        width: Math.max(20, yKeyText.implicitWidth + 8); height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
+                        Text { id: yKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("wake"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.warn }
                     }
                     Text { text: qsTr("WAKE"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }
 
-                // [X] DETAILS / GAMES
+                // DETAILS / GAMES
                 Row {
                     spacing: 6
                     Rectangle {
-                        width: 20; height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
-                        Text { anchors.centerIn: parent; text: "X"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentPrimary }
+                        width: Math.max(20, xKeyText.implicitWidth + 8); height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
+                        Text { id: xKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("details"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentPrimary }
                     }
                     Text { text: qsTr("DETAILS"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }
 
-                // [B] BACK / EXIT
+                // BACK / EXIT
                 Row {
                     spacing: 6
                     Rectangle {
-                        width: 20; height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
-                        Text { anchors.centerIn: parent; text: "B"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.error }
+                        width: Math.max(20, bKeyText.implicitWidth + 8); height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
+                        Text { id: bKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("back"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.error }
                     }
                     Text { text: qsTr("BACK"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }
 
-                // [START] SETTINGS
+                // SETTINGS
                 Row {
                     spacing: 6
                     Rectangle {
-                        width: 38; height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
-                        Text { anchors.centerIn: parent; text: "START"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                        width: Math.max(20, startKeyText.implicitWidth + 8); height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
+                        Text { id: startKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("settings"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                     }
                     Text { text: qsTr("SETTINGS"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }

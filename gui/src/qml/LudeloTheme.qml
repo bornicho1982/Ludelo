@@ -77,4 +77,22 @@ QtObject {
         }
         return clean;
     }
+
+    // Dynamic Input Device & Hints System
+    readonly property bool isGamepad: (typeof Chiaki !== "undefined" && Chiaki.isGamepadActive)
+    readonly property string inputMode: (typeof Chiaki !== "undefined" ? Chiaki.inputMode : "keyboard")
+
+    function hint(action) {
+        if (typeof Chiaki !== "undefined" && typeof Chiaki.getKeyHint === "function") {
+            return Chiaki.getKeyHint(action);
+        }
+        return action;
+    }
+
+    function hintKey(action) {
+        if (typeof Chiaki !== "undefined" && typeof Chiaki.getKeyHintRaw === "function") {
+            return Chiaki.getKeyHintRaw(action);
+        }
+        return isGamepad ? "A" : "ENTER";
+    }
 }

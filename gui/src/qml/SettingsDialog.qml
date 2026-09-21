@@ -1583,10 +1583,10 @@ Rectangle {
                     Row {
                         spacing: 6
                         Rectangle {
-                            width: 38; height: 20; radius: 4
+                            width: Math.max(20, catKeyText.implicitWidth + 8); height: 20; radius: 4
                             color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
                             border.color: LudeloTheme.borderSubtle; border.width: 1
-                            Text { anchors.centerIn: parent; text: "LB/RB"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                            Text { id: catKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("lb/rb"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                         }
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "CATEGORIES"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                     }
@@ -1594,10 +1594,10 @@ Rectangle {
                     Row {
                         spacing: 6
                         Rectangle {
-                            width: 20; height: 20; radius: 4
+                            width: Math.max(20, closeKeyText.implicitWidth + 8); height: 20; radius: 4
                             color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
                             border.color: LudeloTheme.borderSubtle; border.width: 1
-                            Text { anchors.centerIn: parent; text: "B"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                            Text { id: closeKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("back"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                         }
                         Text { anchors.verticalCenter: parent.verticalCenter; text: "CLOSE"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                     }
@@ -1613,10 +1613,10 @@ Rectangle {
                             spacing: 6
                             anchors.verticalCenter: parent.verticalCenter
                             Rectangle {
-                                width: 20; height: 20; radius: 4
+                                width: Math.max(20, resetKeyText.implicitWidth + 8); height: 20; radius: 4
                                 color: Qt.rgba(1.0, 1.0, 1.0, 0.08)
                                 border.color: LudeloTheme.borderSubtle; border.width: 1
-                                Text { anchors.centerIn: parent; text: "X"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
+                                Text { id: resetKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("details"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
                             }
                             Text { anchors.verticalCenter: parent.verticalCenter; text: "RESET DEFAULTS"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                         }
