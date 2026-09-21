@@ -1157,6 +1157,57 @@ Rectangle {
                                         anchors.right: parent.right
                                         anchors.top: parent.top
                                         anchors.margins: 20
+                                        spacing: 12
+
+                                        RowLayout {
+                                            spacing: 10
+                                            Text {
+                                                text: qsTr("Documentación & Ayuda")
+                                                font.family: LudeloTheme.fontFamily
+                                                font.pixelSize: 16
+                                                font.weight: Font.Bold
+                                                color: LudeloTheme.textPrimary
+                                            }
+                                            LPill {
+                                                text: qsTr("PASO A PASO")
+                                                dotColor: LudeloTheme.accentMint
+                                                showDot: true
+                                            }
+                                        }
+
+                                        Text {
+                                            text: qsTr("Aprende a conectar tu cuenta PSN, habilitar el Uso a distancia en PS5/PS4, vincular mediante PIN de 8 dígitos y configurar mandos o Steam Deck.")
+                                            font.family: LudeloTheme.fontFamily
+                                            font.pixelSize: 13
+                                            color: LudeloTheme.textSecondary
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+
+                                        LButton {
+                                            height: 42
+                                            implicitWidth: 260
+                                            customRadius: 8
+                                            variant: "primary"
+                                            text: qsTr("GUÍA DE CONFIGURACIÓN")
+                                            keyHint: "[A]"
+                                            onClicked: {
+                                                dialog.close();
+                                                if (typeof root !== "undefined" && root.showConsoleSetupWalkthrough) {
+                                                    root.showConsoleSetupWalkthrough();
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                LCard {
+                                    Layout.fillWidth: true
+                                    ColumnLayout {
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
+                                        anchors.margins: 20
                                         spacing: 16
 
                                         Text {

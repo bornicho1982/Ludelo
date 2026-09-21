@@ -22,6 +22,21 @@ Rectangle {
     border.color: LudeloTheme.borderSubtle
     border.width: 1
 
+    // Background drag and double-click maximize area
+    MouseArea {
+        anchors.fill: parent
+        z: -1
+        acceptedButtons: Qt.LeftButton
+        onPressed: {
+            if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
+                Chiaki.window.startDrag();
+            }
+        }
+        onDoubleClicked: {
+            topBarRoot.maximizeClicked();
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 24
@@ -45,9 +60,9 @@ Rectangle {
 
                 Image {
                     anchors.centerIn: parent
-                    width: 20
-                    height: 20
-                    source: "qrc:/icons/logo_square_1024.png"
+                    width: 22
+                    height: 22
+                    source: "qrc:/icons/ludelo_logo.svg"
                     fillMode: Image.PreserveAspectFit
                 }
             }
@@ -147,7 +162,10 @@ Rectangle {
                     id: minMouse
                     anchors.fill: parent
                     hoverEnabled: true
-                    onClicked: topBarRoot.minimizeClicked()
+                    onClicked: {
+                        topBarRoot.minimizeClicked();
+                        if (typeof Chiaki !== "undefined" && Chiaki.window) Chiaki.window.showMinimized();
+                    }
                 }
             }
 
@@ -167,7 +185,17 @@ Rectangle {
                     id: maxMouse
                     anchors.fill: parent
                     hoverEnabled: true
-                    onClicked: topBarRoot.maximizeClicked()
+                    onClicked: {
+                        topBarRoot.maximizeClicked();
+                        if (typeof Chiaki !== "undefined" && Chiaki.window) {
+                            if (typeof Chiaki.window.toggleMaximize === "function")
+                                Chiaki.window.toggleMaximize();
+                            else if (Chiaki.window.windowState === Qt.WindowMaximized)
+                                Chiaki.window.showNormal();
+                            else
+                                Chiaki.window.showMaximized();
+                        }
+                    }
                 }
             }
 
@@ -187,7 +215,10 @@ Rectangle {
                     id: closeMouse
                     anchors.fill: parent
                     hoverEnabled: true
-                    onClicked: topBarRoot.closeClicked()
+                    onClicked: {
+                        topBarRoot.closeClicked();
+                        if (typeof Chiaki !== "undefined" && Chiaki.window) Chiaki.window.close();
+                    }
                 }
             }
         }

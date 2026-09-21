@@ -1,20 +1,19 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls
+import Ludelo 1.0
+import org.streetpea.chiaking
+import "components"
 
-DialogView {
-    id: walkthroughDialog
-    
+Item {
+    id: walkthroughRoot
+
     property int currentStep: 0
-    property int totalSteps: 5
-    
-    toolbarHeight: 60
-    title: qsTr("Console Setup Guide")
-    buttonText: currentStep < totalSteps - 1 ? qsTr("Next") : qsTr("Done")
-    buttonEnabled: true
-    
-    onAccepted: nextStep()
-    
+    readonly property int totalSteps: 5
+
+    anchors.fill: parent
+    focus: true
+
     function close() {
         if (typeof root !== "undefined" && root && root.closeDialog) {
             root.closeDialog();
@@ -23,940 +22,845 @@ DialogView {
         }
     }
 
-    // Reset to first step and grant active focus when dialog is pushed onto the stack
-    StackView.onActivated: {
-        currentStep = 0;
-        Qt.callLater(() => {
-            walkthroughDialog.forceActiveFocus();
-        });
-    }
-    
     function nextStep() {
         if (currentStep < totalSteps - 1) {
-            currentStep++
+            currentStep++;
         } else {
-            close()
+            close();
         }
     }
-    
+
     function previousStep() {
         if (currentStep > 0) {
-            currentStep--
+            currentStep--;
         }
     }
-    
-    function getStepTitle(step) {
-        switch(step) {
-            case 0: return qsTr("Enable Remote Play")
-            case 1: return qsTr("Same WiFi Network")
-            case 2: return qsTr("Add Manually")
-            case 3: return qsTr("Register Console")
-            case 4: return qsTr("Controls")
-            default: return ""
-        }
-    }
-    
-    // Main content for DialogView
-    mainItem: Item {
+
+    // Atmospheric dark gamer background
+    Rectangle {
+        id: bgVoid
         anchors.fill: parent
-        
-        // Modern step progress indicator
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "#07090E" }
+            GradientStop { position: 0.5; color: "#0F131D" }
+            GradientStop { position: 1.0; color: "#0B0E14" }
+        }
+        z: -10
+
+        // Subtle ambient radial glow
         Rectangle {
-            id: progressHeader
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.margins: 20
-            height: 50
-            radius: 10
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: Qt.rgba(0, 212/255, 1, 0.15) }
-                GradientStop { position: 1.0; color: Qt.rgba(0, 212/255, 1, 0.05) }
-            }
-            border.color: Qt.rgba(0, 212/255, 1, 0.3)
-            border.width: 1
-            
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 12
-                
-                // Step counter
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.8, 1000)
+            height: Math.min(parent.height * 0.8, 800)
+            radius: width / 2
+            color: Qt.rgba(0x6C/255, 0x5C/255, 0xE7/255, 0.15)
+            z: 1
+        }
+    }
+
+    // Top Navigation Header
+    Rectangle {
+        id: headerBar
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 60
+        color: Qt.rgba(0x0B/255, 0x0E/255, 0x14/255, 0.92)
+        border.color: LudeloTheme.borderSubtle
+        border.width: 1
+        z: 20
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 24
+            anchors.rightMargin: 20
+            spacing: 16
+
+            Row {
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 12
+
                 Rectangle {
-                    Layout.preferredWidth: 45
-                    Layout.preferredHeight: 26
-                    radius: 13
-                    color: Qt.rgba(0, 212/255, 1, 1)
-                    
-                    Label {
+                    width: 34; height: 34; radius: 8
+                    color: LudeloTheme.bgElevated
+                    border.color: LudeloTheme.accentPrimary
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    Image {
                         anchors.centerIn: parent
-                        text: (walkthroughDialog.currentStep + 1) + "/" + walkthroughDialog.totalSteps
-                        font.pixelSize: 12
-                        font.weight: Font.Bold
-                        color: Qt.rgba(10/255, 15/255, 26/255, 1.0)
+                        width: 20; height: 20
+                        source: "qrc:/icons/ludelo_logo.svg"
+                        fillMode: Image.PreserveAspectFit
                     }
                 }
-                
-                // Progress bar
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 5
-                    Layout.alignment: Qt.AlignVCenter
-                    radius: 2.5
-                    color: Qt.rgba(1, 1, 1, 0.1)
-                    
+
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 2
+                    Text {
+                        text: qsTr("GUÍA DE CONFIGURACIÓN LUDELO")
+                        font.family: LudeloTheme.fontFamily
+                        font.pixelSize: 15
+                        font.weight: Font.Bold
+                        color: LudeloTheme.textPrimary
+                        font.letterSpacing: 1.2
+                    }
+                    Text {
+                        text: qsTr("PASO %1 DE %2").arg(walkthroughRoot.currentStep + 1).arg(walkthroughRoot.totalSteps)
+                        font.family: LudeloTheme.fontFamilyMono
+                        font.pixelSize: 10
+                        color: LudeloTheme.accentMint
+                        font.weight: Font.Bold
+                    }
+                }
+            }
+
+            Item { Layout.fillWidth: true } // Spacer
+
+            // Step Indicator Dots
+            Row {
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 8
+
+                Repeater {
+                    model: walkthroughRoot.totalSteps
                     Rectangle {
-                        width: parent.width * (walkthroughDialog.currentStep + 1) / walkthroughDialog.totalSteps
-                        height: parent.height
-                        radius: parent.radius
-                        color: Qt.rgba(0, 212/255, 1, 1)
-                        
+                        width: index === walkthroughRoot.currentStep ? 32 : 8
+                        height: 8
+                        radius: 4
+                        color: {
+                            if (index === walkthroughRoot.currentStep) return LudeloTheme.accentMint;
+                            if (index < walkthroughRoot.currentStep) return LudeloTheme.accentPrimary;
+                            return Qt.rgba(1.0, 1.0, 1.0, 0.15);
+                        }
+
                         Behavior on width {
-                            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                            NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
                         }
-                    }
-                }
-                
-                // Step title
-                Label {
-                    Layout.preferredWidth: 170
-                    text: walkthroughDialog.getStepTitle(walkthroughDialog.currentStep)
-                    font.pixelSize: 14
-                    font.weight: Font.Medium
-                    color: Qt.rgba(0, 212/255, 1, 1)
-                    horizontalAlignment: Text.AlignRight
-                    elide: Text.ElideRight
-                }
-            }
-        }
-        
-        // Main swipeable content area
-        Item {
-            id: contentArea
-            anchors.top: progressHeader.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: navigationFooter.top
-            anchors.margins: 20
-            clip: true
-            
-            // Swipe view for smooth transitions
-            ListView {
-                id: stepView
-                anchors.fill: parent
-                orientation: ListView.Horizontal
-                snapMode: ListView.SnapOneItem
-                highlightRangeMode: ListView.StrictlyEnforceRange
-                highlightMoveDuration: 300
-                currentIndex: walkthroughDialog.currentStep
-                interactive: true
-                boundsBehavior: Flickable.StopAtBounds
-                
-                onCurrentIndexChanged: {
-                    if (currentIndex !== walkthroughDialog.currentStep) {
-                        walkthroughDialog.currentStep = currentIndex
-                    }
-                }
-                
-                model: 5
-                delegate: Item {
-                    width: stepView.width
-                    height: stepView.height
-                    
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        radius: 16
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: Qt.rgba(0, 212/255, 1, 0.08) }
-                            GradientStop { position: 1.0; color: Qt.rgba(0, 212/255, 1, 0.03) }
+                        Behavior on color {
+                            ColorAnimation { duration: 200 }
                         }
-                        border.color: Qt.rgba(0, 212/255, 1, 0.2)
-                        border.width: 1
-                        
-                        // Content based on step index
-                        Item {
+
+                        MouseArea {
                             anchors.fill: parent
-                            anchors.margins: 30
-                            
-                            // Step 1 content
-                            ColumnLayout {
-                                anchors.fill: parent
-                                spacing: 20
-                                visible: index === 0
-                                
-                                // Icon and title
-                                ColumnLayout {
-                                    Layout.alignment: Qt.AlignHCenter
-                                    spacing: 15
-                                    
-                                    Rectangle {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        Layout.preferredWidth: 80
-                                        Layout.preferredHeight: 80
-                                        radius: 40
-                                        gradient: Gradient {
-                                            GradientStop { position: 0.0; color: Qt.rgba(0, 212/255, 1, 1) }
-                                            GradientStop { position: 1.0; color: Qt.rgba(0, 212/255, 1, 0.7) }
-                                        }
-                                        
-                                        Label {
-                                            anchors.centerIn: parent
-                                            text: "🎮"
-                                            font.pixelSize: 36
-                                        }
-                                    }
-                                    
-                                    Label {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        text: qsTr("Step 1: Enable Remote Play on Your Console")
-                                        font.pixelSize: 24
-                                        font.weight: Font.Bold
-                                        color: Qt.rgba(0, 212/255, 1, 1)
-                                        horizontalAlignment: Text.AlignHCenter
-                                    }
-                                }
-                                
-                                // Instructions card
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: instructionsColumn1.implicitHeight + 40
-                                    radius: 12
-                                    gradient: Gradient {
-                                        GradientStop { position: 0.0; color: Qt.rgba(1, 193/255, 7/255, 0.1) }
-                                        GradientStop { position: 1.0; color: Qt.rgba(1, 193/255, 7/255, 0.05) }
-                                    }
-                                    border.color: Qt.rgba(1, 193/255, 7/255, 0.3)
-                                    border.width: 1
-                                    
-                                    ColumnLayout {
-                                        id: instructionsColumn1
-                                        anchors.centerIn: parent
-                                        width: parent.width - 40
-                                        spacing: 20
-                                        
-                                        Label {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            text: qsTr("Navigate to your console's Remote Play settings:")
-                                            font.pixelSize: 18
-                                            font.weight: Font.Medium
-                                            color: Qt.rgba(1, 1, 1, 0.9)
-                                        }
-                                        
-                                        ColumnLayout {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            spacing: 12
-                                            
-                                            Rectangle {
-                                                Layout.alignment: Qt.AlignHCenter
-                                                Layout.preferredWidth: pathLabel1.implicitWidth + 20
-                                                Layout.preferredHeight: 40
-                                                radius: 8
-                                                color: Qt.rgba(0, 0, 0, 0.3)
-                                                border.color: Qt.rgba(1, 1, 1, 0.2)
-                                                border.width: 1
-                                                
-                                                Label {
-                                                    id: pathLabel1
-                                                    anchors.centerIn: parent
-                                                    text: qsTr("PS5: Settings → System → Remote Play")
-                                                    font.pixelSize: 16
-                                                    color: Qt.rgba(0, 212/255, 1, 1)
-                                                    font.family: "monospace"
-                                                }
-                                            }
-                                            
-                                            Rectangle {
-                                                Layout.alignment: Qt.AlignHCenter
-                                                Layout.preferredWidth: pathLabel2.implicitWidth + 20
-                                                Layout.preferredHeight: 40
-                                                radius: 8
-                                                color: Qt.rgba(0, 0, 0, 0.3)
-                                                border.color: Qt.rgba(1, 1, 1, 0.2)
-                                                border.width: 1
-                                                
-                                                Label {
-                                                    id: pathLabel2
-                                                    anchors.centerIn: parent
-                                                    text: qsTr("PS4: Settings → Remote Play Connection Settings")
-                                                    font.pixelSize: 16
-                                                    color: Qt.rgba(0, 212/255, 1, 1)
-                                                    font.family: "monospace"
-                                                }
-                                            }
-                                        }
-                                        
-                                        Label {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            Layout.fillWidth: true
-                                            text: qsTr("✓ Enable Remote Play and make sure your console is connected to the internet")
-                                            font.pixelSize: 14
-                                            color: Qt.rgba(1, 1, 1, 0.8)
-                                            horizontalAlignment: Text.AlignHCenter
-                                            wrapMode: Text.WordWrap
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // Step 2 content
-                            ColumnLayout {
-                                anchors.fill: parent
-                                spacing: 20
-                                visible: index === 1
-                                
-                                // Icon and title
-                                ColumnLayout {
-                                    Layout.alignment: Qt.AlignHCenter
-                                    spacing: 15
-                                    
-                                    Rectangle {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        Layout.preferredWidth: 80
-                                        Layout.preferredHeight: 80
-                                        radius: 40
-                                        gradient: Gradient {
-                                            GradientStop { position: 0.0; color: Qt.rgba(1, 152/255, 0, 1) }
-                                            GradientStop { position: 1.0; color: Qt.rgba(1, 152/255, 0, 0.7) }
-                                        }
-                                        
-                                        Label {
-                                            anchors.centerIn: parent
-                                            text: "📶"
-                                            font.pixelSize: 36
-                                        }
-                                    }
-                                    
-                                    Label {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        text: qsTr("Step 2: Connect to the Same WiFi Network")
-                                        font.pixelSize: 24
-                                        font.weight: Font.Bold
-                                        color: Qt.rgba(1, 152/255, 0, 1)
-                                        horizontalAlignment: Text.AlignHCenter
-                                    }
-                                }
-                                
-                                // Warning card
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: instructionsColumn2.implicitHeight + 40
-                                    radius: 12
-                                    gradient: Gradient {
-                                        GradientStop { position: 0.0; color: Qt.rgba(1, 193/255, 7/255, 0.15) }
-                                        GradientStop { position: 1.0; color: Qt.rgba(1, 193/255, 7/255, 0.05) }
-                                    }
-                                    border.color: Qt.rgba(1, 193/255, 7/255, 0.4)
-                                    border.width: 2
-                                    
-                                    ColumnLayout {
-                                        id: instructionsColumn2
-                                        anchors.centerIn: parent
-                                        width: parent.width - 40
-                                        spacing: 20
-                                        
-                                        Label {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            text: qsTr("⚠️ Important: Discovery & Registration Requirement")
-                                            font.pixelSize: 20
-                                            font.weight: Font.Bold
-                                            color: Qt.rgba(1, 152/255, 0, 1)
-                                        }
-                                        
-                                        Rectangle {
-                                            Layout.fillWidth: true
-                                            Layout.preferredHeight: warningText.implicitHeight + 20
-                                            radius: 8
-                                            color: Qt.rgba(0, 0, 0, 0.2)
-                                            border.color: Qt.rgba(1, 1, 1, 0.1)
-                                            border.width: 1
-                                            
-                                            Label {
-                                                id: warningText
-                                                anchors.centerIn: parent
-                                                width: parent.width - 20
-                                                text: qsTr("To register your console with Ludelo, both your device and console must be connected to the same WiFi network. This is required even if you plan to use remote play away from home later.")
-                                                font.pixelSize: 16
-                                                color: Qt.rgba(1, 1, 1, 0.9)
-                                                horizontalAlignment: Text.AlignHCenter
-                                                wrapMode: Text.WordWrap
-                                            }
-                                        }
-                                        
-                                        Label {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            Layout.fillWidth: true
-                                            text: qsTr("✓ Make sure both devices are on the same network, then Ludelo should automatically discover your console.")
-                                            font.pixelSize: 14
-                                            color: Qt.rgba(1, 1, 1, 0.8)
-                                            horizontalAlignment: Text.AlignHCenter
-                                            wrapMode: Text.WordWrap
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // Step 3 content
-                            ColumnLayout {
-                                anchors.fill: parent
-                                spacing: 20
-                                visible: index === 2
-                                
-                                // Icon and title
-                                ColumnLayout {
-                                    Layout.alignment: Qt.AlignHCenter
-                                    spacing: 15
-                                    
-                                    Rectangle {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        Layout.preferredWidth: 80
-                                        Layout.preferredHeight: 80
-                                        radius: 40
-                                        gradient: Gradient {
-                                            GradientStop { position: 0.0; color: Qt.rgba(76/255, 175/255, 80/255, 1) }
-                                            GradientStop { position: 1.0; color: Qt.rgba(76/255, 175/255, 80/255, 0.7) }
-                                        }
-                                        
-                                        Label {
-                                            anchors.centerIn: parent
-                                            text: "🔧"
-                                            font.pixelSize: 36
-                                        }
-                                    }
-                                    
-                                    Label {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        text: qsTr("Step 3: Add Console Manually (If Needed)")
-                                        font.pixelSize: 24
-                                        font.weight: Font.Bold
-                                        color: Qt.rgba(76/255, 175/255, 80/255, 1)
-                                        horizontalAlignment: Text.AlignHCenter
-                                    }
-                                }
-                                
-                                // Instructions card
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: instructionsColumn3.implicitHeight + 40
-                                    radius: 12
-                                    gradient: Gradient {
-                                        GradientStop { position: 0.0; color: Qt.rgba(76/255, 175/255, 80/255, 0.1) }
-                                        GradientStop { position: 1.0; color: Qt.rgba(76/255, 175/255, 80/255, 0.05) }
-                                    }
-                                    border.color: Qt.rgba(76/255, 175/255, 80/255, 0.3)
-                                    border.width: 1
-                                    
-                                    ColumnLayout {
-                                        id: instructionsColumn3
-                                        anchors.centerIn: parent
-                                        width: parent.width - 40
-                                        spacing: 20
-                                        
-                                        Label {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            text: qsTr("If your console doesn't appear automatically:")
-                                            font.pixelSize: 18
-                                            font.weight: Font.Medium
-                                            color: Qt.rgba(1, 1, 1, 0.9)
-                                        }
-                                        
-                                        Rectangle {
-                                            Layout.fillWidth: true
-                                            Layout.preferredHeight: manualText.implicitHeight + 20
-                                            radius: 8
-                                            color: Qt.rgba(0, 0, 0, 0.2)
-                                            border.color: Qt.rgba(1, 1, 1, 0.1)
-                                            border.width: 1
-                                            
-                                            Label {
-                                                id: manualText
-                                                anchors.centerIn: parent
-                                                width: parent.width - 20
-                                                text: qsTr("You can add your console manually using its IP address. Find your console's IP in its network settings, then use the 'Add Console Manually' button from the main screen.")
-                                                font.pixelSize: 16
-                                                color: Qt.rgba(1, 1, 1, 0.9)
-                                                horizontalAlignment: Text.AlignHCenter
-                                                wrapMode: Text.WordWrap
-                                            }
-                                        }
-                                        
-                                        Label {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            Layout.fillWidth: true
-                                            text: qsTr("💡 Note: You should only need to do this if automatic discovery isn't working on your network.")
-                                            font.pixelSize: 14
-                                            color: Qt.rgba(1, 1, 1, 0.7)
-                                            horizontalAlignment: Text.AlignHCenter
-                                            wrapMode: Text.WordWrap
-                                            font.italic: true
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // Step 4 content
-                            ColumnLayout {
-                                anchors.fill: parent
-                                spacing: 18
-                                visible: index === 3
-                                
-                                // Icon and title
-                                ColumnLayout {
-                                    Layout.alignment: Qt.AlignHCenter
-                                    Layout.topMargin: 10
-                                    spacing: 15
-                                    
-                                    Rectangle {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        Layout.preferredWidth: 80
-                                        Layout.preferredHeight: 80
-                                        radius: 40
-                                        gradient: Gradient {
-                                            GradientStop { position: 0.0; color: Qt.rgba(156/255, 39/255, 176/255, 1) }
-                                            GradientStop { position: 1.0; color: Qt.rgba(156/255, 39/255, 176/255, 0.7) }
-                                        }
-                                        
-                                        Label {
-                                            anchors.centerIn: parent
-                                            text: "🌐"
-                                            font.pixelSize: 36
-                                        }
-                                    }
-                                    
-                                    Label {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        text: qsTr("Step 4: Register Your Console")
-                                        font.pixelSize: 26
-                                        font.weight: Font.Bold
-                                        color: Qt.rgba(156/255, 39/255, 176/255, 1)
-                                        horizontalAlignment: Text.AlignHCenter
-                                    }
-                                    
-                                    Label {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        Layout.topMargin: -5
-                                        text: qsTr("Once your console appears, click on it to register")
-                                        font.pixelSize: 16
-                                        color: Qt.rgba(1, 1, 1, 0.8)
-                                        horizontalAlignment: Text.AlignHCenter
-                                    }
-                                }
-                                
-                                // Recommended: PSN Login (Prominent)
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: psnRecommendedContent.implicitHeight + 50
-                                    Layout.topMargin: 10
-                                    radius: 12
-                                    gradient: Gradient {
-                                        GradientStop { position: 0.0; color: Qt.rgba(76/255, 175/255, 80/255, 0.25) }
-                                        GradientStop { position: 1.0; color: Qt.rgba(76/255, 175/255, 80/255, 0.15) }
-                                    }
-                                    border.color: Qt.rgba(76/255, 175/255, 80/255, 0.5)
-                                    border.width: 2
-                                    
-                                    ColumnLayout {
-                                        id: psnRecommendedContent
-                                        anchors.centerIn: parent
-                                        width: parent.width - 50
-                                        spacing: 15
-                                        
-                                        Label {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            text: qsTr("✅ Recommended: Login (Automatic)")
-                                            font.pixelSize: 18
-                                            font.weight: Font.Bold
-                                            color: Qt.rgba(76/255, 175/255, 80/255, 1)
-                                            horizontalAlignment: Text.AlignHCenter
-                                        }
-                                        
-                                        Label {
-                                            Layout.fillWidth: true
-                                            text: qsTr("Login from the main menu, then click your console for automatic registration.")
-                                            font.pixelSize: 16
-                                            color: Qt.rgba(1, 1, 1, 0.95)
-                                            horizontalAlignment: Text.AlignHCenter
-                                            wrapMode: Text.WordWrap
-                                        }
-                                        
-                                        Label {
-                                            Layout.fillWidth: true
-                                            text: qsTr("No PIN or Account ID needed!")
-                                            font.pixelSize: 15
-                                            font.weight: Font.Bold
-                                            color: Qt.rgba(76/255, 175/255, 80/255, 1)
-                                            horizontalAlignment: Text.AlignHCenter
-                                            wrapMode: Text.WordWrap
-                                        }
-                                    }
-                                }
-                                
-                                // Alternative: Manual Registration (Subtle)
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: manualRegContent.implicitHeight + 40
-                                    radius: 10
-                                    color: Qt.rgba(0, 0, 0, 0.15)
-                                    border.color: Qt.rgba(1, 1, 1, 0.15)
-                                    border.width: 1
-                                    
-                                    ColumnLayout {
-                                        id: manualRegContent
-                                        anchors.centerIn: parent
-                                        width: parent.width - 40
-                                        spacing: 12
-                                        
-                                        Label {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            text: qsTr("Alternative: Manual Registration")
-                                            font.pixelSize: 16
-                                            font.weight: Font.Medium
-                                            color: Qt.rgba(1, 1, 1, 0.75)
-                                            horizontalAlignment: Text.AlignHCenter
-                                        }
-                                        
-                                        Label {
-                                            Layout.fillWidth: true
-                                            text: qsTr("Click your console, enter the PIN from your console screen, and use 'Public Lookup' to find your Account ID.")
-                                            font.pixelSize: 15
-                                            color: Qt.rgba(1, 1, 1, 0.7)
-                                            horizontalAlignment: Text.AlignHCenter
-                                            wrapMode: Text.WordWrap
-                                        }
-                                    }
-                                }
-                                
-                                // Bottom tip
-                                Label {
-                                    Layout.alignment: Qt.AlignHCenter
-                                    Layout.fillWidth: true
-                                    Layout.topMargin: 5
-                                    text: qsTr("💡 After registration, login enables remote play from anywhere without port forwarding.")
-                                    font.pixelSize: 13
-                                    color: Qt.rgba(1, 1, 1, 0.65)
-                                    horizontalAlignment: Text.AlignHCenter
-                                    wrapMode: Text.WordWrap
-                                    font.italic: true
-                                }
-                            }
-                            
-                            // Step 5 content - Controls
-                            Item {
-                                anchors.fill: parent
-                                visible: index === 4
-                                
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    spacing: 0
-                                    
-                                    // Controller image
-                                    Item {
-                                        Layout.fillWidth: true
-                                        Layout.fillHeight: true
-                                        
-                                        Image {
-                                            anchors.fill: parent
-                                            anchors.margins: 20
-                                            source: "qrc:/icons/steamdeck-controls.png"
-                                            fillMode: Image.PreserveAspectFit
-                                            smooth: true
-                                        }
-                                    }
-                                    
-                                    // Bottom info bar with 3 columns
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        Layout.preferredHeight: 90
-                                        gradient: Gradient {
-                                            GradientStop { position: 0.0; color: Qt.rgba(156/255, 39/255, 176/255, 0.25) }
-                                            GradientStop { position: 1.0; color: Qt.rgba(156/255, 39/255, 176/255, 0.15) }
-                                        }
-                                        border.color: Qt.rgba(156/255, 39/255, 176/255, 0.4)
-                                        border.width: 1
-                                        
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.margins: 15
-                                            spacing: 20
-                                            
-                                            // Left column - Open Stream Menu
-                                            ColumnLayout {
-                                                Layout.fillWidth: true
-                                                spacing: 8
-                                                
-                                                Label {
-                                                    Layout.alignment: Qt.AlignHCenter
-                                                    Layout.fillWidth: true
-                                                    text: qsTr("📱 Open Stream Menu")
-                                                    font.pixelSize: 14
-                                                    font.weight: Font.Bold
-                                                    color: Qt.rgba(33/255, 150/255, 243/255, 1)
-                                                    horizontalAlignment: Text.AlignHCenter
-                                                }
-                                                
-                                                Label {
-                                                    Layout.alignment: Qt.AlignHCenter
-                                                    Layout.fillWidth: true
-                                                    text: qsTr("L1+R1+L3+R3")
-                                                    font.pixelSize: 13
-                                                    color: Qt.rgba(1, 1, 1, 0.9)
-                                                    horizontalAlignment: Text.AlignHCenter
-                                                }
-                                            }
-                                            
-                                            // Separator
-                                            Rectangle {
-                                                Layout.preferredWidth: 1
-                                                Layout.fillHeight: true
-                                                color: Qt.rgba(156/255, 39/255, 176/255, 0.3)
-                                            }
-                                            
-                                            // Middle column - Back Paddle Buttons
-                                            ColumnLayout {
-                                                Layout.fillWidth: true
-                                                spacing: 8
-                                                
-                                                Label {
-                                                    Layout.alignment: Qt.AlignHCenter
-                                                    text: qsTr("🎯 Back Paddle Buttons")
-                                                    font.pixelSize: 14
-                                                    font.weight: Font.Bold
-                                                    color: Qt.rgba(156/255, 39/255, 176/255, 1)
-                                                }
-                                                
-                                                RowLayout {
-                                                    Layout.alignment: Qt.AlignHCenter
-                                                    spacing: 15
-                                                    
-                                                    Label {
-                                                        text: qsTr("L4: Mute")
-                                                        font.pixelSize: 12
-                                                        color: Qt.rgba(1, 1, 1, 0.9)
-                                                    }
-                                                    
-                                                    Label {
-                                                        text: qsTr("L5: End")
-                                                        font.pixelSize: 12
-                                                        color: Qt.rgba(1, 1, 1, 0.9)
-                                                    }
-                                                    
-                                                    Label {
-                                                        text: qsTr("R4: Zoom")
-                                                        font.pixelSize: 12
-                                                        color: Qt.rgba(1, 1, 1, 0.9)
-                                                    }
-                                                    
-                                                    Label {
-                                                        text: qsTr("R5: Stretch")
-                                                        font.pixelSize: 12
-                                                        color: Qt.rgba(1, 1, 1, 0.9)
-                                                    }
-                                                }
-                                            }
-                                            
-                                            // Separator
-                                            Rectangle {
-                                                Layout.preferredWidth: 1
-                                                Layout.fillHeight: true
-                                                color: Qt.rgba(156/255, 39/255, 176/255, 0.3)
-                                            }
-                                            
-                                            // Right column - PS Button
-                                            ColumnLayout {
-                                                Layout.fillWidth: true
-                                                spacing: 8
-                                                
-                                                Label {
-                                                    Layout.alignment: Qt.AlignHCenter
-                                                    Layout.fillWidth: true
-                                                    text: qsTr("🎮 PS Button")
-                                                    font.pixelSize: 14
-                                                    font.weight: Font.Bold
-                                                    color: Qt.rgba(244/255, 67/255, 54/255, 1)
-                                                    horizontalAlignment: Text.AlignHCenter
-                                                }
-                                                
-                                                Label {
-                                                    Layout.alignment: Qt.AlignHCenter
-                                                    Layout.fillWidth: true
-                                                    text: qsTr("Down on Left Trackpad")
-                                                    font.pixelSize: 12
-                                                    color: Qt.rgba(1, 1, 1, 0.9)
-                                                    horizontalAlignment: Text.AlignHCenter
-                                                    wrapMode: Text.WordWrap
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: walkthroughRoot.currentStep = index
                         }
                     }
                 }
             }
-            
-            // Sync ListView with currentStep
-            Connections {
-                target: walkthroughDialog
-                function onCurrentStepChanged() {
-                    if (stepView.currentIndex !== walkthroughDialog.currentStep) {
-                        stepView.currentIndex = walkthroughDialog.currentStep
-                    }
-                }
+
+            // Close Action
+            LButton {
+                height: 36
+                customRadius: 8
+                variant: "ghost"
+                text: qsTr("CERRAR")
+                keyHint: "[ESC]"
+                onClicked: walkthroughRoot.close()
             }
         }
-        
-        // Navigation footer with arrow buttons and keyboard support
-        Rectangle {
-            id: navigationFooter
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.margins: 20
-            height: 60
-            radius: 10
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: Qt.rgba(0, 212/255, 1, 0.1) }
-                GradientStop { position: 1.0; color: Qt.rgba(0, 212/255, 1, 0.05) }
-            }
-            border.color: Qt.rgba(0, 212/255, 1, 0.2)
-            border.width: 1
-            
-            RowLayout {
+    }
+
+    // Main Interactive Content Area
+    Item {
+        id: contentContainer
+        anchors.top: headerBar.bottom
+        anchors.bottom: bottomBar.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: 24
+
+        // Central Elevated Step Card
+        LCard {
+            id: mainCard
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 32, 820)
+            height: Math.min(parent.height - 32, 540)
+
+            // Step 1: Conecta tu cuenta PSN
+            ColumnLayout {
+                visible: walkthroughRoot.currentStep === 0
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 10
-                
-                // Exit button (left)
-                Button {
-                    id: exitButton
-                    Layout.preferredWidth: 100
-                    Layout.preferredHeight: 40
-                    text: "✕ " + qsTr("Exit")
-                    
-                    background: Rectangle {
-                        radius: 8
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: Qt.rgba(1, 0.3, 0.3, 0.2) }
-                            GradientStop { position: 1.0; color: Qt.rgba(1, 0.3, 0.3, 0.1) }
-                        }
-                        border.color: Qt.rgba(1, 0.3, 0.3, 0.4)
-                        border.width: 1
+                anchors.margins: 32
+                spacing: 16
+
+                RowLayout {
+                    spacing: 12
+                    LPill {
+                        text: qsTr("PASO 1 • AUTENTICACIÓN OFICIAL")
+                        dotColor: LudeloTheme.accentMint
+                        glowColor: LudeloTheme.accentMintGlow
+                        showDot: true
                     }
-                    
-                    contentItem: Label {
-                        text: parent.text
-                        font.pixelSize: 14
-                        font.weight: Font.Medium
-                        color: Qt.rgba(1, 0.5, 0.5, 1)
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    
-                    onClicked: walkthroughDialog.close()
-                }
-                
-                // Previous button
-                Button {
-                    id: prevButton
-                    Layout.preferredWidth: 120
-                    Layout.preferredHeight: 40
-                    text: "← " + qsTr("Previous")
-                    enabled: walkthroughDialog.currentStep > 0
-                    opacity: enabled ? 1.0 : 0.3
-                    
-                    background: Rectangle {
-                        radius: 8
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: prevButton.enabled ? Qt.rgba(0, 212/255, 1, 0.2) : Qt.rgba(1, 1, 1, 0.1) }
-                            GradientStop { position: 1.0; color: prevButton.enabled ? Qt.rgba(0, 212/255, 1, 0.1) : Qt.rgba(1, 1, 1, 0.05) }
-                        }
-                        border.color: prevButton.enabled ? Qt.rgba(0, 212/255, 1, 0.4) : Qt.rgba(1, 1, 1, 0.2)
-                        border.width: 1
-                    }
-                    
-                    contentItem: Label {
-                        text: prevButton.text
-                        font.pixelSize: 14
-                        font.weight: Font.Medium
-                        color: prevButton.enabled ? Qt.rgba(0, 212/255, 1, 1) : Qt.rgba(1, 1, 1, 0.5)
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    
-                    onClicked: walkthroughDialog.previousStep()
-                    
-                    Behavior on opacity {
-                        NumberAnimation { duration: 200 }
+                    LPill {
+                        text: qsTr("CIFRADO DPAPI")
+                        dotColor: LudeloTheme.accentPrimary
+                        showDot: true
                     }
                 }
-                
-                // Center spacer with navigation hint
-                Item {
+
+                Text {
+                    text: qsTr("Conecta tu cuenta de PlayStation Network")
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 22
+                    font.weight: Font.Bold
+                    color: LudeloTheme.textPrimary
+                }
+
+                Text {
                     Layout.fillWidth: true
-                    
-                    Label {
-                        anchors.centerIn: parent
-                        text: qsTr("Use ← → arrow keys or swipe to navigate")
-                        font.pixelSize: 12
-                        color: Qt.rgba(1, 1, 1, 0.6)
-                        font.italic: true
-                    }
+                    wrapMode: Text.WordWrap
+                    lineHeight: 1.4
+                    text: qsTr("Ludelo se comunica directamente con los servidores oficiales de Sony mediante autenticación OAuth segura (WebView2). No almacenamos tu contraseña ni enviamos tus credenciales a ningún servidor de terceros.")
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 14
+                    color: LudeloTheme.textSecondary
                 }
-                
-                // Next/Done button
-                Button {
-                    id: nextButton
-                    Layout.preferredWidth: 120
-                    Layout.preferredHeight: 40
-                    text: (walkthroughDialog.currentStep < walkthroughDialog.totalSteps - 1 ? qsTr("Next") : qsTr("Done")) + " →"
-                    
-                    background: Rectangle {
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: LudeloTheme.borderSubtle
+                }
+
+                RowLayout {
+                    spacing: 16
+                    Layout.fillWidth: true
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 120
                         radius: 8
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: walkthroughDialog.currentStep < walkthroughDialog.totalSteps - 1 ? Qt.rgba(0, 212/255, 1, 0.3) : Qt.rgba(76/255, 175/255, 80/255, 0.3) }
-                            GradientStop { position: 1.0; color: walkthroughDialog.currentStep < walkthroughDialog.totalSteps - 1 ? Qt.rgba(0, 212/255, 1, 0.2) : Qt.rgba(76/255, 175/255, 80/255, 0.2) }
-                        }
-                        border.color: walkthroughDialog.currentStep < walkthroughDialog.totalSteps - 1 ? Qt.rgba(0, 212/255, 1, 0.5) : Qt.rgba(76/255, 175/255, 80/255, 0.5)
+                        color: Qt.rgba(0.04, 0.06, 0.10, 0.6)
+                        border.color: LudeloTheme.borderSubtle
                         border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 6
+                            Text {
+                                text: qsTr("Almacenamiento Local Seguro (DPAPI)")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                font.weight: Font.Bold
+                                color: LudeloTheme.accentMint
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: qsTr("Tus tokens de sesión se encriptan exclusivamente para tu cuenta de usuario de Windows mediante CryptProtectData.")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 12
+                                color: LudeloTheme.textDim
+                            }
+                        }
                     }
-                    
-                    contentItem: Label {
-                        text: parent.text
-                        font.pixelSize: 14
-                        font.weight: Font.Bold
-                        color: walkthroughDialog.currentStep < walkthroughDialog.totalSteps - 1 ? Qt.rgba(0, 212/255, 1, 1) : Qt.rgba(76/255, 175/255, 80/255, 1)
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 120
+                        radius: 8
+                        color: Qt.rgba(0.04, 0.06, 0.10, 0.6)
+                        border.color: LudeloTheme.borderSubtle
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 6
+                            Text {
+                                text: qsTr("Detección Automática de Consolas")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                font.weight: Font.Bold
+                                color: LudeloTheme.accentPrimary
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: qsTr("Al iniciar sesión, Ludelo obtiene tu Account ID necesario para enlazar tus consolas PS5 y PS4 en la red local.")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 12
+                                color: LudeloTheme.textDim
+                            }
+                        }
                     }
-                    
-                    onClicked: walkthroughDialog.nextStep()
                 }
+
+                Item { Layout.fillHeight: true }
+
+                RowLayout {
+                    spacing: 12
+                    LButton {
+                        height: 44
+                        implicitWidth: 260
+                        customRadius: 8
+                        variant: "primary"
+                        text: qsTr("INICIAR SESIÓN CON PSN")
+                        keyHint: "[A]"
+                        onClicked: {
+                            if (Qt.platform.os === "windows") {
+                                Chiaki.startWebView2Login();
+                            } else {
+                                if (typeof root !== "undefined" && root.showPSNTokenDialog)
+                                    root.showPSNTokenDialog("", false);
+                            }
+                        }
+                    }
+                    Text {
+                        text: (typeof Chiaki !== "undefined" && Chiaki.settings && Chiaki.settings.psnAccountId) ?
+                            qsTr("✓ Sesión PSN activa: %1").arg(Chiaki.settings.psnAccountId) :
+                            qsTr("O puedes continuar sin iniciar sesión y vincular por PIN.")
+                        font.family: LudeloTheme.fontFamilyMono
+                        font.pixelSize: 12
+                        color: (typeof Chiaki !== "undefined" && Chiaki.settings && Chiaki.settings.psnAccountId) ?
+                            LudeloTheme.accentMint : LudeloTheme.textDim
+                    }
+                }
+            }
+
+            // Step 2: Activa Uso a distancia en tu consola
+            ColumnLayout {
+                visible: walkthroughRoot.currentStep === 1
+                anchors.fill: parent
+                anchors.margins: 32
+                spacing: 16
+
+                RowLayout {
+                    spacing: 12
+                    LPill {
+                        text: qsTr("PASO 2 • AJUSTES DE CONSOLA")
+                        dotColor: LudeloTheme.accentPrimary
+                        glowColor: LudeloTheme.accentGlow
+                        showDot: true
+                    }
+                    LPill {
+                        text: qsTr("PS5 & PS4")
+                        dotColor: LudeloTheme.accentMint
+                        showDot: true
+                    }
+                }
+
+                Text {
+                    text: qsTr("Activa el Uso a distancia en tu consola")
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 22
+                    font.weight: Font.Bold
+                    color: LudeloTheme.textPrimary
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    lineHeight: 1.4
+                    text: qsTr("Para permitir que Ludelo reciba la señal de vídeo y envíe tus controles, debes habilitar la opción de Uso a distancia en el menú de tu consola.")
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 14
+                    color: LudeloTheme.textSecondary
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: LudeloTheme.borderSubtle
+                }
+
+                RowLayout {
+                    spacing: 16
+                    Layout.fillWidth: true
+
+                    // PS5 Instructions Card
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        radius: 8
+                        color: Qt.rgba(0.04, 0.06, 0.10, 0.6)
+                        border.color: LudeloTheme.accentPrimary
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 16
+                            spacing: 8
+                            Text {
+                                text: qsTr("PlayStation 5")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 15
+                                font.weight: Font.Bold
+                                color: LudeloTheme.textPrimary
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: qsTr("1. Ve a Ajustes > Sistema > Uso a distancia.\n2. Activa «Activar Uso a distancia».\n3. En Ahorro de energía > Funciones disponibles en modo de reposo, activa «Mantenerse conectado a Internet» y «Activar encendido de la PS5 desde la red».")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 12
+                                lineHeight: 1.35
+                                color: LudeloTheme.textSecondary
+                            }
+                        }
+                    }
+
+                    // PS4 Instructions Card
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        radius: 8
+                        color: Qt.rgba(0.04, 0.06, 0.10, 0.6)
+                        border.color: LudeloTheme.borderSubtle
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 16
+                            spacing: 8
+                            Text {
+                                text: qsTr("PlayStation 4")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 15
+                                font.weight: Font.Bold
+                                color: LudeloTheme.textPrimary
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: qsTr("1. Ve a Ajustes > Ajustes de conexión del Uso a distancia.\n2. Marca «Activar el Uso a distancia».\n3. En Ajustes de ahorro de energía > Establecer funciones en modo de reposo, activa «Permanecer conectado a Internet» y «Habilitar encendido de PS4 desde la red».")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 12
+                                lineHeight: 1.35
+                                color: LudeloTheme.textSecondary
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+            }
+
+            // Step 3: Vincula tu consola con el PIN de 8 dígitos
+            ColumnLayout {
+                visible: walkthroughRoot.currentStep === 2
+                anchors.fill: parent
+                anchors.margins: 32
+                spacing: 16
+
+                RowLayout {
+                    spacing: 12
+                    LPill {
+                        text: qsTr("PASO 3 • VINCULACIÓN PIN")
+                        dotColor: LudeloTheme.accentMint
+                        glowColor: LudeloTheme.accentMintGlow
+                        showDot: true
+                    }
+                    LPill {
+                        text: qsTr("TEMPORIZADOR 300S")
+                        dotColor: LudeloTheme.accentPrimary
+                        showDot: true
+                    }
+                }
+
+                Text {
+                    text: qsTr("Vincula tu consola con el PIN de 8 dígitos")
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 22
+                    font.weight: Font.Bold
+                    color: LudeloTheme.textPrimary
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    lineHeight: 1.4
+                    text: qsTr("El primer emparejamiento requiere generar un código de seguridad PIN en la consola. Este código valida que tú eres el propietario físico de la PlayStation.")
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 14
+                    color: LudeloTheme.textSecondary
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: LudeloTheme.borderSubtle
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 56
+                        radius: 8
+                        color: Qt.rgba(0.04, 0.06, 0.10, 0.6)
+                        border.color: LudeloTheme.borderSubtle
+                        border.width: 1
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            Text {
+                                text: qsTr("1. En tu consola:")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                font.weight: Font.Bold
+                                color: LudeloTheme.accentMint
+                            }
+                            Text {
+                                text: qsTr("Ve a Ajustes > Sistema > Uso a distancia > Vincular dispositivo.")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                color: LudeloTheme.textSecondary
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 56
+                        radius: 8
+                        color: Qt.rgba(0.04, 0.06, 0.10, 0.6)
+                        border.color: LudeloTheme.borderSubtle
+                        border.width: 1
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            Text {
+                                text: qsTr("2. En Ludelo:")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                font.weight: Font.Bold
+                                color: LudeloTheme.accentPrimary
+                            }
+                            Text {
+                                text: qsTr("Pulsa «PAIR CONSOLE» o «+ Add New Console» e introduce los 8 dígitos.")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                color: LudeloTheme.textSecondary
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 56
+                        radius: 8
+                        color: Qt.rgba(0.04, 0.06, 0.10, 0.6)
+                        border.color: LudeloTheme.borderSubtle
+                        border.width: 1
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            Text {
+                                text: qsTr("3. Passcode opcional:")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                font.weight: Font.Bold
+                                color: LudeloTheme.textDim
+                            }
+                            Text {
+                                text: qsTr("Si tu usuario en la consola tiene clave de acceso numérico, ponla en el campo de 4 dígitos.")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                color: LudeloTheme.textSecondary
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+            }
+
+            // Step 4: Tu primer stream
+            ColumnLayout {
+                visible: walkthroughRoot.currentStep === 3
+                anchors.fill: parent
+                anchors.margins: 32
+                spacing: 16
+
+                RowLayout {
+                    spacing: 12
+                    LPill {
+                        text: qsTr("PASO 4 • EN JUEGO & HUD")
+                        dotColor: LudeloTheme.accentPrimary
+                        glowColor: LudeloTheme.accentGlow
+                        showDot: true
+                    }
+                    LPill {
+                        text: qsTr("COMBO L1+R1+L3+R3")
+                        dotColor: LudeloTheme.accentMint
+                        showDot: true
+                    }
+                }
+
+                Text {
+                    text: qsTr("Tu primer stream: Wake-on-LAN y Dock en juego")
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 22
+                    font.weight: Font.Bold
+                    color: LudeloTheme.textPrimary
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    lineHeight: 1.4
+                    text: qsTr("Una vez emparejada, puedes iniciar stream con un solo clic. Si la consola está en modo de reposo (Standby), Ludelo enviará un paquete Wake-on-LAN para encenderla automáticamente.")
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 14
+                    color: LudeloTheme.textSecondary
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: LudeloTheme.borderSubtle
+                }
+
+                RowLayout {
+                    spacing: 16
+                    Layout.fillWidth: true
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 130
+                        radius: 8
+                        color: Qt.rgba(0.04, 0.06, 0.10, 0.6)
+                        border.color: LudeloTheme.borderSubtle
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 6
+                            Text {
+                                text: qsTr("Dock Flotante en Juego")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                font.weight: Font.Bold
+                                color: LudeloTheme.accentMint
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: qsTr("Mueve el ratón o pulsa L1+R1+L3+R3 en el mando para mostrar el dock con [PS HOME], silencio [M], pantalla completa [F11] y desconexión rápida [ESC].")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 12
+                                color: LudeloTheme.textSecondary
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 130
+                        radius: 8
+                        color: Qt.rgba(0.04, 0.06, 0.10, 0.6)
+                        border.color: LudeloTheme.borderSubtle
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 6
+                            Text {
+                                text: qsTr("HUD de Diagnóstico [TAB]")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                font.weight: Font.Bold
+                                color: LudeloTheme.accentPrimary
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: qsTr("Pulsa la tecla [TAB] para alternar la píldora de telemetría con FPS reales, resolución activa, tasa de bitrate dinámico, RTT/latencia y pérdida de paquetes.")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 12
+                                color: LudeloTheme.textSecondary
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+            }
+
+            // Step 5: Mando y Steam Deck
+            ColumnLayout {
+                visible: walkthroughRoot.currentStep === 4
+                anchors.fill: parent
+                anchors.margins: 32
+                spacing: 16
+
+                RowLayout {
+                    spacing: 12
+                    LPill {
+                        text: qsTr("PASO 5 • MANDOS & STEAM DECK")
+                        dotColor: LudeloTheme.accentMint
+                        glowColor: LudeloTheme.accentMintGlow
+                        showDot: true
+                    }
+                    LPill {
+                        text: qsTr("DUALSENSE 1000HZ")
+                        dotColor: LudeloTheme.accentPrimary
+                        showDot: true
+                    }
+                }
+
+                Text {
+                    text: qsTr("Mando, DualSense y soporte para Steam Deck")
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 22
+                    font.weight: Font.Bold
+                    color: LudeloTheme.textPrimary
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    lineHeight: 1.4
+                    text: qsTr("Ludelo incluye integración SDL avanzada para soportar mandos de PlayStation, Xbox y configuraciones portátiles como Steam Deck y ROG Ally sin drivers adicionales.")
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 14
+                    color: LudeloTheme.textSecondary
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: LudeloTheme.borderSubtle
+                }
+
+                RowLayout {
+                    spacing: 16
+                    Layout.fillWidth: true
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 130
+                        radius: 8
+                        color: Qt.rgba(0.04, 0.06, 0.10, 0.6)
+                        border.color: LudeloTheme.borderSubtle
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 6
+                            Text {
+                                text: qsTr("DualSense Nativo por USB")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                font.weight: Font.Bold
+                                color: LudeloTheme.accentMint
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: qsTr("Conexión a 1000 Hz con soporte directo de gatillos adaptativos, vibración háptica avanzada y emulación del panel táctil con el ratón.")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 12
+                                color: LudeloTheme.textSecondary
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 130
+                        radius: 8
+                        color: Qt.rgba(0.04, 0.06, 0.10, 0.6)
+                        border.color: LudeloTheme.borderSubtle
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 6
+                            Text {
+                                text: qsTr("Steam Deck & Mandos Xbox")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 13
+                                font.weight: Font.Bold
+                                color: LudeloTheme.accentPrimary
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: qsTr("Nomenclatura universal con botones [A] y [B] por posición física, sin confusión de glifos. En Steam Deck puedes crear el acceso directo para Gaming Mode.")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 12
+                                color: LudeloTheme.textSecondary
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
             }
         }
-        
-        // Keyboard and gamepad navigation
-        focus: true
-        Keys.onPressed: (event) => {
-            if (event.key === Qt.Key_Left) {
-                if (walkthroughDialog.currentStep > 0) {
-                    walkthroughDialog.previousStep()
-                    event.accepted = true
-                }
-            } else if (event.key === Qt.Key_Right) {
-                if (walkthroughDialog.currentStep < walkthroughDialog.totalSteps - 1) {
-                    walkthroughDialog.nextStep()
-                    event.accepted = true
-                } else {
-                    walkthroughDialog.close()
-                    event.accepted = true
-                }
-            } else if (event.key === Qt.Key_Escape) {
-                walkthroughDialog.close()
-                event.accepted = true
-            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                walkthroughDialog.nextStep()
-                event.accepted = true
+    }
+
+    // Bottom Footer Navigation Controls
+    Rectangle {
+        id: bottomBar
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 60
+        color: Qt.rgba(0x0B/255, 0x0E/255, 0x14/255, 0.95)
+        border.color: LudeloTheme.borderSubtle
+        border.width: 1
+        z: 20
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 24
+            anchors.rightMargin: 24
+
+            LButton {
+                height: 40
+                customRadius: 8
+                variant: "secondary"
+                text: qsTr("ANTERIOR")
+                keyHint: "[B]"
+                enabled: walkthroughRoot.currentStep > 0
+                onClicked: walkthroughRoot.previousStep()
             }
+
+            Item { Layout.fillWidth: true }
+
+            Text {
+                text: qsTr("Paso %1 de %2").arg(walkthroughRoot.currentStep + 1).arg(walkthroughRoot.totalSteps)
+                font.family: LudeloTheme.fontFamilyMono
+                font.pixelSize: 12
+                color: LudeloTheme.textDim
+            }
+
+            Item { Layout.fillWidth: true }
+
+            LButton {
+                height: 40
+                customRadius: 8
+                variant: walkthroughRoot.currentStep === walkthroughRoot.totalSteps - 1 ? "mint" : "primary"
+                text: walkthroughRoot.currentStep === walkthroughRoot.totalSteps - 1 ? qsTr("FINALIZAR") : qsTr("SIGUIENTE")
+                keyHint: "[A]"
+                onClicked: walkthroughRoot.nextStep()
+            }
+        }
+    }
+
+    // Keyboard & Gamepad navigation
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Escape || event.key === Qt.Key_Back) {
+            walkthroughRoot.close();
+            event.accepted = true;
+        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Right) {
+            walkthroughRoot.nextStep();
+            event.accepted = true;
+        } else if (event.key === Qt.Key_Left) {
+            walkthroughRoot.previousStep();
+            event.accepted = true;
         }
     }
 }

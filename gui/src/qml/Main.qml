@@ -560,6 +560,10 @@ Item {
                 errorHideTimer.interval = durationMs;
         }
 
+        function onPsnLoginAccountIdError(error) {
+            root.showToast(qsTr("Login Notice"), error, "#F44336");
+        }
+
         function onPsnGamesSynced(newGamesCount) {
             var msg = newGamesCount === 1 
                 ? qsTr("1 game added") 

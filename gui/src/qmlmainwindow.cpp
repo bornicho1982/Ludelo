@@ -262,6 +262,20 @@ void QmlMainWindow::captureMouse()
     emit mouseCapturedChanged();
 }
 
+bool QmlMainWindow::startDrag()
+{
+    return startSystemMove();
+}
+
+void QmlMainWindow::toggleMaximize()
+{
+    if (windowState() == Qt::WindowMaximized) {
+        showNormal();
+    } else {
+        showMaximized();
+    }
+}
+
 bool QmlMainWindow::directStream() const
 {
     return direct_stream;
@@ -421,6 +435,7 @@ AVBufferRef *QmlMainWindow::vulkanHwDeviceCtx()
 void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit, SteamworksWrapper *steamworks)
 {
     setSurfaceType(QWindow::VulkanSurface);
+    setFlags(flags() | Qt::FramelessWindowHint);
 
     const char *vk_exts[] = {
         nullptr,

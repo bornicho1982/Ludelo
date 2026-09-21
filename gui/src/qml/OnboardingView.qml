@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Effects
 import Ludelo 1.0
+import org.streetpea.chiaking
 import "components"
 
 Item {
@@ -14,60 +15,106 @@ Item {
     anchors.fill: parent
     focus: true
 
-    // Background Void #0B0E14
+    // Living Ambient Indigo & Cyan Atmosphere
     Rectangle {
         id: bgVoid
         anchors.fill: parent
-        color: LudeloTheme.bgBase
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "#07090E" }
+            GradientStop { position: 0.45; color: "#0F131D" }
+            GradientStop { position: 1.0; color: "#0B0E14" }
+        }
         z: -10
 
-        // Central Atmospheric Radial Indigo Glow
+        // Central Atmospheric Radial Indigo Glow (Breathing Animation)
         Rectangle {
             id: centerGlow
             anchors.centerIn: parent
-            width: Math.min(parent.width * 0.7, 900)
-            height: Math.min(parent.height * 0.7, 750)
+            width: Math.min(parent.width * 0.75, 960)
+            height: Math.min(parent.height * 0.75, 800)
             radius: width / 2
-            color: Qt.rgba(0x6C/255, 0x5C/255, 0xE7/255, 0.12)
+            color: Qt.rgba(0x6C/255, 0x5C/255, 0xE7/255, 0.22)
             z: 1
+
+            SequentialAnimation on scale {
+                loops: Animation.Infinite
+                NumberAnimation { from: 1.0; to: 1.14; duration: 6500; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 1.14; to: 1.0; duration: 6500; easing.type: Easing.InOutSine }
+            }
+
+            SequentialAnimation on opacity {
+                loops: Animation.Infinite
+                NumberAnimation { from: 0.16; to: 0.28; duration: 6500; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 0.28; to: 0.16; duration: 6500; easing.type: Easing.InOutSine }
+            }
         }
 
-        // Corner Subtle Mint Cyan Aura
+        // Top-Right Subtle Cyan Aura (Breathing Animation)
         Rectangle {
             anchors.top: parent.top
             anchors.right: parent.right
-            width: 450
-            height: 450
-            radius: 225
-            color: Qt.rgba(0x00/255, 0xF5/255, 0xD4/255, 0.04)
+            anchors.topMargin: -80
+            anchors.rightMargin: -80
+            width: 520
+            height: 520
+            radius: 260
+            color: Qt.rgba(0x00/255, 0xF5/255, 0xD4/255, 0.06)
             z: 1
+
+            SequentialAnimation on opacity {
+                loops: Animation.Infinite
+                NumberAnimation { from: 0.03; to: 0.07; duration: 8000; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 0.07; to: 0.03; duration: 8000; easing.type: Easing.InOutSine }
+            }
+        }
+
+        // Bottom-Left Deep Violet Aura (Breathing Animation)
+        Rectangle {
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.bottomMargin: -60
+            anchors.leftMargin: -60
+            width: 480
+            height: 480
+            radius: 240
+            color: Qt.rgba(0x48/255, 0x34/255, 0xD4/255, 0.08)
+            z: 1
+
+            SequentialAnimation on opacity {
+                loops: Animation.Infinite
+                NumberAnimation { from: 0.04; to: 0.10; duration: 7500; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 0.10; to: 0.04; duration: 7500; easing.type: Easing.InOutSine }
+            }
         }
     }
 
-    // Top Bar
+    // Top Bar (Telemetry pills hidden in Onboarding)
     LTopBar {
         id: topBar
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
+        showTelemetry: false
         onSettingsClicked: {
             if (typeof root !== "undefined" && root.showSettingsDialog) {
                 root.showSettingsDialog();
             }
         }
         onMinimizeClicked: {
-            if (Chiaki && Chiaki.window) Chiaki.window.showMinimized();
+            if (typeof Chiaki !== "undefined" && Chiaki.window) Chiaki.window.showMinimized();
         }
         onMaximizeClicked: {
-            if (Chiaki && Chiaki.window) {
-                if (Chiaki.window.visibility === Window.Maximized)
+            if (typeof Chiaki !== "undefined" && Chiaki.window) {
+                if (typeof Chiaki.window.toggleMaximize === "function")
+                    Chiaki.window.toggleMaximize();
+                else if (Chiaki.window.visibility === Window.Maximized)
                     Chiaki.window.showNormal();
                 else
                     Chiaki.window.showMaximized();
             }
         }
         onCloseClicked: {
-            if (Chiaki && Chiaki.window) Chiaki.window.close();
+            if (typeof Chiaki !== "undefined" && Chiaki.window) Chiaki.window.close();
         }
     }
 
@@ -77,15 +124,15 @@ Item {
         anchors.centerIn: parent
         anchors.verticalCenterOffset: -8
         width: Math.min(parent.width - 48, 640)
-        height: Math.min(parent.height - topBar.height - footerHUD.height - 40, 600)
+        height: Math.min(parent.height - topBar.height - footerHUD.height - 40, 620)
 
         // Outer Glow Aura
         Rectangle {
             anchors.fill: parent
-            anchors.margins: -12
-            radius: LudeloTheme.radiusDialog + 12
+            anchors.margins: -14
+            radius: LudeloTheme.radiusDialog + 14
             color: LudeloTheme.accentGlow
-            opacity: 0.55
+            opacity: 0.60
             z: -1
         }
 
@@ -114,33 +161,34 @@ Item {
                 anchors.margins: 36
                 spacing: 16
 
-                // Hexagonal Logo Emblem with Halo
+                // High-Presence Brand Logo Emblem with Glowing Halo
                 Item {
                     Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: 64
-                    Layout.preferredHeight: 64
+                    Layout.preferredWidth: 76
+                    Layout.preferredHeight: 76
 
                     Rectangle {
                         anchors.fill: parent
-                        anchors.margins: -6
-                        radius: 18
+                        anchors.margins: -8
+                        radius: 24
                         color: LudeloTheme.accentGlow
-                        opacity: 0.65
+                        opacity: 0.70
                     }
 
                     Rectangle {
                         anchors.fill: parent
-                        radius: 14
+                        radius: 18
                         color: LudeloTheme.bgElevated
                         border.color: LudeloTheme.accentPrimary
                         border.width: 1.5
 
                         Image {
                             anchors.centerIn: parent
-                            width: 32
-                            height: 32
-                            source: "qrc:/icons/logo_square_1024.png"
+                            width: 46
+                            height: 46
+                            source: "qrc:/icons/ludelo_logo.svg"
                             fillMode: Image.PreserveAspectFit
+                            smooth: true
                         }
                     }
                 }
@@ -253,7 +301,7 @@ Item {
         }
     }
 
-    // Bottom Gamepad Telemetry & Navigation HUD Footer
+    // Contextual Footer HUD (Cleaned: Only [A] SELECT and [ESC] SKIP)
     Rectangle {
         id: footerHUD
         anchors.bottom: parent.bottom
@@ -269,7 +317,7 @@ Item {
             anchors.leftMargin: 24
             anchors.rightMargin: 24
 
-            // Left: Controller Quick Navigation Prompts
+            // Left: Clean Contextual Navigation Prompts
             Row {
                 Layout.alignment: Qt.AlignVCenter
                 spacing: 16
@@ -289,61 +337,33 @@ Item {
                 Row {
                     spacing: 6
                     Rectangle {
-                        width: 20; height: 20; radius: 4
+                        width: 28; height: 20; radius: 4
                         color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
-                        Text { anchors.centerIn: parent; text: "B"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.textSecondary }
+                        Text { anchors.centerIn: parent; text: "ESC"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textSecondary }
                     }
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("BACK"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
-                }
-
-                Row {
-                    spacing: 6
-                    Rectangle {
-                        width: 20; height: 20; radius: 4
-                        color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
-                        Text { anchors.centerIn: parent; text: "Y"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; font.weight: Font.Bold; color: LudeloTheme.textSecondary }
-                    }
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("MANUAL IP"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
-                }
-
-                Row {
-                    spacing: 6
-                    Rectangle {
-                        width: 52; height: 20; radius: 4
-                        color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
-                        Text { anchors.centerIn: parent; text: "OPTIONS"; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textSecondary }
-                    }
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("SETTINGS"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("SKIP"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 11; color: LudeloTheme.textSecondary }
                 }
             }
 
             Item { Layout.fillWidth: true } // Spacer
 
-            // Right: Streaming Engine Telemetry Beacon
+            // Right: Subtle Client Metadata (No fake telemetry pills)
             Row {
                 Layout.alignment: Qt.AlignVCenter
                 spacing: 10
 
                 Text {
-                    text: qsTr("Ludelo Remote Play Client • Direct P2P Protocol |")
+                    text: qsTr("Ludelo Remote Play Client v2.4 • Direct P2P Protocol")
                     font.family: LudeloTheme.fontFamilyMono
                     font.pixelSize: 11
                     color: LudeloTheme.textDim
                     anchors.verticalCenter: parent.verticalCenter
                 }
-
-                LPill {
-                    text: qsTr("DIRECT P2P STREAM READY")
-                    dotColor: LudeloTheme.accentMint
-                    glowColor: LudeloTheme.accentMintGlow
-                    showDot: true
-                    pulseDot: true
-                }
             }
         }
     }
 
-    // Connect to Chiaki Login Signal
+    // Connect to Chiaki Login Signals
     Connections {
         target: Chiaki
         function onPsnLoginAccountIdDone(accountId) {
@@ -351,9 +371,14 @@ Item {
                 onboardingRoot.loginCompleted(accountId);
             }
         }
+        function onPsnLoginAccountIdError(error) {
+            if (typeof root !== "undefined" && root.showToast) {
+                root.showToast(qsTr("Login Notice"), error, "#F44336");
+            }
+        }
     }
 
-    // Gamepad Key Navigation Handling
+    // Gamepad / Keyboard Navigation Handling
     Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
             signInButton.clicked();
