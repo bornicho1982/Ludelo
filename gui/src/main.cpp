@@ -52,6 +52,9 @@ int main(int argc, char *argv[]) { return real_main(argc, argv); }
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QFile>
+#include <QDirIterator>
+#include <QSet>
 
 Q_DECLARE_METATYPE(ChiakiLogLevel)
 Q_DECLARE_METATYPE(ChiakiRegistEventType)
@@ -304,6 +307,40 @@ int real_main(int argc, char *argv[])
 			QStringLiteral("qrc:/ConsoleSetupWalkthrough.qml")
 		};
 		bool all_ok = true;
+
+		// Static analysis: verify that every .qml containing "Chiaki." imports "org.streetpea.chiaking"
+		printf("--- Static Analysis: Verifying 'import org.streetpea.chiaking' in QML files ---\n");
+		QSet<QString> qml_files_to_check;
+		for (const auto &comp_url : qml_components) {
+			QString path = comp_url;
+			if (path.startsWith(QStringLiteral("qrc:")))
+				path = path.mid(3); // "qrc:/foo" -> ":/foo"
+			qml_files_to_check.insert(path);
+		}
+		QDirIterator it(QStringLiteral(":/"), {QStringLiteral("*.qml")}, QDir::Files, QDirIterator::Subdirectories);
+		while (it.hasNext()) {
+			qml_files_to_check.insert(it.next());
+		}
+
+		int static_checked_count = 0;
+		for (const QString &qml_res_path : qml_files_to_check) {
+			QFile f(qml_res_path);
+			if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+				QString content = QString::fromUtf8(f.readAll());
+				f.close();
+				static_checked_count++;
+				if (content.contains(QStringLiteral("Chiaki.")) && !content.contains(QStringLiteral("import org.streetpea.chiaking"))) {
+					fprintf(stderr, "[STATIC CHECK FAILED] %s uses 'Chiaki.' but lacks 'import org.streetpea.chiaking'!\n", qPrintable(qml_res_path));
+					all_ok = false;
+				}
+			}
+		}
+		if (all_ok) {
+			printf("[STATIC CHECK OK] Verified %d QML files for required singleton imports.\n", static_checked_count);
+		} else {
+			fprintf(stderr, "[STATIC CHECK ERROR] One or more QML files use 'Chiaki.' without 'import org.streetpea.chiaking'!\n");
+		}
+
 		for (const auto &comp_url : qml_components) {
 			QQmlComponent c(engine, QUrl(comp_url));
 			if (!c.isReady()) {

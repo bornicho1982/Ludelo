@@ -246,3 +246,12 @@
     - En `QmlMainWindow::startDrag`: añadido log del resultado retornado por `startSystemMove()`.
   - Validación 100% exitosa: 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, empaquetado y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).
 
+- **GATEKEEPER ESTÁTICO DE IMPORTS EN --validate-qml (22/09/2026)**:
+  - **Problema de Proceso**: Las guardias `typeof Chiaki !== "undefined"` ocultan fallos silenciosos en runtime cuando se omite `import org.streetpea.chiaking`.
+  - **Detección Preventiva Inmediata**:
+    - Añadido `import org.streetpea.chiaking` a `LudeloTheme.qml`, que contenía referencias a `Chiaki.isGamepadActive`, `Chiaki.inputMode`, `Chiaki.getKeyHint` sin el import correspondiente.
+  - **Implementación del Gatekeeper en C++ (`gui/src/main.cpp`)**:
+    - En el flujo de `--validate-qml`, se escanean todos los archivos `.qml` incrustados en recursos (`:/` y lista de componentes).
+    - Si cualquier `.qml` contiene `"Chiaki."` y carece de `"import org.streetpea.chiaking"`, el validador emite `[STATIC CHECK FAILED]` y termina inmediatamente con **Exit Code 1**, bloqueando el despliegue y la build.
+    - Probado empíricamente provocando fallo forzado (Exit Code 1) y posterior verificación con los 51 componentes QML validados limpiamente (Exit Code 0).
+

@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import org.streetpea.chiaking
 
 QtObject {
     // Backgrounds
