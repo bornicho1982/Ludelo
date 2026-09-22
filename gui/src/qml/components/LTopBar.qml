@@ -43,7 +43,6 @@ Rectangle {
             if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
                 Chiaki.window.toggleMaximize();
             }
-            topBarRoot.maximizeClicked();
         }
     }
 
@@ -186,7 +185,6 @@ Rectangle {
                     anchors.fill: parent
                     hoverEnabled: true
                     onClicked: {
-                        topBarRoot.minimizeClicked();
                         if (typeof Chiaki !== "undefined" && Chiaki.window) Chiaki.window.showMinimized();
                     }
                 }
@@ -200,7 +198,7 @@ Rectangle {
                 color: maxMouse.containsMouse ? Qt.rgba(1.0, 1.0, 1.0, 0.08) : "transparent"
                 Text {
                     anchors.centerIn: parent
-                    text: "□"
+                    text: (typeof Chiaki !== "undefined" && Chiaki.window && Chiaki.window.visibility === Window.Maximized) ? "❐" : "□"
                     font.pixelSize: 14
                     color: LudeloTheme.textSecondary
                 }
@@ -209,14 +207,9 @@ Rectangle {
                     anchors.fill: parent
                     hoverEnabled: true
                     onClicked: {
-                        topBarRoot.maximizeClicked();
-                        if (typeof Chiaki !== "undefined" && Chiaki.window) {
-                            if (typeof Chiaki.window.toggleMaximize === "function")
-                                Chiaki.window.toggleMaximize();
-                            else if (Chiaki.window.windowState === Qt.WindowMaximized)
-                                Chiaki.window.showNormal();
-                            else
-                                Chiaki.window.showMaximized();
+                        console.log("[window] LTopBar maxButton clicked, visibility:", (typeof Chiaki !== "undefined" && Chiaki.window) ? Chiaki.window.visibility : "unknown");
+                        if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
+                            Chiaki.window.toggleMaximize();
                         }
                     }
                 }
@@ -239,7 +232,6 @@ Rectangle {
                     anchors.fill: parent
                     hoverEnabled: true
                     onClicked: {
-                        topBarRoot.closeClicked();
                         if (typeof Chiaki !== "undefined" && Chiaki.window) Chiaki.window.close();
                     }
                 }

@@ -253,5 +253,13 @@
   - **Implementación del Gatekeeper en C++ (`gui/src/main.cpp`)**:
     - En el flujo de `--validate-qml`, se escanean todos los archivos `.qml` incrustados en recursos (`:/` y lista de componentes).
     - Si cualquier `.qml` contiene `"Chiaki."` y carece de `"import org.streetpea.chiaking"`, el validador emite `[STATIC CHECK FAILED]` y termina inmediatamente con **Exit Code 1**, bloqueando el despliegue y la build.
-    - Probado empíricamente provocando fallo forzado (Exit Code 1) y posterior verificación con los 51 componentes QML validados limpiamente (Exit Code 0).
-
+- **RONDA FINAL — PANTALLA 01 (BOTÓN MAXIMIZAR/RESTAURAR RESUELTO, DETECCIÓN DUAL WIN32/QT Y ICONO DINÁMICO) (22/09/2026)**:
+  - **Causa Raíz Identificada del Botón Maximizar No Operativo**:
+    - Doble disparo simultáneo (`toggleMaximize()` invocado 2 veces en 0ms): `LTopBar.qml` ejecutaba `Chiaki.window.toggleMaximize()` y a continuación `topBarRoot.maximizeClicked()`, el cual a su vez estaba conectado en `OnboardingView.qml` llamando nuevamente a `toggleMaximize()`, maximizando y restaurando en el mismo ciclo sin efecto perceptible.
+    - Detección de estado insuficiente: `windowStates().testFlag(Qt::WindowMaximized)` puede devolver falso en ventanas frameless tras transiciones de DWM / Aero Snap.
+  - **Acciones Implementadas**:
+    - En `LTopBar.qml`: eliminadas las llamadas redundantes a señales (`maximizeClicked()`, `minimizeClicked()`, `closeClicked()`) dentro de los manejadores de clic de los botones, centralizando el control en las llamadas directas a la ventana.
+    - En `OnboardingView.qml`: eliminados los manejadores redundantes `onMaximizeClicked`, `onMinimizeClicked` y `onCloseClicked`.
+    - En `QmlMainWindow::toggleMaximize()`: comprobación multivariante de máxima prioridad usando `visibility() == QWindow::Maximized` y la API nativa de Windows `IsZoomed(hwnd)` junto a `windowState()`, garantizando detección fidedigna del estado maximizado tras cualquier manipulación de snap o clic.
+    - En `LTopBar.qml` y `MainView.qml`: icono dinámico de botón de maximizar que conmuta reactivamente entre `"❐"` (restaurar cuando `visibility === Window.Maximized`) y `"□"` (maximizar cuando está en tamaño normal).
+  - Validación 100% exitosa: 51 componentes QML escaneados por gatekeeper estático, 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, compilación limpia y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).

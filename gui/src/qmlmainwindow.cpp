@@ -297,7 +297,19 @@ bool QmlMainWindow::startResize(int edges)
 
 void QmlMainWindow::toggleMaximize()
 {
-    if (windowState() == Qt::WindowMaximized || windowStates().testFlag(Qt::WindowMaximized)) {
+#ifdef Q_OS_WIN
+    HWND hwnd = reinterpret_cast<HWND>(winId());
+    bool is_max = (visibility() == QWindow::Maximized) || (hwnd && IsZoomed(hwnd)) || (windowState() == Qt::WindowMaximized) || windowStates().testFlag(Qt::WindowMaximized);
+    spdlog::info("[window] toggleMaximize invoked. is_max: {}, visibility: {}, IsZoomed: {}, windowState: {}",
+                 is_max, static_cast<int>(visibility()), (hwnd ? IsZoomed(hwnd) : false), static_cast<int>(windowState()));
+    qCInfo(chiakiGui) << "[window] toggleMaximize invoked. is_max:" << is_max << "visibility:" << visibility();
+#else
+    bool is_max = (visibility() == QWindow::Maximized) || (windowState() == Qt::WindowMaximized) || windowStates().testFlag(Qt::WindowMaximized);
+    spdlog::info("[window] toggleMaximize invoked. is_max: {}, visibility: {}", is_max, static_cast<int>(visibility()));
+    qCInfo(chiakiGui) << "[window] toggleMaximize invoked. is_max:" << is_max;
+#endif
+
+    if (is_max) {
         showNormal();
     } else {
         showMaximized();

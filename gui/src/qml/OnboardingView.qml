@@ -100,22 +100,6 @@ Item {
                 root.showSettingsDialog();
             }
         }
-        onMinimizeClicked: {
-            if (typeof Chiaki !== "undefined" && Chiaki.window) Chiaki.window.showMinimized();
-        }
-        onMaximizeClicked: {
-            if (typeof Chiaki !== "undefined" && Chiaki.window) {
-                if (typeof Chiaki.window.toggleMaximize === "function")
-                    Chiaki.window.toggleMaximize();
-                else if (Chiaki.window.visibility === Window.Maximized)
-                    Chiaki.window.showNormal();
-                else
-                    Chiaki.window.showMaximized();
-            }
-        }
-        onCloseClicked: {
-            if (typeof Chiaki !== "undefined" && Chiaki.window) Chiaki.window.close();
-        }
     }
 
     // Center Hero Onboarding Card (Positioned safely between topBar and footerHUD)

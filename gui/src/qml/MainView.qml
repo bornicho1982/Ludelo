@@ -485,7 +485,7 @@ Pane {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "□"
+                        text: (typeof Chiaki !== "undefined" && Chiaki.window && Chiaki.window.visibility === Window.Maximized) ? "❐" : "□"
                         font.pixelSize: 14
                         color: maxMouse.containsMouse ? LudeloTheme.textPrimary : LudeloTheme.textSecondary
                     }
@@ -496,11 +496,9 @@ Pane {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (typeof Chiaki !== "undefined" && Chiaki.window) {
-                                if (typeof Chiaki.window.toggleMaximize === "function")
-                                    Chiaki.window.toggleMaximize();
-                                else
-                                    Chiaki.window.showMaximized();
+                            console.log("[window] MainView maxButton onClicked, visibility:", (typeof Chiaki !== "undefined" && Chiaki.window) ? Chiaki.window.visibility : "unknown");
+                            if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
+                                Chiaki.window.toggleMaximize();
                             }
                         }
                     }
