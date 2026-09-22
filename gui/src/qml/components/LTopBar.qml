@@ -49,9 +49,10 @@ Rectangle {
         spacing: 16
 
         // Brand Emblem & Title (Draggable)
-        Row {
+        Item {
             Layout.alignment: Qt.AlignVCenter
-            spacing: 12
+            implicitWidth: brandRow.implicitWidth
+            implicitHeight: 36
 
             MouseArea {
                 anchors.fill: parent
@@ -69,44 +70,50 @@ Rectangle {
                 }
             }
 
-            // Hexagon Icon / Logo Emblem
-            Rectangle {
-                width: 34
-                height: 34
-                radius: 8
-                color: LudeloTheme.bgElevated
-                border.color: LudeloTheme.borderHover
-                border.width: 1
+            Row {
+                id: brandRow
                 anchors.verticalCenter: parent.verticalCenter
+                spacing: 12
 
-                Image {
-                    anchors.centerIn: parent
-                    width: 22
-                    height: 22
-                    source: "qrc:/icons/ludelo_logo.svg"
-                    fillMode: Image.PreserveAspectFit
-                }
-            }
+                // Hexagon Icon / Logo Emblem
+                Rectangle {
+                    width: 34
+                    height: 34
+                    radius: 8
+                    color: LudeloTheme.bgElevated
+                    border.color: LudeloTheme.borderHover
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
 
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 1
-
-                Text {
-                    text: "LUDELO"
-                    font.family: LudeloTheme.fontFamily
-                    font.pixelSize: 15
-                    font.weight: Font.Bold
-                    color: LudeloTheme.textPrimary
-                    font.letterSpacing: 1.5
+                    Image {
+                        anchors.centerIn: parent
+                        width: 22
+                        height: 22
+                        source: "qrc:/icons/ludelo_logo.svg"
+                        fillMode: Image.PreserveAspectFit
+                    }
                 }
 
-                Text {
-                    text: "REMOTE PLAY CLIENT v2.4"
-                    font.family: LudeloTheme.fontFamilyMono
-                    font.pixelSize: 9
-                    color: LudeloTheme.textDim
-                    font.letterSpacing: 0.8
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 1
+
+                    Text {
+                        text: "LUDELO"
+                        font.family: LudeloTheme.fontFamily
+                        font.pixelSize: 15
+                        font.weight: Font.Bold
+                        color: LudeloTheme.textPrimary
+                        font.letterSpacing: 1.5
+                    }
+
+                    Text {
+                        text: "REMOTE PLAY CLIENT v2.4"
+                        font.family: LudeloTheme.fontFamilyMono
+                        font.pixelSize: 9
+                        color: LudeloTheme.textDim
+                        font.letterSpacing: 0.8
+                    }
                 }
             }
         }

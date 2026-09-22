@@ -82,23 +82,40 @@ QtObject {
     readonly property bool isGamepad: (typeof Chiaki !== "undefined" && Chiaki.isGamepadActive)
     readonly property string inputMode: (typeof Chiaki !== "undefined" ? Chiaki.inputMode : "keyboard")
 
+    // Reactive precalculated properties (automatically notify and repaint QML bindings)
+    readonly property string hintSelect: isGamepad ? "[A]" : "[ENTER]"
+    readonly property string hintSelectKey: isGamepad ? "A" : "ENTER"
+    readonly property string hintSkip: isGamepad ? "[B]" : "[ESC]"
+    readonly property string hintSkipKey: isGamepad ? "B" : "ESC"
+    readonly property string hintBack: isGamepad ? "[B]" : "[ESC]"
+    readonly property string hintBackKey: isGamepad ? "B" : "ESC"
+    readonly property string hintWake: isGamepad ? "[Y]" : "[Y]"
+    readonly property string hintWakeKey: isGamepad ? "Y" : "Y"
+    readonly property string hintSettings: isGamepad ? "[START]" : "[F10]"
+    readonly property string hintSettingsKey: isGamepad ? "START" : "F10"
+    readonly property string hintDetails: isGamepad ? "[X]" : "[X]"
+    readonly property string hintDetailsKey: isGamepad ? "X" : "X"
+    readonly property string hintNavKey: isGamepad ? "LB/RB" : "Q/E"
+
     function hint(action) {
-        var gp = isGamepad; // Force QML binding re-evaluation on change
+        var _gp = isGamepad;
+        var _m = inputMode;
         if (typeof Chiaki !== "undefined" && typeof Chiaki.getKeyHint === "function") {
             return Chiaki.getKeyHint(action);
         }
         var rawHint = hintKey(action);
-        return gp ? "[" + rawHint + "]" : rawHint;
+        return _gp ? "[" + rawHint + "]" : rawHint;
     }
 
     function hintKey(action) {
-        var gp = isGamepad; // Force QML binding re-evaluation on change
+        var _gp = isGamepad;
+        var _m = inputMode;
         if (typeof Chiaki !== "undefined" && typeof Chiaki.getKeyHintRaw === "function") {
             return Chiaki.getKeyHintRaw(action);
         }
         var act = action.toLowerCase().trim();
         if (act === "b" || act === "circle" || act === "moon" || act === "back" || act === "cancel" || act === "skip" || act === "close" || act === "esc") {
-            return gp ? "B" : "ESC";
+            return _gp ? "B" : "ESC";
         }
         if (act === "x" || act === "box" || act === "square" || act === "details" || act === "reset" || act === "favorite") {
             return "X";
@@ -108,8 +125,8 @@ QtObject {
             return "Y";
         }
         if (act === "start" || act === "options" || act === "settings" || act === "menu" || act === "sort") {
-            return gp ? "START" : "F10";
+            return _gp ? "START" : "F10";
         }
-        return gp ? "A" : "ENTER";
+        return _gp ? "A" : "ENTER";
     }
 }

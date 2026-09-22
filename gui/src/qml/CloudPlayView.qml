@@ -1020,25 +1020,25 @@ Pane {
 
                     Row {
                         spacing: 6
-                        Label { text: LudeloTheme.hint("select"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
+                        Label { text: LudeloTheme.hintSelect; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
                         Label { text: qsTr("PLAY / STORE"); font.family: LudeloTheme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; color: LudeloTheme.textSecondary }
                     }
 
                     Row {
                         spacing: 6
-                        Label { text: LudeloTheme.hint("details"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
+                        Label { text: LudeloTheme.hintDetails; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
                         Label { text: qsTr("FAVORITE"); font.family: LudeloTheme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; color: LudeloTheme.textSecondary }
                     }
 
                     Row {
                         spacing: 6
-                        Label { text: LudeloTheme.hint("search"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
+                        Label { text: LudeloTheme.isGamepad ? "[Y]" : "[F5]"; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
                         Label { text: qsTr("SEARCH"); font.family: LudeloTheme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; color: LudeloTheme.textSecondary }
                     }
 
                     Row {
                         spacing: 6
-                        Label { text: LudeloTheme.hint("sort"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
+                        Label { text: LudeloTheme.hintSettings; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
                         Label { text: qsTr("SORT"); font.family: LudeloTheme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; color: LudeloTheme.textSecondary }
                     }
                 }

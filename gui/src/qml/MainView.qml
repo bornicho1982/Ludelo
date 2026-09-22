@@ -1196,7 +1196,7 @@ Pane {
                             if (!hostData.registered) return qsTr("PAIR CONSOLE");
                             return qsTr("CONNECT");
                         }
-                        keyHint: hostData.state === "standby" ? (LudeloTheme.hint("wake") + " WAKE") : (LudeloTheme.hint("select") + " CONNECT")
+                        keyHint: hostData.state === "standby" ? (LudeloTheme.hintWake + " WAKE") : (LudeloTheme.hintSelect + " CONNECT")
                         onClicked: {
                             if (hostData.state === "standby")
                                 cardDelegateRoot.wakeUpHost();
@@ -1469,7 +1469,7 @@ Pane {
                         height: 40
                         variant: "ghost"
                         text: qsTr("STREAM PREFERENCES")
-                        keyHint: LudeloTheme.hint("settings")
+                        keyHint: LudeloTheme.hintSettings
                         onClicked: root.showSettingsDialog()
                     }
                 }
@@ -1509,7 +1509,7 @@ Pane {
                     spacing: 6
                     Rectangle {
                         width: Math.max(20, aKeyText.implicitWidth + 8); height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
-                        Text { id: aKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("select"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
+                        Text { id: aKeyText; anchors.centerIn: parent; text: LudeloTheme.hintSelectKey; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
                     }
                     Text { text: qsTr("SELECT"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }
@@ -1519,7 +1519,7 @@ Pane {
                     spacing: 6
                     Rectangle {
                         width: Math.max(20, yKeyText.implicitWidth + 8); height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
-                        Text { id: yKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("wake"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.warn }
+                        Text { id: yKeyText; anchors.centerIn: parent; text: LudeloTheme.hintWakeKey; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.warn }
                     }
                     Text { text: qsTr("WAKE"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }
@@ -1529,7 +1529,7 @@ Pane {
                     spacing: 6
                     Rectangle {
                         width: Math.max(20, xKeyText.implicitWidth + 8); height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
-                        Text { id: xKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("details"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentPrimary }
+                        Text { id: xKeyText; anchors.centerIn: parent; text: LudeloTheme.hintDetailsKey; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentPrimary }
                     }
                     Text { text: qsTr("DETAILS"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }
@@ -1539,7 +1539,7 @@ Pane {
                     spacing: 6
                     Rectangle {
                         width: Math.max(20, bKeyText.implicitWidth + 8); height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
-                        Text { id: bKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("back"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.error }
+                        Text { id: bKeyText; anchors.centerIn: parent; text: LudeloTheme.hintBackKey; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.error }
                     }
                     Text { text: qsTr("BACK"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }
@@ -1549,7 +1549,7 @@ Pane {
                     spacing: 6
                     Rectangle {
                         width: Math.max(20, startKeyText.implicitWidth + 8); height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
-                        Text { id: startKeyText; anchors.centerIn: parent; text: LudeloTheme.hintKey("settings"); font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
+                        Text { id: startKeyText; anchors.centerIn: parent; text: LudeloTheme.hintSettingsKey; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                     }
                     Text { text: qsTr("SETTINGS"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }

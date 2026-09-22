@@ -142,6 +142,7 @@ private:
     bool handleShortcut(QKeyEvent *event);
     bool event(QEvent *event) override;
     QObject *focusObject() const override;
+    void applyNativeWin32FramelessStyles();
 
     bool has_video = false;
     bool was_maximized = false;
@@ -160,6 +161,10 @@ private:
     float zoom_factor = 0;
     VideoPreset video_preset = VideoPreset::HighQuality;
     Settings *settings = {};
+
+    QPoint m_lastMousePos;
+    bool m_lastMousePosSet = false;
+    bool m_wasGamepadActive = false;
 
     QmlBackend *backend = {};
     StreamSession *session = {};

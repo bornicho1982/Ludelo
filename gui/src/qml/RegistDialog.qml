@@ -869,7 +869,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 46
                         variant: canRegister ? "mint" : "secondary"
-                        keyHint: LudeloTheme.hint("select")
+                        keyHint: "[A]"
                         text: isRegistering ? qsTr("PAIRING CONSOLE...") : qsTr("REGISTER & PAIR CONSOLE")
                         enabled: canRegister
                         onClicked: executeRegistration()
@@ -879,7 +879,7 @@ Item {
                         Layout.preferredWidth: 120
                         Layout.preferredHeight: 46
                         variant: "ghost"
-                        keyHint: LudeloTheme.hint("back")
+                        keyHint: "[B]"
                         text: qsTr("CANCEL")
                         enabled: !isRegistering
                         onClicked: registRoot.close()

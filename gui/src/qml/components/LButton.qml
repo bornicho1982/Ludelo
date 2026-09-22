@@ -9,13 +9,14 @@ Button {
     property string variant: "primary" // "primary", "secondary", "ghost", "danger", "mint"
     property string keyHint: ""
     readonly property string displayKeyHint: {
+        var _m = LudeloTheme.inputMode; // Explicit reactive dependency tracking
         if (!keyHint || keyHint === "") return "";
-        if (keyHint === "[A]" || keyHint === "A") return LudeloTheme.hint("select");
-        if (keyHint === "[B]" || keyHint === "B") return LudeloTheme.hint("back");
-        if (keyHint === "[X]" || keyHint === "X") return LudeloTheme.hint("details");
-        if (keyHint === "[Y]" || keyHint === "Y") return LudeloTheme.hint("wake");
-        if (keyHint === "[ESC]" || keyHint === "ESC") return LudeloTheme.hint("back");
-        if (keyHint === "[START]" || keyHint === "START") return LudeloTheme.hint("settings");
+        if (keyHint === "[A]" || keyHint === "A") return LudeloTheme.hintSelect;
+        if (keyHint === "[B]" || keyHint === "B") return LudeloTheme.hintBack;
+        if (keyHint === "[X]" || keyHint === "X") return LudeloTheme.hintDetails;
+        if (keyHint === "[Y]" || keyHint === "Y") return LudeloTheme.hintWake;
+        if (keyHint === "[ESC]" || keyHint === "ESC") return LudeloTheme.hintBack;
+        if (keyHint === "[START]" || keyHint === "START") return LudeloTheme.hintSettings;
         if (keyHint === "[TAB]" || keyHint === "TAB") return LudeloTheme.hint("stats");
         return keyHint;
     }

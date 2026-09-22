@@ -216,3 +216,21 @@
   - **Punto 4 · Limpieza de warning de StackView**:
     - En `OnboardingView.qml`: eliminado `anchors.fill: parent` del Item raíz, erradicando el warning "StackView has detected conflicting anchors".
   - Validación 100% exitosa: 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, empaquetado y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).
+
+- **RONDA 5 — PANTALLA 01 (REACTIVIDAD HINTS QML, HISTÉRESIS DE MOUSE, RESIZE MULTI-EJE Y WIN32 AERO SNAP) (22/09/2026)**:
+  - **Punto 1 · Reactividad garantizada de Hints en QML**:
+    - Centralizadas propiedades precalculadas nativas con `NOTIFY` en `LudeloTheme.qml`: `hintSelect`, `hintSelectKey`, `hintSkip`, `hintSkipKey`, `hintBack`, `hintBackKey`, `hintWake`, `hintWakeKey`, `hintSettings`, `hintSettingsKey`, `hintDetails`, `hintDetailsKey`, `hintNavKey`.
+    - `LButton.displayKeyHint` y los chips/textos de footers de todas las pantallas (`OnboardingView`, `MainView`, `AccountView`, `SettingsDialog`, `CloudPlayView`, `RegistDialog`) enlazados a estas propiedades directas y con seguimiento reactivo explícito (`var _m = LudeloTheme.inputMode`), garantizando repintado visual inmediato e instantáneo entre teclado y mando.
+  - **Punto 2 · Histéresis contra Flicker de Modos (GamePad ↔ Keyboard)**:
+    - En `QmlMainWindow::event`: implementado filtro con distancia Manhattan (>5px) y detección de botón pulsado. Micro-movimientos de ratón y vibraciones de mando en reposo sobre el escritorio no conmutan a modo teclado, erradicando el flicker de 4ms detectado en los logs.
+  - **Punto 3 · Redimensionado Multidireccional y Zonas de Agarre**:
+    - En `Main.qml`: aumentado el grosor de bordes a 8px y esquinas a 24px en `resizeBorders`. Vinculado explícito de `root.width` y `root.height` al tamaño de `Chiaki.window`.
+    - Añadido log detallado en `onPressed` de cada una de las 8 zonas interactivas (TOP, BOTTOM, LEFT, RIGHT y 4 esquinas).
+    - En `QmlMainWindow::startResize`: añadido log `spdlog::info` y `qCInfo` con el identificador de bordes recibidos.
+  - **Punto 4 · Windows Aero Snap en Ventana Frameless**:
+    - En `QmlMainWindow`: configurados estilos nativos Win32 `WS_THICKFRAME | WS_MAXIMIZEBOX | WS_MINIMIZEBOX` vía `GetWindowLongPtrW` / `SetWindowLongPtrW` sobre el `HWND`.
+    - El Gestor de Ventanas de Escritorio (DWM) de Windows reconoce la ventana como snappable y redimensionable, habilitando Aero Snap al arrastrar al borde superior (maximizar), bordes laterales (media pantalla) y atajos de teclado `Win + Flechas`.
+    - Añadido `spdlog::info("[window] startDrag invoked")` en `startDrag()`.
+  - **Punto 5 · Erradicación de Warning QML**:
+    - En `LTopBar.qml`: encapsulado el Brand Row en un `Item` contenedor con dimensiones implícitas, eliminando el conflicto de anchors dentro de `Row`.
+  - Validación 100% exitosa: 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, empaquetado y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).

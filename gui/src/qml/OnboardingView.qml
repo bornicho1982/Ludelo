@@ -260,7 +260,7 @@ Item {
                     Layout.preferredHeight: 52
                     variant: "primary"
                     text: qsTr("Sign in with PlayStation Network")
-                    keyHint: LudeloTheme.hint("select")
+                    keyHint: "[A]"
                     glowEnabled: true
 
                     onClicked: {
@@ -346,7 +346,7 @@ Item {
                             Text {
                                 id: selectKeyText
                                 anchors.centerIn: parent
-                                text: LudeloTheme.hintKey("select")
+                                text: LudeloTheme.hintSelectKey
                                 font.family: LudeloTheme.fontFamilyMono
                                 font.pixelSize: 10
                                 font.weight: Font.Bold
@@ -384,7 +384,7 @@ Item {
                             Text {
                                 id: skipKeyText
                                 anchors.centerIn: parent
-                                text: LudeloTheme.hintKey("skip")
+                                text: LudeloTheme.hintSkipKey
                                 font.family: LudeloTheme.fontFamilyMono
                                 font.pixelSize: 9
                                 font.weight: Font.Bold

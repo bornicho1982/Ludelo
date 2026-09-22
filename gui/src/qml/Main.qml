@@ -7,6 +7,8 @@ import org.streetpea.chiaking
 
 Item {
     id: root
+    width: (typeof Chiaki !== "undefined" && Chiaki.window) ? Chiaki.window.width : 1280
+    height: (typeof Chiaki !== "undefined" && Chiaki.window) ? Chiaki.window.height : 720
     property list<Item> restoreFocusItems
     property bool steamShortcutChecked: false
     Material.theme: Material.Dark
@@ -749,8 +751,8 @@ Item {
                  Chiaki.window.visibility !== Window.Maximized &&
                  Chiaki.window.visibility !== Window.FullScreen
 
-        readonly property int borderThickness: 6
-        readonly property int cornerSize: 14
+        readonly property int borderThickness: 8
+        readonly property int cornerSize: 24
 
         // Edges
         MouseArea {
@@ -762,7 +764,10 @@ Item {
             height: resizeBorders.borderThickness
             cursorShape: Qt.SizeVerCursor
             acceptedButtons: Qt.LeftButton
-            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.TopEdge)
+            onPressed: {
+                console.log("[window] resize edge TOP pressed");
+                if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.TopEdge);
+            }
         }
         MouseArea {
             anchors.bottom: parent.bottom
@@ -773,7 +778,10 @@ Item {
             height: resizeBorders.borderThickness
             cursorShape: Qt.SizeVerCursor
             acceptedButtons: Qt.LeftButton
-            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.BottomEdge)
+            onPressed: {
+                console.log("[window] resize edge BOTTOM pressed");
+                if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.BottomEdge);
+            }
         }
         MouseArea {
             anchors.left: parent.left
@@ -784,7 +792,10 @@ Item {
             width: resizeBorders.borderThickness
             cursorShape: Qt.SizeHorCursor
             acceptedButtons: Qt.LeftButton
-            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.LeftEdge)
+            onPressed: {
+                console.log("[window] resize edge LEFT pressed");
+                if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.LeftEdge);
+            }
         }
         MouseArea {
             anchors.right: parent.right
@@ -795,7 +806,10 @@ Item {
             width: resizeBorders.borderThickness
             cursorShape: Qt.SizeHorCursor
             acceptedButtons: Qt.LeftButton
-            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.RightEdge)
+            onPressed: {
+                console.log("[window] resize edge RIGHT pressed");
+                if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.RightEdge);
+            }
         }
 
         // Corners
@@ -806,7 +820,10 @@ Item {
             height: resizeBorders.cornerSize
             cursorShape: Qt.SizeFDiagCursor
             acceptedButtons: Qt.LeftButton
-            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.TopEdge | Qt.LeftEdge)
+            onPressed: {
+                console.log("[window] resize corner TOP-LEFT pressed");
+                if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.TopEdge | Qt.LeftEdge);
+            }
         }
         MouseArea {
             anchors.top: parent.top
@@ -815,7 +832,10 @@ Item {
             height: resizeBorders.cornerSize
             cursorShape: Qt.SizeBDiagCursor
             acceptedButtons: Qt.LeftButton
-            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.TopEdge | Qt.RightEdge)
+            onPressed: {
+                console.log("[window] resize corner TOP-RIGHT pressed");
+                if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.TopEdge | Qt.RightEdge);
+            }
         }
         MouseArea {
             anchors.bottom: parent.bottom
@@ -824,7 +844,10 @@ Item {
             height: resizeBorders.cornerSize
             cursorShape: Qt.SizeBDiagCursor
             acceptedButtons: Qt.LeftButton
-            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.BottomEdge | Qt.LeftEdge)
+            onPressed: {
+                console.log("[window] resize corner BOTTOM-LEFT pressed");
+                if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.BottomEdge | Qt.LeftEdge);
+            }
         }
         MouseArea {
             anchors.bottom: parent.bottom
@@ -833,7 +856,10 @@ Item {
             height: resizeBorders.cornerSize
             cursorShape: Qt.SizeFDiagCursor
             acceptedButtons: Qt.LeftButton
-            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.BottomEdge | Qt.RightEdge)
+            onPressed: {
+                console.log("[window] resize corner BOTTOM-RIGHT pressed");
+                if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.BottomEdge | Qt.RightEdge);
+            }
         }
     }
 }

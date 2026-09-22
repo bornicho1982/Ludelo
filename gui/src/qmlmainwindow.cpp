@@ -29,6 +29,7 @@
 #elif defined(Q_OS_WIN)
 #include <windows.h>
 #endif
+#include <spdlog/spdlog.h>
 
 Q_LOGGING_CATEGORY(chiakiGui, "chiaki.gui");
 
@@ -264,15 +265,30 @@ void QmlMainWindow::captureMouse()
     emit mouseCapturedChanged();
 }
 
+void QmlMainWindow::applyNativeWin32FramelessStyles()
+{
+#if defined(Q_OS_WIN)
+    HWND hwnd = reinterpret_cast<HWND>(winId());
+    if (hwnd) {
+        LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        style |= WS_THICKFRAME | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
+        SetWindowLongPtrW(hwnd, GWL_STYLE, style);
+        SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+    }
+#endif
+}
+
 bool QmlMainWindow::startDrag()
 {
-    qCDebug(chiakiGui) << "[window] startDrag invoked";
+    spdlog::info("[window] startDrag invoked");
+    qCInfo(chiakiGui) << "[window] startDrag invoked";
     return startSystemMove();
 }
 
 bool QmlMainWindow::startResize(int edges)
 {
-    qCDebug(chiakiGui) << "[window] startResize invoked for edges:" << edges;
+    spdlog::info("[window] startResize invoked for edges: {}", edges);
+    qCInfo(chiakiGui) << "[window] startResize invoked for edges:" << edges;
     return startSystemResize(static_cast<Qt::Edges>(edges));
 }
 
@@ -374,6 +390,7 @@ void QmlMainWindow::show()
             showMaximized();
         setWindowAdjustable(true);
     }
+    applyNativeWin32FramelessStyles();
 }
 
 void QmlMainWindow::presentFrame(AVFrame *frame, int32_t frames_lost)
@@ -715,6 +732,7 @@ void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit, Steam
         break;
     }
     setZoomFactor(settings->GetZoomFactor());
+    applyNativeWin32FramelessStyles();
 }
 
 void QmlMainWindow::normalTime()
@@ -1282,14 +1300,43 @@ bool QmlMainWindow::amdCard() const
 
 bool QmlMainWindow::event(QEvent *event)
 {
+    if (!quick_window)
+        return QWindow::event(event);
+
     switch (event->type()) {
     case QEvent::MouseMove:
     case QEvent::MouseButtonPress:
-    case QEvent::MouseButtonRelease:
-        if (static_cast<QMouseEvent*>(event)->source() != Qt::MouseEventNotSynthesized)
+    case QEvent::MouseButtonRelease: {
+        QMouseEvent *me = static_cast<QMouseEvent*>(event);
+        if (me->source() != Qt::MouseEventNotSynthesized)
             return true;
-        if (backend)
-            backend->setInputModeKeyboard(QStringLiteral("mouse_event"));
+        if (backend) {
+            bool gpActive = backend->isGamepadActive();
+            if (gpActive && !m_wasGamepadActive) {
+                m_wasGamepadActive = true;
+                m_lastMousePosSet = false;
+            } else if (!gpActive && m_wasGamepadActive) {
+                m_wasGamepadActive = false;
+            }
+
+            if (event->type() == QEvent::MouseButtonPress) {
+                m_lastMousePos = me->pos();
+                m_lastMousePosSet = true;
+                backend->setInputModeKeyboard(QStringLiteral("mouse_click"));
+            } else if (event->type() == QEvent::MouseMove) {
+                if (me->buttons() != Qt::NoButton) {
+                    m_lastMousePos = me->pos();
+                    m_lastMousePosSet = true;
+                    backend->setInputModeKeyboard(QStringLiteral("mouse_drag"));
+                } else if (!m_lastMousePosSet) {
+                    m_lastMousePos = me->pos();
+                    m_lastMousePosSet = true;
+                } else if ((me->pos() - m_lastMousePos).manhattanLength() > 5) {
+                    m_lastMousePos = me->pos();
+                    backend->setInputModeKeyboard(QStringLiteral("mouse_move"));
+                }
+            }
+        }
         if (session && !grab_input) {
             setCursor(Qt::ArrowCursor);
             if (mouse_captured) {
@@ -1298,19 +1345,18 @@ bool QmlMainWindow::event(QEvent *event)
                 emit userActivity();
 
                 if (event->type() == QEvent::MouseMove) {
-                    session->HandleMouseMoveEvent(static_cast<QMouseEvent*>(event), width(), height());
+                    session->HandleMouseMoveEvent(me, width(), height());
                     QGuiApplication::sendEvent(quick_window, event);
                     return true;
                 } else {
-                    QMouseEvent *mouse_event = static_cast<QMouseEvent*>(event);
                     QGuiApplication::sendEvent(quick_window, event);
                     if (event->isAccepted()) {
                         return true;
                     }
                     if (event->type() == QEvent::MouseButtonPress)
-                        session->HandleMousePressEvent(mouse_event);
+                        session->HandleMousePressEvent(me);
                     else
-                        session->HandleMouseReleaseEvent(mouse_event);
+                        session->HandleMouseReleaseEvent(me);
                     return true;
                 }
             } else {
@@ -1321,6 +1367,7 @@ bool QmlMainWindow::event(QEvent *event)
         }
         QGuiApplication::sendEvent(quick_window, event);
         break;
+    }
     case QEvent::MouseButtonDblClick:
         if(!settings->GetFullscreenDoubleClickEnabled())
             break;
