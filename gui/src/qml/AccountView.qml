@@ -142,11 +142,13 @@ Rectangle {
                 z: 0
                 acceptedButtons: Qt.LeftButton
                 onPressed: {
+                    console.log("[window] AccountView header bgDragArea onPressed triggered");
                     if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
                         Chiaki.window.startDrag();
                     }
                 }
                 onDoubleClicked: {
+                    console.log("[window] AccountView header bgDragArea onDoubleClicked triggered");
                     if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
                         Chiaki.window.toggleMaximize();
                     }

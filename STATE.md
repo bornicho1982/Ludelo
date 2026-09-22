@@ -234,3 +234,15 @@
   - **Punto 5 · Erradicación de Warning QML**:
     - En `LTopBar.qml`: encapsulado el Brand Row en un `Item` contenedor con dimensiones implícitas, eliminando el conflicto de anchors dentro de `Row`.
   - Validación 100% exitosa: 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, empaquetado y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).
+
+- **RONDA 6 — PANTALLA 01 (ARRASTRE DE VENTANA RESTAURADO, JERARQUÍA Z-ORDER LIMPIA Y LOGGING startSystemMove) (22/09/2026)**:
+  - **Causa Raíz Identificada de Drag Muerto**:
+    - Ausencia del import `org.streetpea.chiaking` en `LTopBar.qml`, provocando que `typeof Chiaki !== "undefined"` evaluara a `false` y anulara silenciosamente cualquier llamada a `startDrag()`.
+    - Jerarquía de `MouseArea` fracturada: `bgDragArea` en `z: 0` quedaba sepultado bajo `RowLayout` (`z: 1`), y los `MouseArea` internos del spacer y brand consumían el click sin ejecutar la acción.
+  - **Acciones Implementadas**:
+    - En `LTopBar.qml`: añadido import `org.streetpea.chiaking`; reestructurado el topbar con `bgDragArea` cubriendo toda la superficie a `z: 10`, visuales de marca/telemetría en `leftVisuals` a `z: 1` (puramente visuales sin MouseAreas competidoras), y controles interactivos (`settings` y controles de ventana minimizar/maximizar/cerrar) en `rightControls` a `z: 20` para garantizar clicabilidad sin interferencias.
+    - Añadidos logs explícitos de depuración en `onPressed` y `onDoubleClicked` en `LTopBar.qml`, `MainView.qml`, `AccountView.qml` y `SettingsDialog.qml`.
+    - En `MainView.qml`: añadido soporte de arrastre directo al emblema/marca en cabecera.
+    - En `QmlMainWindow::startDrag`: añadido log del resultado retornado por `startSystemMove()`.
+  - Validación 100% exitosa: 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, empaquetado y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).
+

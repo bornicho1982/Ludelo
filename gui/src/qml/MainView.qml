@@ -209,11 +209,13 @@ Pane {
             z: 0
             acceptedButtons: Qt.LeftButton
             onPressed: {
+                console.log("[window] MainView header bgDragArea onPressed triggered");
                 if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
                     Chiaki.window.startDrag();
                 }
             }
             onDoubleClicked: {
+                console.log("[window] MainView header bgDragArea onDoubleClicked triggered");
                 if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
                     Chiaki.window.toggleMaximize();
                 }
@@ -227,48 +229,72 @@ Pane {
             anchors.rightMargin: 20
             spacing: 20
 
-            // Brand Section (Left)
-            Row {
+            // Brand Section (Left - Draggable)
+            Item {
                 Layout.alignment: Qt.AlignVCenter
-                spacing: 12
+                implicitWidth: brandRow.implicitWidth
+                implicitHeight: 36
 
-                Rectangle {
-                    width: 36
-                    height: 36
-                    radius: 8
-                    color: LudeloTheme.bgElevated
-                    border.color: LudeloTheme.borderHover
-                    border.width: 1
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    Image {
-                        anchors.centerIn: parent
-                        width: 22
-                        height: 22
-                        source: "qrc:/icons/logo_square_1024.png"
-                        fillMode: Image.PreserveAspectFit
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton
+                    onPressed: {
+                        console.log("[window] MainView header brand onPressed triggered");
+                        if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
+                            Chiaki.window.startDrag();
+                        }
+                    }
+                    onDoubleClicked: {
+                        console.log("[window] MainView header brand onDoubleClicked triggered");
+                        if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
+                            Chiaki.window.toggleMaximize();
+                        }
                     }
                 }
 
-                Column {
+                Row {
+                    id: brandRow
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 1
+                    spacing: 12
 
-                    Text {
-                        text: "LUDELO"
-                        font.family: LudeloTheme.fontFamily
-                        font.pixelSize: 16
-                        font.weight: Font.Bold
-                        color: LudeloTheme.textPrimary
-                        font.letterSpacing: 1.5
+                    Rectangle {
+                        width: 36
+                        height: 36
+                        radius: 8
+                        color: LudeloTheme.bgElevated
+                        border.color: LudeloTheme.borderHover
+                        border.width: 1
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Image {
+                            anchors.centerIn: parent
+                            width: 22
+                            height: 22
+                            source: "qrc:/icons/logo_square_1024.png"
+                            fillMode: Image.PreserveAspectFit
+                        }
                     }
 
-                    Text {
-                        text: "REMOTE PLAY CLIENT v2.4"
-                        font.family: LudeloTheme.fontFamilyMono
-                        font.pixelSize: 9
-                        color: LudeloTheme.textDim
-                        font.letterSpacing: 0.8
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 1
+
+                        Text {
+                            text: "LUDELO"
+                            font.family: LudeloTheme.fontFamily
+                            font.pixelSize: 16
+                            font.weight: Font.Bold
+                            color: LudeloTheme.textPrimary
+                            font.letterSpacing: 1.5
+                        }
+
+                        Text {
+                            text: "REMOTE PLAY CLIENT v2.4"
+                            font.family: LudeloTheme.fontFamilyMono
+                            font.pixelSize: 9
+                            color: LudeloTheme.textDim
+                            font.letterSpacing: 0.8
+                        }
                     }
                 }
             }
@@ -280,11 +306,13 @@ Pane {
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton
                     onPressed: {
+                        console.log("[window] MainView header spacer 1 onPressed triggered");
                         if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
                             Chiaki.window.startDrag();
                         }
                     }
                     onDoubleClicked: {
+                        console.log("[window] MainView header spacer 1 onDoubleClicked triggered");
                         if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
                             Chiaki.window.toggleMaximize();
                         }
@@ -335,11 +363,13 @@ Pane {
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton
                     onPressed: {
+                        console.log("[window] MainView header spacer 2 onPressed triggered");
                         if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
                             Chiaki.window.startDrag();
                         }
                     }
                     onDoubleClicked: {
+                        console.log("[window] MainView header spacer 2 onDoubleClicked triggered");
                         if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
                             Chiaki.window.toggleMaximize();
                         }

@@ -282,7 +282,10 @@ bool QmlMainWindow::startDrag()
 {
     spdlog::info("[window] startDrag invoked");
     qCInfo(chiakiGui) << "[window] startDrag invoked";
-    return startSystemMove();
+    bool ok = startSystemMove();
+    spdlog::info("[window] startDrag startSystemMove returned: {}", ok);
+    qCInfo(chiakiGui) << "[window] startDrag startSystemMove returned:" << ok;
+    return ok;
 }
 
 bool QmlMainWindow::startResize(int edges)

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import org.streetpea.chiaking
 import Ludelo 1.0
 
 Rectangle {
@@ -22,18 +23,23 @@ Rectangle {
     border.color: LudeloTheme.borderSubtle
     border.width: 1
 
-    // Background drag and double-click maximize area
+    // Background drag and double-click maximize area covering entire topbar
     MouseArea {
         id: bgDragArea
         anchors.fill: parent
-        z: 0
+        z: 10
         acceptedButtons: Qt.LeftButton
-        onPressed: {
+        onPressed: (mouse) => {
+            console.log("[window] LTopBar bgDragArea onPressed triggered");
             if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
-                Chiaki.window.startDrag();
+                var ok = Chiaki.window.startDrag();
+                console.log("[window] LTopBar startDrag returned:", ok);
+            } else {
+                console.warn("[window] Chiaki.window.startDrag not available in LTopBar");
             }
         }
-        onDoubleClicked: {
+        onDoubleClicked: (mouse) => {
+            console.log("[window] LTopBar bgDragArea onDoubleClicked triggered");
             if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
                 Chiaki.window.toggleMaximize();
             }
@@ -41,99 +47,59 @@ Rectangle {
         }
     }
 
-    RowLayout {
+    // Left visual items: Brand emblem, title and optional telemetry badges (under drag MouseArea)
+    Row {
+        id: leftVisuals
         z: 1
-        anchors.fill: parent
+        anchors.left: parent.left
         anchors.leftMargin: 24
-        anchors.rightMargin: 16
+        anchors.verticalCenter: parent.verticalCenter
         spacing: 16
 
-        // Brand Emblem & Title (Draggable)
-        Item {
-            Layout.alignment: Qt.AlignVCenter
-            implicitWidth: brandRow.implicitWidth
-            implicitHeight: 36
+        // Brand Emblem & Title
+        Row {
+            id: brandRow
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 12
 
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton
-                onPressed: {
-                    if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
-                        Chiaki.window.startDrag();
-                    }
-                }
-                onDoubleClicked: {
-                    if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
-                        Chiaki.window.toggleMaximize();
-                    }
-                    topBarRoot.maximizeClicked();
-                }
-            }
-
-            Row {
-                id: brandRow
+            // Hexagon Icon / Logo Emblem
+            Rectangle {
+                width: 34
+                height: 34
+                radius: 8
+                color: LudeloTheme.bgElevated
+                border.color: LudeloTheme.borderHover
+                border.width: 1
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 12
 
-                // Hexagon Icon / Logo Emblem
-                Rectangle {
-                    width: 34
-                    height: 34
-                    radius: 8
-                    color: LudeloTheme.bgElevated
-                    border.color: LudeloTheme.borderHover
-                    border.width: 1
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    Image {
-                        anchors.centerIn: parent
-                        width: 22
-                        height: 22
-                        source: "qrc:/icons/ludelo_logo.svg"
-                        fillMode: Image.PreserveAspectFit
-                    }
-                }
-
-                Column {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 1
-
-                    Text {
-                        text: "LUDELO"
-                        font.family: LudeloTheme.fontFamily
-                        font.pixelSize: 15
-                        font.weight: Font.Bold
-                        color: LudeloTheme.textPrimary
-                        font.letterSpacing: 1.5
-                    }
-
-                    Text {
-                        text: "REMOTE PLAY CLIENT v2.4"
-                        font.family: LudeloTheme.fontFamilyMono
-                        font.pixelSize: 9
-                        color: LudeloTheme.textDim
-                        font.letterSpacing: 0.8
-                    }
+                Image {
+                    anchors.centerIn: parent
+                    width: 22
+                    height: 22
+                    source: "qrc:/icons/ludelo_logo.svg"
+                    fillMode: Image.PreserveAspectFit
                 }
             }
-        }
 
-        Item {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton
-                onPressed: {
-                    if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
-                        Chiaki.window.startDrag();
-                    }
+            Column {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 1
+
+                Text {
+                    text: "LUDELO"
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 15
+                    font.weight: Font.Bold
+                    color: LudeloTheme.textPrimary
+                    font.letterSpacing: 1.5
                 }
-                onDoubleClicked: {
-                    if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
-                        Chiaki.window.toggleMaximize();
-                    }
-                    topBarRoot.maximizeClicked();
+
+                Text {
+                    text: "REMOTE PLAY CLIENT v2.4"
+                    font.family: LudeloTheme.fontFamilyMono
+                    font.pixelSize: 9
+                    color: LudeloTheme.textDim
+                    font.letterSpacing: 0.8
                 }
             }
         }
@@ -141,7 +107,7 @@ Rectangle {
         // Telemetry Badges
         Row {
             visible: topBarRoot.showTelemetry
-            Layout.alignment: Qt.AlignVCenter
+            anchors.verticalCenter: parent.verticalCenter
             spacing: 10
 
             LPill {
@@ -159,6 +125,16 @@ Rectangle {
                 showDot: true
             }
         }
+    }
+
+    // Right Interactive Controls (Settings, Window Controls) with high z-order (above drag area)
+    Row {
+        id: rightControls
+        z: 20
+        anchors.right: parent.right
+        anchors.rightMargin: 16
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 12
 
         // Settings Icon Button
         Rectangle {
@@ -168,6 +144,7 @@ Rectangle {
             color: settingsMouse.containsMouse ? LudeloTheme.bgElevated : "transparent"
             border.color: settingsMouse.containsMouse ? LudeloTheme.borderHover : "transparent"
             border.width: 1
+            anchors.verticalCenter: parent.verticalCenter
 
             Image {
                 anchors.centerIn: parent
@@ -189,7 +166,7 @@ Rectangle {
         // Window Controls (Minimize, Maximize, Close)
         Row {
             visible: topBarRoot.showWindowControls
-            Layout.alignment: Qt.AlignVCenter
+            anchors.verticalCenter: parent.verticalCenter
             spacing: 4
 
             // Minimize
