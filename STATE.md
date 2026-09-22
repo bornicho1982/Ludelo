@@ -263,3 +263,20 @@
     - En `QmlMainWindow::toggleMaximize()`: comprobación multivariante de máxima prioridad usando `visibility() == QWindow::Maximized` y la API nativa de Windows `IsZoomed(hwnd)` junto a `windowState()`, garantizando detección fidedigna del estado maximizado tras cualquier manipulación de snap o clic.
     - En `LTopBar.qml` y `MainView.qml`: icono dinámico de botón de maximizar que conmuta reactivamente entre `"❐"` (restaurar cuando `visibility === Window.Maximized`) y `"□"` (maximizar cuando está en tamaño normal).
   - Validación 100% exitosa: 51 componentes QML escaneados por gatekeeper estático, 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, compilación limpia y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).
+
+- **RONDA 7 — RENDIMIENTO EN RESIZE (THROTTLE DE SWAPCHAIN, LIMPIEZA DE SLABS, LOGGING INFO Y SOAK TEST DE 2 MINUTOS) (22/09/2026)**:
+  - **Causa Raíz Identificada de Degradación en Resize**:
+    - Recreación desenfrenada de swapchain y texturas en `case QEvent::Resize` sin limitador de tasa: cada micro-movimiento del cursor (10-25ms) bloqueaba el hilo GUI llamando sincrónicamente a `resizeSwapchain()` y `sync()` vía `BlockingQueuedConnection`.
+    - Ráfagas masivas de liberación y reserva de memory slabs de Vulkan en libplacebo sin esperar la finalización de comandos GPU en vuelo.
+    - Escritura continua de logs de libplacebo a nivel `DEBUG` en disco en cada frame y redimensionamiento.
+  - **Acciones Implementadas**:
+    - **Throttle y Frame Estático**: En `QmlMainWindow::nativeEvent`, interceptados `WM_ENTERSIZEMOVE` y `WM_EXITSIZEMOVE`. Durante el arrastre interactivo de bordes/esquinas, la recreación del swapchain de libplacebo se limita a un máximo de 2 veces por segundo (intervalo >= 500ms), manteniendo el frame estático mediante DWM y ejecutando la sincronización final con un debounce de 150ms o inmediatamente al soltar el botón del ratón.
+    - **Reclamación de Recursos y Eliminación de Fugas**: En `QmlMainWindow::resizeSwapchain()`, llamada a `pl_gpu_finish(placebo_vulkan->gpu)` y `pl_renderer_flush_cache(placebo_renderer)` antes de recrear el swapchain y texturas, forzando la liberación limpia de command buffers y memory slabs retirados.
+    - **Nivel de Logging Óptimo**: En `QmlMainWindow`, nivel de log de libplacebo configurado por defecto en `PL_LOG_INFO` para producción (activable a `DEBUG` vía variables de entorno `CHIAKI_PLACEBO_DEBUG` o `LUDELO_PLACEBO_DEBUG`), eliminando sobrecoste masivo de I/O en disco.
+    - **Soak Test Automatizado**: Creado `scripts/soak-test-resize.ps1` para someter la ventana a oscilación continua de resize a 40 Hz durante 120 segundos (2 minutos).
+  - **Resultados de Validación**:
+    - **Soak Test (120 segundos, 3.757 eventos de resize a 40 Hz)**: RAM inicial 457.05 MB -> RAM final 454.59 MB (diferencia de -2.46 MB, sin fugas ni crecimiento monótono). `Process Responding: True` en el 100% de los muestreos.
+    - **Compilación**: 100% exitosa sin errores.
+    - **Gatekeeper Estático y QML**: 51 archivos QML validados, 23/23 componentes OK (Exit Code 0).
+    - **Test Suite**: `ctest` 100% superado (1/1 tests).
+    - **Despliegue**: `deploy-windows.ps1` exitoso (Exit Code 0).

@@ -7,6 +7,8 @@
 #include <QWindow>
 #include <QQuickWindow>
 #include <QLoggingCategory>
+#include <QElapsedTimer>
+#include <QTimer>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -141,8 +143,14 @@ private:
     void render();
     bool handleShortcut(QKeyEvent *event);
     bool event(QEvent *event) override;
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
     QObject *focusObject() const override;
     void applyNativeWin32FramelessStyles();
+
+    bool m_isResizing = false;
+    bool m_inSizeMove = false;
+    QElapsedTimer m_resizeThrottleTimer;
+    QTimer *m_resizeDebounceTimer = nullptr;
 
     bool has_video = false;
     bool was_maximized = false;

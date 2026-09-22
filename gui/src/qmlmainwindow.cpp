@@ -292,6 +292,8 @@ bool QmlMainWindow::startResize(int edges)
 {
     spdlog::info("[window] startResize invoked for edges: {}", edges);
     qCInfo(chiakiGui) << "[window] startResize invoked for edges:" << edges;
+    m_isResizing = true;
+    m_resizeThrottleTimer.restart();
     return startSystemResize(static_cast<Qt::Edges>(edges));
 }
 
@@ -500,9 +502,10 @@ void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit, Steam
         VK_EXT_HDR_METADATA_EXTENSION_NAME,
     };
 
+    bool verbose_placebo = qEnvironmentVariableIsSet("CHIAKI_PLACEBO_DEBUG") || qEnvironmentVariableIsSet("LUDELO_PLACEBO_DEBUG");
     struct pl_log_params log_params = {
         .log_cb = placebo_log_cb,
-        .log_level = PL_LOG_DEBUG,
+        .log_level = verbose_placebo ? PL_LOG_DEBUG : PL_LOG_INFO,
     };
     placebo_log = pl_log_create(PL_API_VER, &log_params);
 
@@ -713,6 +716,17 @@ void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit, Steam
             this->settings->SetStreamGeometry(geometry());
     });
 
+    m_resizeThrottleTimer.start();
+    m_resizeDebounceTimer = new QTimer(this);
+    m_resizeDebounceTimer->setSingleShot(true);
+    m_resizeDebounceTimer->setInterval(150);
+    connect(m_resizeDebounceTimer, &QTimer::timeout, this, [this]() {
+        m_isResizing = false;
+        if (isExposed() && (!placebo_swapchain || swapchain_size != size() * devicePixelRatio())) {
+            updateSwapchain();
+        }
+    });
+
     QMetaObject::invokeMethod(quick_render, &QQuickRenderControl::initialize);
 
     QTimer *dropped_frames_timer = new QTimer(this);
@@ -919,6 +933,14 @@ void QmlMainWindow::resizeSwapchain()
     if (window_size.width() <= 0 || window_size.height() <= 0) {
         qCDebug(chiakiGui) << "Skipping swapchain resize for invalid window dimensions:" << window_size;
         return;
+    }
+
+    // Flush in-flight GPU commands to reclaim retired memory slabs and release cached resources
+    if (placebo_vulkan && placebo_vulkan->gpu) {
+        pl_gpu_finish(placebo_vulkan->gpu);
+    }
+    if (placebo_renderer) {
+        pl_renderer_flush_cache(placebo_renderer);
     }
 
     swapchain_size = window_size;
@@ -1425,6 +1447,10 @@ bool QmlMainWindow::event(QEvent *event)
         QGuiApplication::sendEvent(quick_window, event);
         break;
     case QEvent::Close:
+        m_isResizing = false;
+        m_inSizeMove = false;
+        if (m_resizeDebounceTimer)
+            m_resizeDebounceTimer->stop();
         if (!backend->closeRequested()) {
             event->ignore();
             return true;
@@ -1449,14 +1475,59 @@ bool QmlMainWindow::event(QEvent *event)
         break;
     case QEvent::Resize:
         geometry_save_timer->start();
-        if (isExposed())
-            updateSwapchain();
+        if (isExposed()) {
+            bool activeResize = m_inSizeMove || m_isResizing;
+            if (activeResize) {
+                // Throttle swapchain recreation to at most 2 times per second during interactive drag
+                if (!m_resizeThrottleTimer.isValid())
+                    m_resizeThrottleTimer.start();
+
+                if (m_resizeThrottleTimer.elapsed() >= 500) {
+                    m_resizeThrottleTimer.restart();
+                    updateSwapchain();
+                } else if (m_resizeDebounceTimer) {
+                    m_resizeDebounceTimer->start(150);
+                }
+            } else {
+                // Non-drag resize (initial show, maximize, restore, or snap):
+                // If a resize burst is detected (<200ms since previous event), debounce it.
+                // Otherwise execute immediately.
+                if (!m_resizeThrottleTimer.isValid() || m_resizeThrottleTimer.elapsed() >= 200) {
+                    m_resizeThrottleTimer.restart();
+                    updateSwapchain();
+                } else if (m_resizeDebounceTimer) {
+                    m_resizeDebounceTimer->start(150);
+                }
+            }
+        }
         break;
     default:
         break;
     }
 
     return ret;
+}
+
+bool QmlMainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
+{
+#if defined(Q_OS_WIN)
+    if (eventType == "windows_generic_MSG") {
+        MSG *msg = reinterpret_cast<MSG *>(message);
+        if (msg->message == WM_ENTERSIZEMOVE) {
+            m_inSizeMove = true;
+            m_resizeThrottleTimer.restart();
+        } else if (msg->message == WM_EXITSIZEMOVE) {
+            m_inSizeMove = false;
+            m_isResizing = false;
+            if (m_resizeDebounceTimer)
+                m_resizeDebounceTimer->stop();
+            if (isExposed() && (!placebo_swapchain || swapchain_size != size() * devicePixelRatio())) {
+                updateSwapchain();
+            }
+        }
+    }
+#endif
+    return QWindow::nativeEvent(eventType, message, result);
 }
 
 QObject *QmlMainWindow::focusObject() const
