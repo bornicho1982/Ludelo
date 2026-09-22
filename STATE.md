@@ -199,3 +199,20 @@
   - **Feature 4 · Fundación para mapeo configurable (P2)**:
     - `QmlBackend::getKeyHintRaw` consulta `Settings::GetControllerMapping()` para resolver las teclas asignadas por el usuario a cada acción (`CHIAKI_CONTROLLER_BUTTON_CROSS`, `MOON`, `BOX`, `PYRAMID`, etc.), permitiendo que futuras personalizaciones en la pestaña de controles se reflejen automáticamente en los hints visuales.
   - Validación 100% exitosa: 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, empaquetado y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).
+
+- **RONDA 4 — PANTALLA 01 (ARRASTRE, RESIZE + AERO SNAP, DETECCIÓN GAMEPAD Y LIMPIEZA ANCHORS) (22/09/2026)**:
+  - **Punto 1 · Arrastre unificado en todas las pantallas**:
+    - En `LTopBar.qml`: implementado arrastre robusto y doble clic para maximizar/restaurar en el área de logo/marca y todos los espaciadores, invocando directamente `Chiaki.window.startDrag()` y `Chiaki.window.toggleMaximize()`.
+    - En `OnboardingView.qml`: corregido z-index de `topBar` (`z: 10`) y reestructurado `cardWrapper` anclado de forma limpia entre `topBar.bottom` y `footerHUD.top` con márgenes seguros, eliminando el solape que bloqueaba la captura del ratón en la barra superior.
+    - En `SettingsDialog.qml` y `AccountView.qml`: añadido soporte de arrastre nativo en sus barras de navegación superiores.
+  - **Punto 2 · Redimensionado frameless por bordes/esquinas + Aero Snap**:
+    - En `QmlMainWindow`: expuesto método `Q_INVOKABLE bool startResize(int edges)` que delega en el método nativo de Qt `startSystemResize(static_cast<Qt::Edges>(edges))`.
+    - En `Main.qml`: creado overlay global `resizeBorders` con 8 zonas interactivas (4 bordes de 6px + 4 esquinas diagonales de 14px) con cursores de sistema (`SizeVerCursor`, `SizeHorCursor`, `SizeFDiagCursor`, `SizeBDiagCursor`) activo en todas las pantallas cuando la ventana no está maximizada.
+  - **Punto 3 · Detección de dispositivo fiable y logging transparente**:
+    - En `QmlBackend`: añadidas trazas `spdlog::info("[input] mode -> gamepad ({})")` y `spdlog::info("[input] mode -> keyboard ({})")` visibles tanto en consola como en `%APPDATA%\Ludelo\logs\ludelo.log`.
+    - En `QmlController`: conexión directa a `Controller::StateChanged` que emite `activityDetected()` ante cualquier pulsación de botón o deflexión de sticks/gatillos, conmutando inmediatamente a modo gamepad.
+    - Conexión al detectar controladores conectados al vuelo o al inicio de la app para establecer gamepad activo si hay mandos presentes.
+    - Implementado `m_gamepadPollTimer` (100ms) en `QmlBackend` como red de seguridad que sondea el estado del mando ante eventos retenidos fuera de sesión.
+  - **Punto 4 · Limpieza de warning de StackView**:
+    - En `OnboardingView.qml`: eliminado `anchors.fill: parent` del Item raíz, erradicando el warning "StackView has detected conflicting anchors".
+  - Validación 100% exitosa: 23 componentes QML validados con `[QML OK]`, `ctest` 100% pasando, empaquetado y smoke test con `deploy-windows.ps1` exitoso (Exit Code 0).

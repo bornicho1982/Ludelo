@@ -136,7 +136,25 @@ Rectangle {
             border.color: LudeloTheme.borderSubtle
             border.width: 1
 
+            // Background drag and double-click maximize area
+            MouseArea {
+                anchors.fill: parent
+                z: 0
+                acceptedButtons: Qt.LeftButton
+                onPressed: {
+                    if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
+                        Chiaki.window.startDrag();
+                    }
+                }
+                onDoubleClicked: {
+                    if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
+                        Chiaki.window.toggleMaximize();
+                    }
+                }
+            }
+
             RowLayout {
+                z: 1
                 anchors.fill: parent
                 anchors.leftMargin: 24
                 anchors.rightMargin: 24

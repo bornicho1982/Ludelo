@@ -266,7 +266,14 @@ void QmlMainWindow::captureMouse()
 
 bool QmlMainWindow::startDrag()
 {
+    qCDebug(chiakiGui) << "[window] startDrag invoked";
     return startSystemMove();
+}
+
+bool QmlMainWindow::startResize(int edges)
+{
+    qCDebug(chiakiGui) << "[window] startResize invoked for edges:" << edges;
+    return startSystemResize(static_cast<Qt::Edges>(edges));
 }
 
 void QmlMainWindow::toggleMaximize()
@@ -1282,7 +1289,7 @@ bool QmlMainWindow::event(QEvent *event)
         if (static_cast<QMouseEvent*>(event)->source() != Qt::MouseEventNotSynthesized)
             return true;
         if (backend)
-            backend->setInputModeKeyboard();
+            backend->setInputModeKeyboard(QStringLiteral("mouse_event"));
         if (session && !grab_input) {
             setCursor(Qt::ArrowCursor);
             if (mouse_captured) {
@@ -1328,9 +1335,9 @@ bool QmlMainWindow::event(QEvent *event)
         if (backend) {
             QKeyEvent *ke = static_cast<QKeyEvent*>(event);
             if (ke->timestamp() != 0)
-                backend->setInputModeKeyboard();
+                backend->setInputModeKeyboard(QStringLiteral("keyboard_keypress"));
             else
-                backend->setInputModeGamepad();
+                backend->setInputModeGamepad(QStringLiteral("controller_keypress"));
         }
         if (handleShortcut(static_cast<QKeyEvent*>(event)))
             return true;

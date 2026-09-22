@@ -349,13 +349,22 @@ QmlBackend::QmlBackend(Settings *settings, QmlMainWindow *window, SteamworksWrap
     discovery_manager.SetSettings(settings);
     setDiscoveryEnabled(true);
     connect(ControllerManager::GetInstance(), &ControllerManager::AvailableControllersUpdated, this, &QmlBackend::updateControllers);
-    connect(ControllerManager::GetInstance(), &ControllerManager::ControllerMoved, this, &QmlBackend::setInputModeGamepad);
+    connect(ControllerManager::GetInstance(), &ControllerManager::ControllerMoved, this, [this]() {
+        setInputModeGamepad(QStringLiteral("controller_moved"));
+    });
     connect(settings_qml, &QmlSettings::allowJoystickBackgroundEventsChanged, this, &QmlBackend::setAllowJoystickBackgroundEvents);
     connect(window, &QmlMainWindow::activeChanged, this, &QmlBackend::setIsAppActive);
     setAllowJoystickBackgroundEvents();
     setIsAppActive();
     ControllerManager::GetInstance()->SetIsAppActive(window->isActive());
     updateControllers();
+    if (!controllers.isEmpty()) {
+        setInputModeGamepad(QStringLiteral("startup_controller_present"));
+    }
+    m_gamepadPollTimer = new QTimer(this);
+    m_gamepadPollTimer->setInterval(100);
+    connect(m_gamepadPollTimer, &QTimer::timeout, this, &QmlBackend::pollGamepadState);
+    m_gamepadPollTimer->start();
     updateControllerMappings();
     connect(settings, &Settings::ControllerMappingsUpdated, this, &QmlBackend::updateControllerMappings);
     connect(settings, &Settings::ControllerMappingsUpdated, this, &QmlBackend::inputModeChanged);
@@ -2154,6 +2163,9 @@ void QmlBackend::updateControllers()
         if (!controller)
             continue;
         controllers[id] = new QmlController(controller, stream_shortcut ,window, this);
+        connect(controllers[id], &QmlController::activityDetected, this, [this]() {
+            setInputModeGamepad(QStringLiteral("controller_activity"));
+        });
         QString vidpid = controller->GetVIDPIDString();
         QString guid = controller->GetGUIDString();
         QStringList existing_vidpid;
@@ -2176,8 +2188,14 @@ void QmlBackend::updateControllers()
         connect(controller, &Controller::NewButtonMapping, this, &QmlBackend::controllerMappingChangeButton);
         changed = true;
     }
-    if (changed)
+    if (changed) {
+        if (!controllers.isEmpty()) {
+            setInputModeGamepad(QStringLiteral("controller_connected"));
+        } else {
+            setInputModeKeyboard(QStringLiteral("all_controllers_disconnected"));
+        }
         emit controllersChanged();
+    }
 }
 
 void QmlBackend::setControllerMappingDefaultMapping(bool is_default_mapping)
@@ -3759,21 +3777,46 @@ void QmlBackend::handleWebViewDom(const QString &domContent)
     }
 }
 
-void QmlBackend::setInputModeGamepad()
+void QmlBackend::setInputModeGamepad(const QString &source)
 {
     if (!m_isGamepadActive) {
         m_isGamepadActive = true;
         m_inputMode = QStringLiteral("gamepad");
+        spdlog::info("[input] mode -> gamepad ({})", source.toStdString());
+        qCInfo(chiakiGui) << "[input] mode -> gamepad (" << source << ")";
         emit inputModeChanged();
     }
 }
 
-void QmlBackend::setInputModeKeyboard()
+void QmlBackend::setInputModeKeyboard(const QString &source)
 {
     if (m_isGamepadActive) {
         m_isGamepadActive = false;
         m_inputMode = QStringLiteral("keyboard");
+        spdlog::info("[input] mode -> keyboard ({})", source.toStdString());
+        qCInfo(chiakiGui) << "[input] mode -> keyboard (" << source << ")";
         emit inputModeChanged();
+    }
+}
+
+void QmlBackend::pollGamepadState()
+{
+    if (m_isGamepadActive)
+        return;
+
+    for (auto it = controllers.cbegin(); it != controllers.cend(); ++it) {
+        QmlController *qc = it.value();
+        if (!qc) continue;
+        Controller *c = qc->getController();
+        if (!c) continue;
+        auto state = c->GetState();
+        if (state.buttons != 0 ||
+            std::abs(state.left_x) > 6000 || std::abs(state.left_y) > 6000 ||
+            std::abs(state.right_x) > 6000 || std::abs(state.right_y) > 6000 ||
+            state.l2_state > 20 || state.r2_state > 20) {
+            setInputModeGamepad(QStringLiteral("gamepad_poll"));
+            break;
+        }
     }
 }
 

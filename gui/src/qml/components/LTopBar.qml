@@ -34,6 +34,9 @@ Rectangle {
             }
         }
         onDoubleClicked: {
+            if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
+                Chiaki.window.toggleMaximize();
+            }
             topBarRoot.maximizeClicked();
         }
     }
@@ -45,10 +48,26 @@ Rectangle {
         anchors.rightMargin: 16
         spacing: 16
 
-        // Brand Emblem & Title
+        // Brand Emblem & Title (Draggable)
         Row {
             Layout.alignment: Qt.AlignVCenter
             spacing: 12
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                onPressed: {
+                    if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.startDrag === "function") {
+                        Chiaki.window.startDrag();
+                    }
+                }
+                onDoubleClicked: {
+                    if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
+                        Chiaki.window.toggleMaximize();
+                    }
+                    topBarRoot.maximizeClicked();
+                }
+            }
 
             // Hexagon Icon / Logo Emblem
             Rectangle {
@@ -104,6 +123,9 @@ Rectangle {
                     }
                 }
                 onDoubleClicked: {
+                    if (typeof Chiaki !== "undefined" && Chiaki.window && typeof Chiaki.window.toggleMaximize === "function") {
+                        Chiaki.window.toggleMaximize();
+                    }
                     topBarRoot.maximizeClicked();
                 }
             }

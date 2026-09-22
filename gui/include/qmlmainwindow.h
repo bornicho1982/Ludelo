@@ -105,6 +105,7 @@ public:
     Q_INVOKABLE bool isMouseCaptured() const { return mouse_captured; }
     Q_INVOKABLE bool startDrag();
     Q_INVOKABLE void toggleMaximize();
+    Q_INVOKABLE bool startResize(int edges);
 
     void updatePlacebo();
     void show();

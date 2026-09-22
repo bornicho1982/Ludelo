@@ -25,6 +25,10 @@ public:
     void setEscapeShortcut(uint32_t shortcut) { escape_shortcut = shortcut; };
     QString GetGUID() const;
     QString GetVIDPID() const;
+    Controller *getController() const { return controller; }
+
+signals:
+    void activityDetected();
 
 private:
     void sendKey(Qt::Key key, Qt::KeyboardModifiers modifiers = Qt::NoModifier);

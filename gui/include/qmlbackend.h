@@ -254,8 +254,8 @@ public:
     Q_INVOKABLE void autoRegister();
     bool isGamepadActive() const { return m_isGamepadActive; }
     QString inputMode() const { return m_inputMode; }
-    Q_INVOKABLE void setInputModeGamepad();
-    Q_INVOKABLE void setInputModeKeyboard();
+    Q_INVOKABLE void setInputModeGamepad(const QString &source = QStringLiteral("unknown"));
+    Q_INVOKABLE void setInputModeKeyboard(const QString &source = QStringLiteral("unknown"));
     Q_INVOKABLE QString getKeyHint(const QString &action) const;
     Q_INVOKABLE QString getKeyHintRaw(const QString &action) const;
 #if CHIAKI_GUI_ENABLE_STEAM_SHORTCUT
@@ -424,4 +424,6 @@ private:
     bool m_isGamepadActive = false;
     QString m_inputMode = QStringLiteral("keyboard");
     bool m_webView2LoginActive = false;
+    QTimer *m_gamepadPollTimer = nullptr;
+    void pollGamepadState();
 };

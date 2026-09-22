@@ -40,6 +40,13 @@ QmlController::QmlController(Controller *c, uint32_t shortcut, QObject *t, QObje
         auto state = controller->GetState();
         auto buttons = state.buttons;
 
+        if (buttons != 0 ||
+            std::abs(state.left_x) > 4000 || std::abs(state.left_y) > 4000 ||
+            std::abs(state.right_x) > 4000 || std::abs(state.right_y) > 4000 ||
+            state.l2_state > 10 || state.r2_state > 10) {
+            emit activityDetected();
+        }
+
         if (state.left_x > 30000)
             buttons |= CHIAKI_CONTROLLER_BUTTON_DPAD_RIGHT;
         else if (state.left_x < -30000)

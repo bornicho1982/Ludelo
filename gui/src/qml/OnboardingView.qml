@@ -12,7 +12,6 @@ Item {
     signal loginCompleted(string accountId)
     signal skipRequested()
 
-    anchors.fill: parent
     focus: true
 
     // Living Ambient Indigo & Cyan Atmosphere
@@ -94,6 +93,7 @@ Item {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
+        z: 10
         showTelemetry: false
         onSettingsClicked: {
             if (typeof root !== "undefined" && root.showSettingsDialog) {
@@ -118,17 +118,19 @@ Item {
         }
     }
 
-    // Center Hero Onboarding Card
+    // Center Hero Onboarding Card (Positioned safely between topBar and footerHUD)
     Item {
         id: cardWrapper
-        anchors.centerIn: parent
-        anchors.verticalCenterOffset: -8
+        anchors.top: topBar.bottom
+        anchors.bottom: footerHUD.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.margins: 8
         width: Math.min(parent.width - 48, 640)
-        height: Math.min(parent.height - topBar.height - footerHUD.height - 40, 620)
+        z: 1
 
         // Outer Glow Aura
         Rectangle {
-            anchors.fill: parent
+            anchors.fill: heroCard
             anchors.margins: -14
             radius: LudeloTheme.radiusDialog + 14
             color: LudeloTheme.accentGlow
@@ -139,7 +141,9 @@ Item {
         // Frosted Glass Card Surface
         Rectangle {
             id: heroCard
-            anchors.fill: parent
+            anchors.centerIn: parent
+            width: parent.width
+            height: Math.min(parent.height, 600)
             radius: LudeloTheme.radiusDialog
             color: LudeloTheme.bgPanel
             border.color: LudeloTheme.borderHover

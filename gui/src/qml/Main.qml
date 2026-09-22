@@ -737,4 +737,103 @@ Item {
                 openDonationPrompt();
         }
     }
+
+    // =========================================================================
+    // Frameless Window Resize Borders (Active globally when not maximized)
+    // =========================================================================
+    Item {
+        id: resizeBorders
+        anchors.fill: parent
+        z: 99999
+        visible: typeof Chiaki !== "undefined" && Chiaki.window &&
+                 Chiaki.window.visibility !== Window.Maximized &&
+                 Chiaki.window.visibility !== Window.FullScreen
+
+        readonly property int borderThickness: 6
+        readonly property int cornerSize: 14
+
+        // Edges
+        MouseArea {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: resizeBorders.cornerSize
+            anchors.rightMargin: resizeBorders.cornerSize
+            height: resizeBorders.borderThickness
+            cursorShape: Qt.SizeVerCursor
+            acceptedButtons: Qt.LeftButton
+            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.TopEdge)
+        }
+        MouseArea {
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: resizeBorders.cornerSize
+            anchors.rightMargin: resizeBorders.cornerSize
+            height: resizeBorders.borderThickness
+            cursorShape: Qt.SizeVerCursor
+            acceptedButtons: Qt.LeftButton
+            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.BottomEdge)
+        }
+        MouseArea {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.topMargin: resizeBorders.cornerSize
+            anchors.bottomMargin: resizeBorders.cornerSize
+            width: resizeBorders.borderThickness
+            cursorShape: Qt.SizeHorCursor
+            acceptedButtons: Qt.LeftButton
+            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.LeftEdge)
+        }
+        MouseArea {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.topMargin: resizeBorders.cornerSize
+            anchors.bottomMargin: resizeBorders.cornerSize
+            width: resizeBorders.borderThickness
+            cursorShape: Qt.SizeHorCursor
+            acceptedButtons: Qt.LeftButton
+            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.RightEdge)
+        }
+
+        // Corners
+        MouseArea {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            width: resizeBorders.cornerSize
+            height: resizeBorders.cornerSize
+            cursorShape: Qt.SizeFDiagCursor
+            acceptedButtons: Qt.LeftButton
+            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.TopEdge | Qt.LeftEdge)
+        }
+        MouseArea {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            width: resizeBorders.cornerSize
+            height: resizeBorders.cornerSize
+            cursorShape: Qt.SizeBDiagCursor
+            acceptedButtons: Qt.LeftButton
+            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.TopEdge | Qt.RightEdge)
+        }
+        MouseArea {
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            width: resizeBorders.cornerSize
+            height: resizeBorders.cornerSize
+            cursorShape: Qt.SizeBDiagCursor
+            acceptedButtons: Qt.LeftButton
+            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.BottomEdge | Qt.LeftEdge)
+        }
+        MouseArea {
+            anchors.bottom: parent.bottom
+            anchors.right: parent.right
+            width: resizeBorders.cornerSize
+            height: resizeBorders.cornerSize
+            cursorShape: Qt.SizeFDiagCursor
+            acceptedButtons: Qt.LeftButton
+            onPressed: if (Chiaki.window && typeof Chiaki.window.startResize === "function") Chiaki.window.startResize(Qt.BottomEdge | Qt.RightEdge)
+        }
+    }
 }
