@@ -41,11 +41,6 @@ Pane {
             if (idx >= 0 && idx < filteredGames.length) {
                 return filteredGames[idx];
             }
-            for (let i = 0; i < filteredGames.length; ++i) {
-                if (isPlayableNow(filteredGames[i])) {
-                    return filteredGames[i];
-                }
-            }
             return filteredGames[0];
         }
         return null;
@@ -724,6 +719,8 @@ Pane {
                 asynchronous: true
                 cache: true
                 smooth: true
+                sourceSize.width: 960
+                sourceSize.height: 320
                 opacity: 0.25
                 source: {
                     if (!selectedGame) return "";
@@ -920,6 +917,8 @@ Pane {
                 anchors.margins: 16
                 cellWidth: 215
                 cellHeight: 295
+                reuseItems: true
+                cacheBuffer: 600
                 focus: true
                 clip: true
                 model: currentPageGames
@@ -933,7 +932,7 @@ Pane {
                 }
 
                 onContentYChanged: {
-                    if (contentHeight > 0 && contentY + height >= contentHeight - 400) {
+                    if ((moving || flicking) && contentHeight > 0 && contentY + height >= contentHeight - 400) {
                         root.loadMoreGames();
                     }
                 }

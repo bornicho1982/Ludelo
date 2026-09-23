@@ -292,8 +292,11 @@ bool QmlMainWindow::startResize(int edges)
 {
     spdlog::info("[window] startResize invoked for edges: {}", edges);
     qCInfo(chiakiGui) << "[window] startResize invoked for edges:" << edges;
+    bool was_resizing = isResizing();
     m_isResizing = true;
     m_resizeThrottleTimer.restart();
+    if (!was_resizing)
+        emit isResizingChanged();
     return startSystemResize(static_cast<Qt::Edges>(edges));
 }
 
@@ -721,7 +724,10 @@ void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit, Steam
     m_resizeDebounceTimer->setSingleShot(true);
     m_resizeDebounceTimer->setInterval(150);
     connect(m_resizeDebounceTimer, &QTimer::timeout, this, [this]() {
+        bool was_resizing = isResizing();
         m_isResizing = false;
+        if (was_resizing && !m_inSizeMove)
+            emit isResizingChanged();
         if (isExposed() && (!placebo_swapchain || swapchain_size != size() * devicePixelRatio())) {
             updateSwapchain();
         }
@@ -1446,17 +1452,21 @@ bool QmlMainWindow::event(QEvent *event)
     case QEvent::Wheel:
         QGuiApplication::sendEvent(quick_window, event);
         break;
-    case QEvent::Close:
+    case QEvent::Close: {
+        bool was_resizing = isResizing();
         m_isResizing = false;
         m_inSizeMove = false;
         if (m_resizeDebounceTimer)
             m_resizeDebounceTimer->stop();
+        if (was_resizing)
+            emit isResizingChanged();
         if (!backend->closeRequested()) {
             event->ignore();
             return true;
         }
         QMetaObject::invokeMethod(quick_render, std::bind(&QmlMainWindow::destroySwapchain, this), Qt::BlockingQueuedConnection);
         break;
+    }
     default:
         break;
     }
@@ -1514,13 +1524,19 @@ bool QmlMainWindow::nativeEvent(const QByteArray &eventType, void *message, qint
     if (eventType == "windows_generic_MSG") {
         MSG *msg = reinterpret_cast<MSG *>(message);
         if (msg->message == WM_ENTERSIZEMOVE) {
+            bool was_resizing = isResizing();
             m_inSizeMove = true;
             m_resizeThrottleTimer.restart();
+            if (!was_resizing)
+                emit isResizingChanged();
         } else if (msg->message == WM_EXITSIZEMOVE) {
+            bool was_resizing = isResizing();
             m_inSizeMove = false;
             m_isResizing = false;
             if (m_resizeDebounceTimer)
                 m_resizeDebounceTimer->stop();
+            if (was_resizing)
+                emit isResizingChanged();
             if (isExposed() && (!placebo_swapchain || swapchain_size != size() * devicePixelRatio())) {
                 updateSwapchain();
             }

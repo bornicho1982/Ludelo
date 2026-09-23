@@ -48,6 +48,7 @@ class QmlMainWindow : public QWindow
     Q_PROPERTY(float ZoomFactor READ zoomFactor WRITE setZoomFactor NOTIFY zoomFactorChanged)
     Q_PROPERTY(VideoPreset videoPreset READ videoPreset WRITE setVideoPreset NOTIFY videoPresetChanged)
     Q_PROPERTY(bool directStream READ directStream NOTIFY directStreamChanged)
+    Q_PROPERTY(bool isResizing READ isResizing NOTIFY isResizingChanged)
 
 public:
     enum class VideoMode {
@@ -90,6 +91,7 @@ public:
     bool wasMaximized() const { return was_maximized; };
     bool isWindowAdjustable() const { return is_window_adjustable; }
     void setWindowAdjustable(bool adjustable) { is_window_adjustable = adjustable; }
+    bool isResizing() const { return m_inSizeMove || m_isResizing; }
 
     void fullscreenTime();
     void normalTime();
@@ -128,6 +130,7 @@ signals:
     void directStreamChanged();
     void userActivity();
     void mouseCapturedChanged();
+    void isResizingChanged();
 
 private:
     void init(Settings *settings, bool exit_app_on_stream_exit = false, SteamworksWrapper *steamworks = nullptr);

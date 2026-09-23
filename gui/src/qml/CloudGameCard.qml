@@ -116,6 +116,11 @@ Rectangle {
         }
     }
 
+    onGameDataChanged: {
+        let u = getImageUrl();
+        cachedImageUrl = u ? u : "";
+    }
+
     // Card styling
     color: (isHovered || isCurrentItem) ? LudeloTheme.bgCardHover : LudeloTheme.bgCard
     radius: LudeloTheme.radiusCard
@@ -126,8 +131,14 @@ Rectangle {
         return LudeloTheme.borderSubtle;
     }
 
-    Behavior on color { ColorAnimation { duration: LudeloTheme.animFast } }
-    Behavior on border.color { ColorAnimation { duration: LudeloTheme.animFast } }
+    Behavior on color {
+        enabled: !(typeof Chiaki !== "undefined" && Chiaki.window && Chiaki.window.isResizing)
+        ColorAnimation { duration: LudeloTheme.animFast }
+    }
+    Behavior on border.color {
+        enabled: !(typeof Chiaki !== "undefined" && Chiaki.window && Chiaki.window.isResizing)
+        ColorAnimation { duration: LudeloTheme.animFast }
+    }
 
     HoverHandler {
         id: cardHoverHandler
@@ -165,6 +176,8 @@ Rectangle {
                 asynchronous: true
                 cache: true
                 smooth: true
+                sourceSize.width: 250
+                sourceSize.height: 350
                 source: cachedImageUrl || ""
 
                 BusyIndicator {

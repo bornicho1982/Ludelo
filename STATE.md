@@ -280,3 +280,32 @@
     - **Gatekeeper Estático y QML**: 51 archivos QML validados, 23/23 componentes OK (Exit Code 0).
     - **Test Suite**: `ctest` 100% superado (1/1 tests).
     - **Despliegue**: `deploy-windows.ps1` exitoso (Exit Code 0).
+
+- **OPTIMIZACIÓN RESIZE/MAXIMIZE EN CLOUD PLAY & RITUAL QA UNIFICADO (23/09/2026)**:
+  - **Causa Raíz de Bloqueo en Resize/Maximizar de Cloud Play**:
+    - Re-evaluación continua a 60 Hz de las dimensiones de `Main.qml` durante el arrastre, forzando recálculo masivo de layout en el grid de catálogo de 4.102 juegos.
+    - Disparo espurio de `loadMoreGames()`: `onContentYChanged` evaluaba `contentY + height >= contentHeight - 400` durante cambios de geometría de ventana sin comprobar si el usuario estaba desplazándose activamente (`moving || flicking`), provocando sucesivos `modelReset` en `currentPageGames` y reconstrucción destructiva de tarjetas.
+    - Ausencia de reciclado de elementos (`reuseItems: false`) en `gamesGrid`, instanciando y destruyendo delegados en cada cambio de columnas.
+    - Ausencia de `sourceSize` en las imágenes de carátula (`CloudGameCard.qml`) y en el banner hero de `CloudPlayView.qml`, decodificando imágenes en resoluciones completas (1080p/4K) hacia texturas Vulkan en GPU para tarjetas de 200x280.
+    - Búsqueda lineal O(N) de 4.102 elementos en `selectedGame` en cada reflow cuando `currentIndex == -1`.
+  - **Acciones Implementadas**:
+    - **Frame Estático en QML**: En `Main.qml`, implementados elementos `Binding on width` y `Binding on height` con condición `when: !(Chiaki.window && Chiaki.window.isResizing)`, manteniendo las dimensiones estables durante el arrastre interactivo y aplicando las dimensiones finales de inmediato tras el debounce.
+    - **Reciclaje Eficiente de Grid**: En `CloudPlayView.qml`, activado `reuseItems: true` y `cacheBuffer: 600` en `gamesGrid`.
+    - **Guardia de Desplazamiento**: `onContentYChanged` protegido con `(moving || flicking)`, previniendo cargas automáticas de juegos adicionales al cambiar el tamaño de ventana o maximizar.
+    - **Optimización de Texturas y Memoria GPU**: En `CloudGameCard.qml`, limitado `sourceSize.width: 250` y `sourceSize.height: 350`; en `heroSpotlight`, `sourceSize.width: 960` y `sourceSize.height: 320`. Añadido handler reactivo `onGameDataChanged` para actualizar la URL de carátula en elementos reciclados.
+    - **Desactivación de Animaciones en Resize**: En `CloudGameCard.qml`, animaciones de color condicionadas a `!Chiaki.window.isResizing`.
+    - **Búsqueda O(1)**: `selectedGame` simplificado a acceso directo por índice o primer elemento (`filteredGames[0]`).
+  - **Ritual QA Unificado (`scripts/qa-check.ps1`)**:
+    - Creado script integral que ejecuta en orden y falla en cadena (`exit 1` ante cualquier fallo):
+      a) Compilación limpia (`cmake --build build --target chiaki -j4`)
+      b) Gatekeeper estático de imports Chiaki (51 archivos QML verificados)
+      c) Validación de 23 componentes QML (`Ludelo.exe --validate-qml`)
+      d) Tests unitarios CTest (`ctest --test-dir build --output-on-failure`)
+      e) Despliegue y smoke test en entorno con PATH aislado (`deploy-windows.ps1`)
+      f) Soak test de redimensionado continuo a 40 Hz (`soak-test-resize.ps1`)
+    - Generación de tabla resumen ejecutiva final `QA RITUAL SUMMARY REPORT` con estado PASS/FAIL por paso.
+  - **Resultados de Validación**:
+    - `scripts/qa-check.ps1` 100% PASS en los 6 pasos.
+    - Soak test (40 Hz): RAM estable (delta +0.51 MB), `Process Responding: True`.
+    - Exit Code: 0.
+

@@ -7,8 +7,17 @@ import org.streetpea.chiaking
 
 Item {
     id: root
-    width: (typeof Chiaki !== "undefined" && Chiaki.window) ? Chiaki.window.width : 1280
-    height: (typeof Chiaki !== "undefined" && Chiaki.window) ? Chiaki.window.height : 720
+    width: 1280
+    height: 720
+
+    Binding on width {
+        when: !(typeof Chiaki !== "undefined" && Chiaki.window && Chiaki.window.isResizing)
+        value: (typeof Chiaki !== "undefined" && Chiaki.window && Chiaki.window.width > 0) ? Chiaki.window.width : 1280
+    }
+    Binding on height {
+        when: !(typeof Chiaki !== "undefined" && Chiaki.window && Chiaki.window.isResizing)
+        value: (typeof Chiaki !== "undefined" && Chiaki.window && Chiaki.window.height > 0) ? Chiaki.window.height : 720
+    }
     property list<Item> restoreFocusItems
     property bool steamShortcutChecked: false
     Material.theme: Material.Dark
