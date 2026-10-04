@@ -747,6 +747,16 @@ class Settings : public QObject
 		void RemoveRegisteredHost(const HostMAC &mac);
 		bool GetRegisteredHostRegistered(const HostMAC &mac) const	{ return registered_hosts.contains(mac); }
 		RegisteredHost GetRegisteredHost(const HostMAC &mac) const	{ return registered_hosts[mac]; }
+		// User-defined display name for a console (persisted in QSettings, keyed by MAC)
+		QString GetHostCustomName(const HostMAC &mac) const { return settings.value("custom_host_names/" + mac.ToString()).toString(); }
+		void SetHostCustomName(const HostMAC &mac, const QString &name)
+		{
+			if(name.isEmpty())
+				settings.remove("custom_host_names/" + mac.ToString());
+			else
+				settings.setValue("custom_host_names/" + mac.ToString(), name);
+			settings.sync();
+		}
 		QList<HiddenHost> GetHiddenHosts() const 					{ return hidden_hosts.values(); }
 		void AddHiddenHost(const HiddenHost &host);
 		void RemoveHiddenHost(const HostMAC &mac);

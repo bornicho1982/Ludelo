@@ -14,6 +14,7 @@
     <file>DialogView.qml</file>
     <file>ManualHostDialog.qml</file>
     <file>RegistDialog.qml</file>
+    <file>ConsoleDetailsDialog.qml</file>
     <file>SteamShortcutDialog.qml</file>
     <file>GamingModeAddedDialog.qml</file>
     <file>SettingsDialog.qml</file>

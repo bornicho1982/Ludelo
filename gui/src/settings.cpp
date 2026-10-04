@@ -2512,8 +2512,15 @@ void Settings::RemoveRegisteredHost(const HostMAC &mac)
 {
 	if(!registered_hosts.contains(mac))
 		return;
+	const RegisteredHost removed = registered_hosts[mac];
 	registered_hosts.remove(mac);
+	// Drop the nickname index too, otherwise discovery would silently re-register the console by name
+	nickname_registered_hosts.remove(removed.GetServerNickname());
+	if(!chiaki_target_is_ps5(removed.GetTarget()) && ps4s_registered > 0)
+		ps4s_registered--;
+	SetHostCustomName(mac, QString());
 	SaveRegisteredHosts();
+	settings.sync();
 	emit RegisteredHostsUpdated();
 }
 

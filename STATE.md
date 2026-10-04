@@ -309,3 +309,38 @@
     - Soak test (40 Hz): RAM estable (delta +0.51 MB), `Process Responding: True`.
     - Exit Code: 0.
 
+- **RONDA PANTALLA 02 (CONSOLES): FUNCIONALIDAD REAL Y RESOLUCIÓN DE WARNINGS (04/10/2026)**:
+  - **Erradicación de Warnings del Log**:
+    - `fullscreenTimer`: Reemplazada la llamada errónea en `StreamView.qml` por `Chiaki.window.toggleFullscreen()`. Implementado `QmlMainWindow::toggleFullscreen()` expuesto como `Q_INVOKABLE`.
+    - `StackView conflicting anchors`: Eliminado `anchors.fill: parent` del elemento raíz en `SettingsDialog.qml` y `AccountView.qml` para permitir que el `StackView` gestione el dimensionamiento.
+  - **Botonera Footer y Atajos Reales**:
+    - Eliminado el hint muerto `[BACK]` del footer en Home (`MainView.qml`), ya que es la vista raíz.
+    - Los hints `SELECT`, `WAKE`, `DETAILS` y `SETTINGS` convertidos en elementos clicables con ratón (`MouseArea`, cursor apuntador, hover).
+    - Cableado completo de teclado y mando: `Enter` / `[A]` (conectar tarjeta enfocada), `Y` / `[Y]` (Wake-on-LAN), `X` / `[X]` (abrir diálogo de detalles), `F10` / `[START]` (preferencias de stream / ajustes), `F5` (re-escaneo DDP con traza en log), `F2` (registro / IP manual).
+  - **Diálogo de Detalles de Consola (`ConsoleDetailsDialog.qml`)**:
+    - Nuevo diálogo modal integrado en `Main.qml` (`showConsoleDetailsDialog`), `qml.qrc` y suite de validación QML.
+    - Accesible vía atajo `[X]` / `X` o botón `⋮` en la cabecera de la tarjeta de consola.
+    - Muestra telemetría real: nombre/custom name, modelo (PS5/PS4), píldora de estado, IP, MAC, estado de registro, Host ID / versión de sistema y título activo.
+    - **Renombrar Persistente**: `Chiaki.renameHostByMac(mac, name)` guarda el nombre personalizado en `QSettings` (`custom_host_names/<mac>`) ejecutando `settings.sync()`. Persiste entre reinicios de la aplicación.
+    - **Desregistro en 2 Pasos**: Confirmación destructiva en dos fases. Al confirmar, invoca `Chiaki.unregisterHostByMac(mac)` purgando credenciales; la tarjeta pasa a estado "Not registered / PIN Pairing Required" y el botón de acción conmuta a "PAIR CONSOLE", bloqueando el intento de "CONNECT DIRECT".
+    - **Wake WOL**: Botón "WAKE" ejecuta `Chiaki.wakeHostByMac(mac)` enviando paquete mágico directo.
+    - Navegación completa por teclado y mando: foco inicial en botón de acción, `[Return]` activa botones, `[Esc]` / `[B]` cierra.
+  - **Diálogo Unificado de Registro e IP Manual (`RegistDialog.qml`)**:
+    - Barra de pestañas dual: "REGISTRAR CONSOLA (PIN)" vs "AÑADIR IP MANUAL" navegable con ratón, teclado y botones bumper `[LB]` / `[RB]`.
+    - **Manejo Explícito de Errores en PIN**: Si la vinculación falla (timeout, PIN caducado/erróneo, rechazo de consola), el diálogo permanece abierto y muestra un banner contextual en rojo con la causa exacta del fallo junto con el log.
+    - Corrección de etiqueta engañosa en IP: sustituido el texto "ONLINE / DETECTED" por "IP ENTERED".
+    - Pestaña de IP manual integrada con selector de consola registrada y conexión directa mediante `Chiaki.addManualHost(...)`.
+  - **Tarjeta HUD de Telemetría**:
+    - Clic directo en la tarjeta o botón "STREAM PREFERENCES" abre los ajustes de streaming.
+    - Botón "Scan Subnet" ejecuta `Chiaki.rescanHosts()` reactivando la escucha DDP y emitiendo traza informativa en el log.
+  - **Resultados de Validación**:
+    - `scripts/qa-check.ps1` 100% PASS en los 6 pasos:
+      a) Compilación MinGW64/CMake [PASS]
+      b) Gatekeeper estático de imports Chiaki (52 archivos QML verificados) [PASS]
+      c) Validación de 24 componentes QML (--validate-qml) [PASS]
+      d) CTest [PASS]
+      e) Despliegue y smoke test en entorno con PATH aislado [PASS]
+      f) Soak test de redimensionado continuo a 40 Hz (RAM delta 0.1 MB, Responsive: True) [PASS]
+    - Warnings `fullscreenTimer` y `StackView conflicting anchors` erradicados del log.
+
+

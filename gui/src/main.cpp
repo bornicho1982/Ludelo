@@ -298,6 +298,7 @@ int real_main(int argc, char *argv[])
 			QStringLiteral("qrc:/AccountView.qml"),
 			QStringLiteral("qrc:/CloudPlayView.qml"),
 			QStringLiteral("qrc:/RegistDialog.qml"),
+			QStringLiteral("qrc:/ConsoleDetailsDialog.qml"),
 			QStringLiteral("qrc:/ConfirmDialog.qml"),
 			QStringLiteral("qrc:/MessageDialog.qml"),
 			QStringLiteral("qrc:/RemindDialog.qml"),

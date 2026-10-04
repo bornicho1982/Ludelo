@@ -633,12 +633,7 @@ Item {
                     variant: "secondary"
                     text: "FULLSCREEN"
                     keyHint: "[F11]"
-                    onClicked: {
-                        if (Chiaki.window.windowState === Qt.WindowFullScreen)
-                            Chiaki.window.normalTime();
-                        else
-                            Chiaki.window.fullscreenTime();
-                    }
+                    onClicked: Chiaki.window.toggleFullscreen()
                 }
 
                 // [TAB] HUD STATS (Toggled state indicator)

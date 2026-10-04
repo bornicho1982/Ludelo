@@ -39,7 +39,7 @@ Rectangle {
         qsTr("General")
     ]
 
-    anchors.fill: parent
+    // Sized by the parent StackView (no anchors here, avoids conflicting-anchors warning)
     color: LudeloTheme.bgBase
 
     // Close helper

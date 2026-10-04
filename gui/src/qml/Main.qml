@@ -209,8 +209,12 @@ Item {
         stack.push(gamesViewComponent, {deviceId: deviceId, deviceName: deviceName, serverIndex: serverIndex})
     }
 
-    function showManualHostDialog() {
-        stack.push(manualHostDialogComponent);
+    function showConsoleDetailsDialog(hostData, hostIndex) {
+        stack.push(consoleDetailsDialogComponent, {hostData: hostData, hostIndex: hostIndex});
+    }
+
+    function showManualHostDialog(initialTab = 1) {
+        stack.push(registDialogComponent, {initialTab: initialTab, tab: initialTab});
     }
 
     function showConfirmDialog(title, text, callback, rejectCallback = null, keepDialogOpen = false) {
@@ -704,6 +708,11 @@ Item {
     Component {
         id: registDialogComponent
         RegistDialog { }
+    }
+
+    Component {
+        id: consoleDetailsDialogComponent
+        ConsoleDetailsDialog { }
     }
 
     Component {

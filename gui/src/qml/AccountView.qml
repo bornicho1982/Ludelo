@@ -9,7 +9,7 @@ import "components"
 Rectangle {
     id: accountRoot
 
-    anchors.fill: parent
+    // Sized by the parent StackView (no anchors here)
     color: LudeloTheme.bgBase
     focus: true
 

@@ -32,6 +32,10 @@ Item {
     property string logOutputText: ""
     property int countdownSeconds: 300 // Sony Remote Play PIN expires in 5 minutes (300s)
 
+    property int initialTab: 0
+    property int tab: initialTab
+    property string errorText: ""
+
     function close() {
         if (typeof root !== "undefined" && root && root.closeDialog) {
             root.closeDialog();
@@ -48,7 +52,15 @@ Item {
             manualAccountIdField.text = Chiaki.settings.psnAccountId;
         }
         countdownTimer.restart();
-        digit0.forceActiveFocus();
+        if (tab === 0) {
+            if (host) {
+                digit0.forceActiveFocus();
+            } else {
+                hostField.forceActiveFocus();
+            }
+        } else if (typeof manualHostField !== "undefined" && manualHostField) {
+            manualHostField.forceActiveFocus();
+        }
     }
 
     // 300s Countdown timer for the PIN
@@ -196,6 +208,86 @@ Item {
                     font.pixelSize: 12
                     color: LudeloTheme.textMuted
                 }
+
+                // TAB BAR (PIN Registration vs Manual IP)
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 38
+                        radius: LudeloTheme.radiusCard
+                        color: registRoot.tab === 0 ? (LudeloTheme.accentElevated || Qt.rgba(0.0, 0.96, 0.83, 0.15)) : Qt.rgba(1, 1, 1, 0.04)
+                        border.color: registRoot.tab === 0 ? LudeloTheme.accentMint : LudeloTheme.borderSubtle
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 8
+                            Text {
+                                text: "[LB]"
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 9
+                                font.weight: Font.Bold
+                                color: LudeloTheme.textDim
+                            }
+                            Text {
+                                text: qsTr("REGISTER CONSOLE (PIN)")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 12
+                                font.weight: registRoot.tab === 0 ? Font.Bold : Font.Normal
+                                color: registRoot.tab === 0 ? LudeloTheme.accentMint : LudeloTheme.textSecondary
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: registRoot.tab = 0
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 38
+                        radius: LudeloTheme.radiusCard
+                        color: registRoot.tab === 1 ? (LudeloTheme.accentElevated || Qt.rgba(0.0, 0.96, 0.83, 0.15)) : Qt.rgba(1, 1, 1, 0.04)
+                        border.color: registRoot.tab === 1 ? LudeloTheme.accentMint : LudeloTheme.borderSubtle
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 8
+                            Text {
+                                text: qsTr("ADD MANUAL IP")
+                                font.family: LudeloTheme.fontFamily
+                                font.pixelSize: 12
+                                font.weight: registRoot.tab === 1 ? Font.Bold : Font.Normal
+                                color: registRoot.tab === 1 ? LudeloTheme.accentMint : LudeloTheme.textSecondary
+                            }
+                            Text {
+                                text: "[RB]"
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 9
+                                font.weight: Font.Bold
+                                color: LudeloTheme.textDim
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: registRoot.tab = 1
+                        }
+                    }
+                }
+
+                // TAB 0: PIN REGISTRATION
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    visible: registRoot.tab === 0
+                    spacing: 14
 
                 // 2. STEP-BY-STEP INSTRUCTIONS BANNER
                 Rectangle {
@@ -410,7 +502,7 @@ Item {
                             }
 
                             LPill {
-                                text: hostField.text.trim() ? qsTr("ONLINE / DETECTED") : qsTr("NO IP")
+                                text: hostField.text.trim() ? qsTr("IP ENTERED") : qsTr("NO IP")
                                 showDot: true
                                 dotColor: hostField.text.trim() ? LudeloTheme.accentMint : LudeloTheme.colorWarning
                                 glowColor: hostField.text.trim() ? LudeloTheme.accentMintGlow : Qt.rgba(0.96, 0.62, 0.04, 0.4)
@@ -831,6 +923,38 @@ Item {
                     }
                 }
 
+                // 7.5 EXPLICIT ERROR BANNER
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: registRoot.errorText ? 44 : 0
+                    visible: registRoot.errorText.length > 0
+                    radius: LudeloTheme.radiusCard
+                    color: Qt.rgba(0.9, 0.1, 0.2, 0.15)
+                    border.color: LudeloTheme.error
+                    border.width: 1
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 10
+
+                        Text {
+                            text: "⚠️"
+                            font.pixelSize: 14
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: registRoot.errorText
+                            font.family: LudeloTheme.fontFamily
+                            font.pixelSize: 11
+                            font.weight: Font.Medium
+                            color: LudeloTheme.error
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
+
                 // 8. LOG OUTPUT AREA (When registering or after)
                 Rectangle {
                     id: logContainer
@@ -873,6 +997,7 @@ Item {
                         text: isRegistering ? qsTr("PAIRING CONSOLE...") : qsTr("REGISTER & PAIR CONSOLE")
                         enabled: canRegister
                         onClicked: executeRegistration()
+                        Keys.onReturnPressed: (event) => { clicked(); event.accepted = true; }
                     }
 
                     LButton {
@@ -883,6 +1008,7 @@ Item {
                         text: qsTr("CANCEL")
                         enabled: !isRegistering
                         onClicked: registRoot.close()
+                        Keys.onReturnPressed: (event) => { clicked(); event.accepted = true; }
                     }
                 }
 
@@ -893,9 +1019,165 @@ Item {
                     font.pixelSize: 10
                     color: LudeloTheme.textMuted
                 }
-            }
-        }
-    }
+            } // End of Tab 0 ColumnLayout
+
+            // TAB 1: MANUAL IP CONTENT
+            ColumnLayout {
+                id: manualTabColumn
+                Layout.fillWidth: true
+                visible: registRoot.tab === 1
+                spacing: 16
+
+                Label {
+                    text: qsTr("Directly connect to a console by specifying its local IP address if mDNS or DDP discovery is blocked on your LAN.")
+                    font.family: LudeloTheme.fontFamily
+                    font.pixelSize: 11
+                    color: LudeloTheme.textSecondary
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+
+                // IP Field
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    Label {
+                        text: qsTr("CONSOLE IP ADDRESS")
+                        font.family: LudeloTheme.fontFamilyMono
+                        font.pixelSize: 10
+                        font.weight: Font.Bold
+                        color: LudeloTheme.textSecondary
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 42
+                        radius: LudeloTheme.radiusCard
+                        color: manualHostField.activeFocus ? LudeloTheme.bgElevated : Qt.rgba(0.04, 0.05, 0.08, 0.8)
+                        border.color: manualHostField.activeFocus ? LudeloTheme.accentMint : LudeloTheme.borderSubtle
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+
+                            TextInput {
+                                id: manualHostField
+                                Layout.fillWidth: true
+                                font.family: LudeloTheme.fontFamilyMono
+                                font.pixelSize: 13
+                                color: LudeloTheme.textPrimary
+                                echoMode: Chiaki.settings.streamerMode ? TextInput.Password : TextInput.Normal
+                                selectByMouse: true
+
+                                Text {
+                                    text: qsTr("192.168.1.xxx")
+                                    font.family: LudeloTheme.fontFamilyMono
+                                    font.pixelSize: 13
+                                    color: LudeloTheme.textMuted
+                                    visible: !manualHostField.text && !manualHostField.activeFocus
+                                }
+
+                                Keys.onReturnPressed: (event) => {
+                                    if (canAddManual) {
+                                        addManualButton.clicked();
+                                        event.accepted = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Registered Consoles Combo
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    Label {
+                        text: qsTr("REGISTERED HOST TARGET")
+                        font.family: LudeloTheme.fontFamilyMono
+                        font.pixelSize: 10
+                        font.weight: Font.Bold
+                        color: LudeloTheme.textSecondary
+                    }
+
+                    ComboBox {
+                        id: manualConsoleCombo
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 42
+                        textRole: "name"
+                        model: {
+                            let m = [];
+                            if (Chiaki.settings.registeredHosts.length > 0) {
+                                m.push({ name: qsTr("Select an Option"), index: -1 });
+                            }
+                            let i = 0;
+                            for (; i < Chiaki.settings.registeredHosts.length; ++i) {
+                                let host = Chiaki.settings.registeredHosts[i];
+                                m.push({
+                                    name: "%1 (%2)".arg(Chiaki.settings.streamerMode ? "hidden" : host.mac).arg(host.name),
+                                    index: i,
+                                });
+                            }
+                            m.push({
+                                name: qsTr("Register on first Connection"),
+                                index: i,
+                            });
+                            return m;
+                        }
+
+                        background: Rectangle {
+                            color: LudeloTheme.bgElevated
+                            radius: LudeloTheme.radiusCard
+                            border.color: LudeloTheme.borderSubtle
+                            border.width: 1
+                        }
+                    }
+                }
+
+                readonly property bool canAddManual: manualHostField.text.trim().length > 0 &&
+                                                     manualConsoleCombo.currentIndex >= 0 &&
+                                                     manualConsoleCombo.model[manualConsoleCombo.currentIndex].index !== -1
+
+                Item { Layout.fillHeight: true; Layout.preferredHeight: 8 }
+
+                // Actions
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    LButton {
+                        id: addManualButton
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 46
+                        variant: manualTabColumn.canAddManual ? "mint" : "secondary"
+                        keyHint: "[A]"
+                        text: qsTr("ADD CONSOLE")
+                        enabled: manualTabColumn.canAddManual
+                        onClicked: {
+                            Chiaki.addManualHost(manualConsoleCombo.model[manualConsoleCombo.currentIndex].index, manualHostField.text.trim());
+                            registRoot.close();
+                        }
+                        Keys.onReturnPressed: (event) => { clicked(); event.accepted = true; }
+                    }
+
+                    LButton {
+                        Layout.preferredWidth: 120
+                        Layout.preferredHeight: 46
+                        variant: "ghost"
+                        keyHint: "[B]"
+                        text: qsTr("CANCEL")
+                        onClicked: registRoot.close()
+                        Keys.onReturnPressed: (event) => { clicked(); event.accepted = true; }
+                    }
+                }
+            } // End of Tab 1 ColumnLayout
+        } // End of main ColumnLayout
+    } // End of ScrollView
+} // End of modalContainer
 
     // Helper for key navigation and backspace across the 8 digit inputs
     function handleDigitKey(event, index) {
@@ -947,6 +1229,7 @@ Item {
 
         isRegistering = true;
         registrationSuccess = false;
+        errorText = "";
         logOutputText = qsTr("Initiating DDP pairing handshake with %1...\n").arg(hostAddr);
 
         let registerOk = Chiaki.registerHost(hostAddr, psnId, pin, cpin, isBroadcast, targetVersion, function(msg, ok, done) {
@@ -956,16 +1239,19 @@ Item {
                 isRegistering = false;
                 if (ok) {
                     registrationSuccess = true;
+                    errorText = "";
                     logOutputText += qsTr("\n✓ Console registered successfully! Closing dialog...\n");
                     autoCloseTimer.restart();
                 } else {
-                    logOutputText += qsTr("\n✗ Registration failed. Please verify the PIN and IP address.\n");
+                    errorText = msg ? msg : qsTr("Registration failed. Please check the PIN, network connection, and console state.");
+                    logOutputText += qsTr("\n✗ Registration failed: %1\n").arg(errorText);
                 }
             }
         });
 
         if (!registerOk) {
             isRegistering = false;
+            errorText = qsTr("Failed to initiate host registration. Please verify parameters.");
             logOutputText += qsTr("Failed to initiate host registration.\n");
         }
     }
@@ -980,5 +1266,22 @@ Item {
     // Global Key Handling for modal
     Keys.onEscapePressed: {
         if (!isRegistering) registRoot.close();
+    }
+    Keys.onPressed: (event) => {
+        if (event.modifiers) return;
+        switch (event.key) {
+        case Qt.Key_PageUp:
+            if (registRoot.tab > 0) {
+                registRoot.tab--;
+                event.accepted = true;
+            }
+            break;
+        case Qt.Key_PageDown:
+            if (registRoot.tab < 1) {
+                registRoot.tab++;
+                event.accepted = true;
+            }
+            break;
+        }
     }
 }

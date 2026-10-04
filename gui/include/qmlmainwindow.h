@@ -110,6 +110,7 @@ public:
     Q_INVOKABLE bool startDrag();
     Q_INVOKABLE void toggleMaximize();
     Q_INVOKABLE bool startResize(int edges);
+    Q_INVOKABLE void toggleFullscreen();
 
     void updatePlacebo();
     void show();

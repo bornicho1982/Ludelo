@@ -34,6 +34,8 @@
 #include <QWebEngineCookieStore>
 #endif
 #include <QUrlQuery>
+#include <QRegularExpression>
+#include <memory>
 
 #include "auth_classifier.h"
 #include "ludelo_logging.h"
@@ -958,6 +960,8 @@ QVariantList QmlBackend::hosts() const
         m["address"] = host.host_addr;
         m["ps5"] = host.ps5;
         m["mac"] = host_mac.ToString();
+        m["systemVersion"] = host.system_version;
+        m["hostId"] = host.host_id;
         m["state"] = chiaki_discovery_host_state_string(host.state);
         m["app"] = host.running_app_name;
         m["titleId"] = host.running_app_titleid;
@@ -1059,6 +1063,17 @@ QVariantList QmlBackend::hosts() const
             m["titleId"] = "";
             out.append(m);
         }
+    }
+    // Apply user-defined names (persisted per MAC) without touching the real console name used for matching
+    for (int i = 0; i < out.size(); ++i) {
+        QVariantMap m = out.at(i).toMap();
+        QString custom;
+        QByteArray mac_array = QByteArray::fromHex(m.value("mac").toString().toUtf8());
+        if (mac_array.size() == 6)
+            custom = settings->GetHostCustomName(HostMAC((const uint8_t *)mac_array.constData()));
+        m["customName"] = custom;
+        m["displayName"] = custom.isEmpty() ? m.value("name") : QVariant(custom);
+        out[i] = m;
     }
     return out;
 }
@@ -1445,6 +1460,68 @@ void QmlBackend::wakeUpHost(int index, QString nickname)
     sendWakeup(server);
 }
 
+static bool parseMacString(const QString &mac_string, HostMAC &out)
+{
+    QByteArray mac_array = QByteArray::fromHex(mac_string.toUtf8());
+    if (mac_array.size() != 6)
+        return false;
+    out = HostMAC((const uint8_t *)mac_array.constData());
+    return true;
+}
+
+bool QmlBackend::renameHostByMac(const QString &mac_string, const QString &new_name)
+{
+    HostMAC mac;
+    if (!parseMacString(mac_string, mac))
+        return false;
+    // Empty name resets to the console's real name. Written straight to QSettings (persists across restarts).
+    settings->SetHostCustomName(mac, new_name.trimmed().left(32));
+    qCInfo(chiakiGui) << "[hosts] Renamed console" << mac_string << "to" << new_name.trimmed();
+    emit hostsChanged();
+    return true;
+}
+
+bool QmlBackend::unregisterHostByMac(const QString &mac_string)
+{
+    HostMAC mac;
+    if (!parseMacString(mac_string, mac) || !settings->GetRegisteredHostRegistered(mac))
+        return false;
+    qCInfo(chiakiGui) << "[hosts] Unregistering console" << mac_string;
+    settings->RemoveRegisteredHost(mac);
+    emit hostsChanged();
+    return true;
+}
+
+bool QmlBackend::wakeHostByMac(const QString &mac_string)
+{
+    HostMAC mac;
+    if (!parseMacString(mac_string, mac) || !settings->GetRegisteredHostRegistered(mac))
+        return false;
+    RegisteredHost reg = settings->GetRegisteredHost(mac);
+    QString addr = reg.GetLastHostIP();
+    for (const auto &host : discovery_manager.GetHosts()) {
+        if (host.GetHostMAC() == mac) {
+            addr = host.host_addr;
+            break;
+        }
+    }
+    if (addr.isEmpty()) {
+        emit error(tr("Wakeup failed"), tr("No known IP address for this console. Connect once on the same network first."));
+        return false;
+    }
+    qCInfo(chiakiGui) << "[hosts] Sending Wake-on-LAN to" << addr << "for" << mac_string;
+    return sendWakeup(addr, reg.GetRPRegistKey(), chiaki_target_is_ps5(reg.GetTarget()));
+}
+
+void QmlBackend::rescanHosts()
+{
+    qCInfo(chiakiGui) << "[discovery] Rescan requested: restarting DDP discovery (broadcast SRCH on local subnets)";
+    discovery_manager.SetActive(false);
+    discovery_manager.SetActive(true);
+    emit discoveryEnabledChanged();
+    emit hostsChanged();
+}
+
 void QmlBackend::setConsolePin(int index, QString console_pin)
 {
     auto server = displayServerAt(index);
@@ -1533,15 +1610,33 @@ bool QmlBackend::registerHost(const QString &host, const QString &psn_id, const 
         memcpy(info.psn_account_id, account_id.constData(), CHIAKI_PSN_ACCOUNT_ID_SIZE);
     }
     auto regist = new QmlRegist(info, settings->GetLogLevelMask(), this);
-    connect(regist, &QmlRegist::log, this, [callback](ChiakiLogLevel level, QString msg) {
+    auto error_log = std::make_shared<QString>();
+    connect(regist, &QmlRegist::log, this, [callback, error_log](ChiakiLogLevel level, QString msg) {
+        if (level == CHIAKI_LOG_ERROR || level == CHIAKI_LOG_WARNING)
+            error_log->append(msg).append('\n');
         QJSValue cb = callback;
         if (cb.isCallable())
             cb.call({QString("[%1] %2").arg(chiaki_log_level_char(level)).arg(msg), true, false});
     });
-    connect(regist, &QmlRegist::failed, this, [this, callback]() {
+    connect(regist, &QmlRegist::failed, this, [this, callback, error_log]() {
+        QString reason;
+        const QString &l = *error_log;
+        QRegularExpressionMatch http = QRegularExpression("HTTP code (\\d+)").match(l);
+        if (http.hasMatch() && (http.captured(1) == "403" || http.captured(1) == "401"))
+            reason = tr("Incorrect or expired PIN. Generate a new Remote Play PIN on the console and try again.");
+        else if (http.hasMatch())
+            reason = tr("The console rejected the registration (HTTP %1). Check the PIN, the Account ID and the console type (PS5/PS4).").arg(http.captured(1));
+        else if (l.contains("timed out") || l.contains("failed to connect") || l.contains("getaddrinfo") || l.contains("search failed") || l.contains("connect failed"))
+            reason = tr("The console is not responding. Make sure it is powered on (not in rest mode), on the same network, and that the IP address is correct.");
+        else if (l.contains("failed to receive response"))
+            reason = tr("The console closed the connection without answering. Check the PIN and try again.");
+        else
+            reason = tr("Registration failed. See the log below for details.");
+        qCWarning(chiakiGui) << "[regist] Registration failed:" << reason;
+
         QJSValue cb = callback;
         if (cb.isCallable())
-            cb.call({QString(), false, true});
+            cb.call({reason, false, true});
 
         regist_dialog_server = {};
     });

@@ -321,6 +321,14 @@ void QmlMainWindow::toggleMaximize()
     }
 }
 
+void QmlMainWindow::toggleFullscreen()
+{
+    if (windowState() == Qt::WindowFullScreen)
+        normalTime();
+    else
+        fullscreenTime();
+}
+
 bool QmlMainWindow::directStream() const
 {
     return direct_stream;

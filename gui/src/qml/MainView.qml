@@ -130,9 +130,10 @@ Pane {
     }
 
     Keys.onMenuPressed: root.showSettingsDialog()
-    Keys.onReturnPressed: {
+    Keys.onReturnPressed: (event) => {
         if (hostsView.activeFocus && hostsView.currentItem) {
             hostsView.currentItem.connectToHost();
+            event.accepted = true;
         } else {
             event.accepted = false;
         }
@@ -172,7 +173,11 @@ Pane {
             event.accepted = true;
             break;
         case Qt.Key_F5:
-            Chiaki.discoveryEnabled = true;
+            Chiaki.rescanHosts();
+            event.accepted = true;
+            break;
+        case Qt.Key_F10:
+            root.showSettingsDialog();
             event.accepted = true;
             break;
         }
@@ -616,7 +621,7 @@ Pane {
                             text: qsTr("Scan Subnet")
                             keyHint: "[F5]"
                             iconSource: "qrc:/icons/discover-24px.svg"
-                            onClicked: Chiaki.discoveryEnabled = true
+                            onClicked: Chiaki.rescanHosts()
                         }
 
                         // Filter Chips: All, PS5, PS4
@@ -794,17 +799,32 @@ Pane {
                         if (event.modifiers)
                             return;
                         switch (event.key) {
-                        case Qt.Key_Backslash:
+                        case Qt.Key_X:
                         case Qt.Key_No:
-                            if (currentItem && currentItem.triggerFirstAction && currentItem.triggerFirstAction())
+                            if (currentItem && currentItem.openDetails) {
+                                currentItem.openDetails();
                                 event.accepted = true;
+                            }
+                            break;
+                        case Qt.Key_Y:
+                        case Qt.Key_Yes:
+                            if (currentItem && currentItem.wakeUpHost) {
+                                currentItem.wakeUpHost();
+                                event.accepted = true;
+                            }
+                            break;
+                        case Qt.Key_F10:
+                        case Qt.Key_Menu:
+                            root.showSettingsDialog();
+                            event.accepted = true;
+                            break;
+                        case Qt.Key_F5:
+                            Chiaki.rescanHosts();
+                            event.accepted = true;
                             break;
                         case Qt.Key_C:
-                        case Qt.Key_Yes:
                             if (currentItem && currentItem.hasGames && currentItem.viewGames) {
                                 currentItem.viewGames();
-                                event.accepted = true;
-                            } else if (currentItem && currentItem.triggerSecondAction && currentItem.triggerSecondAction()) {
                                 event.accepted = true;
                             }
                             break;
@@ -840,6 +860,7 @@ Pane {
 
                         function connectToHost() { if (item && item.connectToHost) item.connectToHost(); }
                         function wakeUpHost() { if (item && item.wakeUpHost) item.wakeUpHost(); }
+                        function openDetails() { if (item && item.openDetails) item.openDetails(); }
                         function deleteHost() { if (item && item.deleteHost) item.deleteHost(); }
                         function setConsolePin() { if (item && item.setConsolePin) item.setConsolePin(); }
                         function viewGames() { if (item && item.viewGames) item.viewGames(); }
@@ -1021,8 +1042,15 @@ Pane {
             }
 
             function wakeUpHost() {
-                if (!hostData.discovered && !hostData.duid)
+                if (hostData.mac) {
+                    Chiaki.wakeHostByMac(hostData.mac);
+                } else if (!hostData.discovered && !hostData.duid) {
                     Chiaki.wakeUpHost(hostIndex);
+                }
+            }
+
+            function openDetails() {
+                root.showConsoleDetailsDialog(hostData, hostIndex);
             }
 
             function deleteHost() {
@@ -1122,6 +1150,32 @@ Pane {
                             pulseDot: hostData.state === "ready"
                             showDot: true
                         }
+
+                        // Console Details Button [⋮]
+                        Rectangle {
+                            width: 28
+                            height: 28
+                            radius: 6
+                            color: cardDetailsArea.containsMouse ? LudeloTheme.bgHover : Qt.rgba(1, 1, 1, 0.05)
+                            border.color: cardDetailsArea.containsMouse ? LudeloTheme.borderMedium : LudeloTheme.borderSubtle
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "⋮"
+                                font.pixelSize: 15
+                                font.weight: Font.Bold
+                                color: LudeloTheme.textSecondary
+                            }
+
+                            MouseArea {
+                                id: cardDetailsArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: cardDelegateRoot.openDetails()
+                            }
+                        }
                     }
 
                     // Console Name & Network Line
@@ -1131,7 +1185,7 @@ Pane {
 
                         Text {
                             width: parent.width
-                            text: hostData.name || (hostData.ps5 ? "PlayStation 5" : "PlayStation 4")
+                            text: (hostData.displayName || hostData.name) || (hostData.ps5 ? "PlayStation 5" : "PlayStation 4")
                             font.family: LudeloTheme.fontFamily
                             font.pixelSize: 18
                             font.weight: Font.Bold
@@ -1219,14 +1273,16 @@ Pane {
                         height: 44
                         variant: hostData.state === "ready" ? "primary" : (hostData.state === "standby" ? "secondary" : (hostData.registered ? "primary" : "mint"))
                         text: {
+                            if (!hostData.registered) return qsTr("PAIR CONSOLE");
                             if (hostData.state === "ready") return qsTr("CONNECT DIRECT");
                             if (hostData.state === "standby") return qsTr("WAKE CONSOLE");
-                            if (!hostData.registered) return qsTr("PAIR CONSOLE");
                             return qsTr("CONNECT");
                         }
-                        keyHint: hostData.state === "standby" ? (LudeloTheme.hintWake + " WAKE") : (LudeloTheme.hintSelect + " CONNECT")
+                        keyHint: !hostData.registered ? "[A] PAIR" : (hostData.state === "standby" ? (LudeloTheme.hintWake + " WAKE") : (LudeloTheme.hintSelect + " CONNECT"))
                         onClicked: {
-                            if (hostData.state === "standby")
+                            if (!hostData.registered)
+                                root.showRegistDialog(hostData.address, hostData.ps5);
+                            else if (hostData.state === "standby")
                                 cardDelegateRoot.wakeUpHost();
                             else
                                 cardDelegateRoot.connectToHost();
@@ -1328,6 +1384,7 @@ Pane {
                 cardColor: LudeloTheme.bgCard
                 borderColor: isFocused || isHovered ? LudeloTheme.accentMint : LudeloTheme.borderSubtle
                 glowColor: LudeloTheme.accentMintGlow
+                onClicked: root.showSettingsDialog()
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -1540,6 +1597,14 @@ Pane {
                         Text { id: aKeyText; anchors.centerIn: parent; text: LudeloTheme.hintSelectKey; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentMint }
                     }
                     Text { text: qsTr("SELECT"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (hostsView.currentItem && hostsView.currentItem.connectToHost)
+                                hostsView.currentItem.connectToHost();
+                        }
+                    }
                 }
 
                 // WAKE
@@ -1550,6 +1615,14 @@ Pane {
                         Text { id: yKeyText; anchors.centerIn: parent; text: LudeloTheme.hintWakeKey; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.warn }
                     }
                     Text { text: qsTr("WAKE"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (hostsView.currentItem && hostsView.currentItem.wakeUpHost)
+                                hostsView.currentItem.wakeUpHost();
+                        }
+                    }
                 }
 
                 // DETAILS / GAMES
@@ -1560,16 +1633,14 @@ Pane {
                         Text { id: xKeyText; anchors.centerIn: parent; text: LudeloTheme.hintDetailsKey; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.accentPrimary }
                     }
                     Text { text: qsTr("DETAILS"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
-                }
-
-                // BACK / EXIT
-                Row {
-                    spacing: 6
-                    Rectangle {
-                        width: Math.max(20, bKeyText.implicitWidth + 8); height: 20; radius: 4; color: Qt.rgba(0, 0, 0, 0.4); border.color: LudeloTheme.borderSubtle
-                        Text { id: bKeyText; anchors.centerIn: parent; text: LudeloTheme.hintBackKey; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 10; font.weight: Font.Bold; color: LudeloTheme.error }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (hostsView.currentItem && hostsView.currentItem.openDetails)
+                                hostsView.currentItem.openDetails();
+                        }
                     }
-                    Text { text: qsTr("BACK"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 }
 
                 // SETTINGS
@@ -1580,6 +1651,11 @@ Pane {
                         Text { id: startKeyText; anchors.centerIn: parent; text: LudeloTheme.hintSettingsKey; font.family: LudeloTheme.fontFamilyMono; font.pixelSize: 9; font.weight: Font.Bold; color: LudeloTheme.textPrimary }
                     }
                     Text { text: qsTr("SETTINGS"); font.family: LudeloTheme.fontFamily; font.pixelSize: 12; font.weight: Font.Medium; color: LudeloTheme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.showSettingsDialog()
+                    }
                 }
             }
 

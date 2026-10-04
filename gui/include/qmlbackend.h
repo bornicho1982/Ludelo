@@ -212,6 +212,10 @@ public:
 
     Q_INVOKABLE void deleteHost(int index);
     Q_INVOKABLE void wakeUpHost(int index, QString nickname = QString());
+    Q_INVOKABLE bool renameHostByMac(const QString &mac_string, const QString &new_name);
+    Q_INVOKABLE bool unregisterHostByMac(const QString &mac_string);
+    Q_INVOKABLE bool wakeHostByMac(const QString &mac_string);
+    Q_INVOKABLE void rescanHosts();
     Q_INVOKABLE void addManualHost(int index, const QString &address);
     Q_INVOKABLE void hideHost(const QString &mac_string, const QString &host_nickname);
     Q_INVOKABLE void unhideHost(const QString &mac_string);
